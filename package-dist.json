@@ -1,0 +1,16 @@
+{
+  "name": "enforce-dist",
+  "version": "1.0.0",
+  "main": "prodServerEnforce.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node prodServerEnforce.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "express": "^4.21.2",
+    "jsforce-ajax-proxy": "^2.0.0"
+  }
+}

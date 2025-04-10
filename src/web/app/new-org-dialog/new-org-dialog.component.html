@@ -1,0 +1,40 @@
+<div style="padding: 20px;">
+    <span class="orgManagerLabel">Auth Mode : </span>
+    <select class="form-select orgManagerInput" aria-label="Category" style="width: fit-content; font-size: 0.9em;" #authModeSelect
+            [(ngModel)]="orgCred.authMode">
+        <option value="accessToken">Access Token</option>    
+        <option value="soapLogin">SOAP Login</option>    
+    </select>
+    <span class="orgManagerLabel">Org Name : </span><input class="orgManagerInput" [(ngModel)]="orgCred.orgName">
+    
+    @if(orgCred.authMode == 'accessToken') {
+        <span class="orgManagerLabel">Access Token : </span><input class="orgManagerInput" [(ngModel)]="orgCred.accessToken">
+        <span class="orgManagerLabel">Instance URL : </span><input class="orgManagerInput" [(ngModel)]="orgCred.instanceUrl">
+    }
+    @else if(orgCred.authMode == 'soapLogin') {
+        <span class="orgManagerLabel">Login Url : </span><input class="orgManagerInput" [(ngModel)]="orgCred.loginUrl">
+        <span class="orgManagerLabel">Username : </span><input class="orgManagerInput" [(ngModel)]="orgCred.username">
+        <span class="orgManagerLabel">Password : </span><input class="orgManagerInput" [(ngModel)]="orgCred.password">
+    }
+    
+    <br/>
+    <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.allowAnonymousApex" id="allowAnonymousApex" />
+    <label class="form-check-label" for="allowAnonymousApex">Allow Anonymous Apex</label>
+    <br/>
+    <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.allowCodeModification" id="allowCodeModification" />
+    <label class="form-check-label" for="allowCodeModification">Allow Code Modification</label>
+    <br/>
+    <br/>
+    @if(validation == true) {
+        <br/>
+        <div class="validation">
+            <span>{{validationText}}</span>
+        </div>
+    }
+    <br/>
+    <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
+        <button class="btn btn-primary" (click)="close(true)" >Save</button>
+        <button class="btn btn-danger" (click)="close(false)" >Cancel</button>
+    </div>
+    <br/>
+</div>

@@ -1,0 +1,22 @@
+.root{
+    background-color: rgb(37,37,37);
+    color: rgb(255, 181, 34);
+    flex-grow: 1;
+    padding: 20px;
+    font-family: 'Courier New', Courier, monospace;
+    /* justify-self: stretch; */
+    min-height: 100%;
+    height: max-content;
+}
+
+:host{
+    height: 100%;
+    overflow-y: auto;
+    min-height: 0;
+    /* flex-grow: 1; */
+    background-color: rgb(37,37,37);
+    /* display:flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;*/
+}

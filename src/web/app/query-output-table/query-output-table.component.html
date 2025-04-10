@@ -1,0 +1,50 @@
+<div class="root">
+    <!-- {{data}} -->
+    <!-- {{size}} -->
+    <table data-id="soqlTable" class="">
+        <thead class="headerRow">
+            <tr>
+                @for(col of columns; track col) {
+                    @if(isAttribute(col)) {
+                        @if(isAttributeType(col)) {
+                            <th>_</th>
+                        }
+                    } @else {
+                        <th>{{col}}</th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for(rec of records; track rec){
+                <tr>
+                    @for(col of columns; track col) {
+                        @if(isAttribute(col)) {
+                            @if(isAttributeType(col)) {
+                                @if(isColumnValid(col, rec)) {
+                                    <td><a href="{{getAttributeUrl(col,rec)}}">{{rec[col]}}</a></td>
+                                } @else {
+                                    <td></td>
+                                }
+                                <!-- <td><a href="{{instanceUrl}}/{{rec[getAttributeUrl(col)]}}">{{rec[col]}}</a></td> -->
+                            }
+                        } @else {
+                            @if(isObject(rec[col])){
+                                <td>
+                                    <app-query-output-table [data]="rec[col]" [flattenSubqueries]="flattenSubqueries" [instanceUrl]="instanceUrl"></app-query-output-table>
+                                </td>
+                            } @else {
+                                <td>{{rec[col]}}</td>
+                            }
+                        }
+                    }
+                    <!-- @for(column of rec|keyvalue;track column.key){
+                        @if(column.key != 'attributes') {
+                            <td>{{column.value}}</td>
+                        }
+                    } -->
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

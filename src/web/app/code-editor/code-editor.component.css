@@ -1,0 +1,8 @@
+:root{
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+    align-items: stretch;
+    height: 90%;
+    background-color: yellow;;
+}

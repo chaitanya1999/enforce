@@ -1,0 +1,337 @@
+@property --scrollbg {
+    syntax: '<color>';
+    initial-value: transparent;
+    inherits: true;
+}
+
+div.root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    /* overflow-y: hidden; */
+}
+
+div.root * {
+    font-size: 12px;
+}
+
+div.topBar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    /* background-color: lightblue; */
+    /* background-color: rgba(60, 60, 60, 255); */
+    /* background-color: rgba(37, 37, 38, 255); */
+    background-color: rgb(61, 61, 61);
+    padding: 5px;
+    /* padding-top: 4px; */
+}
+
+.topBarItem {
+    margin-left: 5px;
+    /* margin-right: 5px; */
+}
+
+.ng-autocomplete {
+    width: 500px;
+    color: black;
+}
+
+.codeEditor {
+    width: 100%;
+    /* height: 100%; */
+    ;
+    flex-grow: 1;
+    background-color: rgba(37, 37, 38, 255);
+}
+
+.spinnerDiv {
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    position: absolute;
+    z-index: 999;
+    /* background-color: blue; */
+    background-color: rgba(255, 255, 255, 0.4);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+}
+
+.spinnerContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.tabContainer {
+    overflow-x: overlay;
+    height: 35px;
+    min-width: 100%;
+    background-color: rgba(60, 60, 60, 255);
+    /* background-color: rgba(37, 37, 38, 255); */
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    -ms-overflow-style: none;
+}
+
+.tabContainer::-webkit-scrollbar {
+    height: 3px;
+}
+
+.tabContainer:hover::-webkit-scrollbar {
+    height: 3px;
+}
+
+/* .tabContainer:hover::-webkit-scrollbar-track {
+    background: rgba(37, 37, 38, 255);
+}
+.tabContainer::-webkit-scrollbar-track {
+    background: transparent;
+} */
+
+/* .tabContainer:hover::-webkit-scrollbar-thumb {
+    background-color: #7b7b7b;
+} */
+
+.tabContainer:hover::-webkit-scrollbar-thumb {
+    --scrollbg: rgb(123, 123, 123);
+}
+
+.tabContainer::-webkit-scrollbar-thumb {
+    --scrollbg: transparent;
+    transition: all 4s ease-in;
+    background-color: var(--scrollbg);
+}
+
+.tab {
+    height: 100%;
+    min-width: 150px;
+    padding-left: 15px;
+    padding-right: 15px;
+    color: white;
+    /* border: 1px solid black; */
+    /* border-bottom: 0px; */
+    /* border-color: black; */
+    /* border-color: rgba(50, 50, 50, 255);
+    border-style: solid; */
+    /* background-color: rgba(50, 50, 50, 255); */
+    background-color: rgba(44, 44, 44, 255);
+    /* -webkit-box-sizing: border-box; */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    -webkit-user-select: none;
+    /* Safari */
+    -ms-user-select: none;
+    /* IE 10 and IE 11 */
+    user-select: none;
+    /* Standard syntax */
+    cursor: pointer;
+    flex-shrink: 0;
+    /* border-top-left-radius: 6px;
+    border-top-right-radius: 6px; */
+    border-bottom: 1px solid rgb(83, 83, 255);
+    box-sizing: border-box;
+}
+
+.tab[data-modified=true] {
+    border-bottom: 2px solid white;
+}
+
+.tab[data-active=true] {
+    background-color: rgba(30, 30, 30, 255);
+    color: rgb(255, 211, 130);
+}
+
+.tab[data-drop-active=true] {
+    border: 3px solid orange;
+}
+
+.tab:hover {
+    background-color: rgba(37, 37, 38, 255);
+    /* text-decoration: underline; */
+}
+
+.tab[data-active=true] img.tabCross,
+.tab:hover span.tabCross {
+    visibility: visible;
+}
+
+span.tabCross {
+    visibility: hidden;
+    /* margin: auto; */
+    height: 20px;
+    width: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+span.tabCross:hover {
+    background-color: rgba(209, 209, 209, 0.2);
+    border-radius: 5px;
+}
+
+div.tabHeading {
+    display: flex;
+    /* flex-wrap: nowrap; */
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    margin-left: 5px;
+    margin-right: 5px;
+    flex-grow: 1;
+}
+
+div.tabHeading span {
+    /* width: fit-content; */
+    /* text-wrap: nowrap; */
+}
+
+.tabRightClickMenu {
+    position: fixed;
+    width: fit-content;
+    height: fit-content;
+    z-index: 9999;
+}
+
+.tabRightClickMenu ul {
+    display: block;
+}
+
+div.pathBar {
+    width: 100%;
+    height: 24px;
+    font-size: 16px;
+    line-height: 1;
+    /* padding-top : 4px;
+    padding-bottom : 4px; */
+    padding-left: 20px;
+    padding-right: 20px;
+    color: white;
+    background-color: rgba(30, 30, 30, 255);
+    /* background-color: rgb(153, 105, 33); */
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    font-family: Consolas;
+}
+
+div.pathBar span {
+    padding-left: 10px;
+    padding-right: 10px;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    user-select: none;
+    color: rgb(183, 183, 183)
+}
+
+div.pathBar span:hover {
+    background-color: #525858;
+}
+
+div.bottomBar {
+    width: 100%;
+    height: 20px;
+    font-size: 16px;
+    line-height: 1;
+    /* padding-top : 4px;
+    padding-bottom : 4px; */
+    padding-left: 20px;
+    padding-right: 20px;
+    color: white;
+    background-color: rgb(83, 106, 172);
+    /* background-color: rgb(153, 105, 33); */
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    font-family: Consolas;
+}
+
+div.bottomBar span {
+    padding-left: 10px;
+    padding-right: 10px;
+    /* margin-left: 10px;
+    margin-right: 10px; */
+    display: flex;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+    user-select: none;
+    color: white;
+    /* border: 1px solid white; */
+}
+
+div.bottomBar span:hover{
+    background-color: #525858;
+}
+div.bottomBar span[data-open=true]{
+    background-color: #525858;
+}
+
+div.errors-pane {
+    height: 200px;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    /* background: rgb(76, 76, 76); */
+    background-color: rgb(16, 16, 16);
+    width: 100%;
+    z-index: 99;
+    color: #BBBBBB;
+    border: 1px solid #888888;
+}
+
+div.errors-pane div.errors-pane-header {
+    user-select: none;
+    background-color: rgb(83, 106, 172);
+    /* border: 1px solid ; */
+    color: white;
+    font-weight: 600;
+    padding-left: 1px;
+    padding-right: 1px;
+    font-size: 1.2em;
+    font-family: Consolas;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+}
+
+div.errors-pane div.errors-pane-header span.errors-pane-header-title svg {
+    /* background-color: orange; */
+    margin-top: -1px;
+}
+
+div.errors-pane div.errors-pane-header span.close-button svg:hover{
+    fill: #EE5555;
+}
+div.errors-pane-content{
+    overflow-y : auto;
+    height: 90%;
+}
+div.errors-pane-content table{
+    /* height: 100%; */
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #888888;
+}
+div.errors-pane-content table tr td,th{
+    padding-left: 10px;
+    padding-right: 10px;
+    width: fit-content;
+    border: 1px solid #888888;
+}
+div.errors-pane-content table tr td.problem-cell{
+    /* width: fit-content; */
+    text-wrap: auto;
+    word-wrap: normal;
+}

@@ -1,0 +1,43 @@
+<div class="root">
+    <div class="topBar">
+
+        <div class="topBarTabContainer">
+            <div #codeTab class="topBarTab" [attr.data-active]='selectedTab == "code"' (click)="onTabClick('code')">
+                <img src="assets/sfLogo.png" width="16px" height="16px" style="margin-right: 5px; margin-left: -5px;">
+                code.apex
+            </div>
+            <div #logTab class="topBarTab" [attr.data-active]='selectedTab == "log"' (click)="onTabClick('log')">
+                <img src="assets/log icon.png" width="16px" height="16px" style="margin-right: 5px; margin-left: -5px;">
+                output.log
+            </div>
+        </div>
+
+        <!-- Salesforce Org dropdown -->
+        <select class="form-select topBarItem" aria-label="Salesforce Org" style="width: fit-content;font-size: var(--fontSize);"
+            [ngModel]="selectedOrg"
+            (ngModelChange)="onOrgSelect($event)">
+            <option>--Org--</option>
+            @for (orgCred of orgCredsList; track orgCred) {
+                <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
+            }
+        </select>
+
+        <!-- Execute Apex Script button -->
+        <button class="btn btn-primary topBarItem" (click)="executeApexScript()">Execute Apex Script</button>
+
+    </div>
+    <div class="codeEditor">
+        <app-code-editor #codeEditor defaultLanguage="apex" [delayLoad]="true"></app-code-editor>
+        <!-- @if(selectedTab == 'code') {
+        } @else {
+            <app-code-editor #editor1 [(code)]="log" defaultLanguage="apexlog"></app-code-editor>
+        } -->
+    </div>
+</div> 
+@if(showSpinner == true) {
+    <div class="spinnerDiv">
+        <div class="spinnerContainer">
+            <mat-spinner></mat-spinner>
+        </div>
+    </div>
+}

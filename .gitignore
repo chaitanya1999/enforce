@@ -1,0 +1,80 @@
+/node_modules
+/FetchedAuraCmp
+/FetchedClasses
+/FetchedLWC
+/FetchedClassCmpList
+/src/FetchedClassCmpList
+/_FetchedClassCmpList
+/Fetched_Objects
+/Fetched_Records
+sessionData.json
+/debugLogs
+/.sfdx
+/FetchedVFComponents
+/FetchedVFPage
+/Fetched_CustomLabels
+/data
+/tempoutput.txt
+/temp.cls
+/sessionData.json
+/DependencyTree.txt
+/output
+/FETCHED
+/FETCHED_EnForce
+/other
+temp2.js
+ruleOffline.js
+mynode.js
+tableData.js
+js_notebook.ojsnb
+src/scripts/tableData.js
+/src/work
+PointsToNote.txt
+TODO.txt
+removed-dependencies.txt
+/.vim-force.com
+/.vscode
+
+
+# angular GITIGNORE BELOW
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# Compiled output
+/dist/node_modules
+/tmp
+/out-tsc
+/bazel-out
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# Visual Studio Code
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Miscellaneous
+/.angular/cache
+.sass-cache/
+/connect.lock
+/coverage
+/libpeerconnection.log
+testem.log
+/typings
+
+# System files
+.DS_Store
+Thumbs.db

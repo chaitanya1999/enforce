@@ -1,0 +1,19 @@
+<div class="typeaheadRoot">
+    <input #typeaheadInput class="form-control" type="text" [placeholder]="placeholder" (click)="onClick($event)" (focus)="onFocus($event)" (blur)="onBlur($event)" [(ngModel)]="searchQuery" (ngModelChange)="onChange($event)" (keydown)="onKeyDown($event)" spellcheck="false"/>
+    <div class="typeaheadContainer">
+        @if(displayTypeahead == true) {
+            <div class="typeahead">
+                <select #typeaheadSelect (mouseenter)="onTypeaheadFocus()" (mouseleave)="onTypeaheadUnfocus()" [size]="displayListSize" (focus)="onSelectFocus()">
+                    @for(option of displayList; track option; let index=$index)  {
+                        @if(index == keyboardHoverIndex) {
+                            <option #listOptionDiv class="listOption keyboardFocused" (click)="onSelectOption(option)" title={{option.label}}>{{option.label}}</option>
+                        }
+                        @else {
+                            <option #listOptionDiv class="listOption" (click)="onSelectOption(option)" title={{option.label}}>{{option.label}}</option>
+                        }
+                    }
+                </select>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,114 @@
+<div class="rootRoot">
+    @if(webMode == false) {
+    <div class="windowframe">
+        <div class="toolbar">Chaitanya V's EnForce IDE for Salesforce</div>
+        <div class="buttons">
+            <div (click)="minimize()"><img src="../assets/minimize.svg"/></div>
+            <div (click)="maximize()"><img src="../assets/maximize.svg"/></div>
+            <div (click)="close()"><img src="../assets/close.svg"/></div>
+        </div>
+    </div>
+    }
+    <div class="rootDiv">
+        <div class="tabs-container">
+            <div class="logo">
+                <span>EnForce<br/>IDE</span>
+            </div>
+            <ul class="nav">
+                @for(tab of navTabs; track tab) {
+                    <li class="tab" [attr.data-active]="tab.active" (click)="selectTab(tab)">
+                        <p [innerHTML]="tab.tabName">
+                            
+                        </p>
+                    </li>
+                }
+            </ul>
+        </div>
+        <div class="tab-content">
+            <div class="credentialsManager" [hidden]="selectedTabTemplate != 'credentialsManager'">
+                <div class="credsPanel">
+                    <input #credsSearch class="form-control" type="text" placeholder="Search..." [(ngModel)]="searchText" (keyup)="onCredentialSearch()"/>
+                    <button class="btn btn-primary" (click)="addNewOrg()">Add +</button>
+                    <span class="badge text-bg-secondary" style="display: flex;align-items: center; justify-content: center; width: 40px; margin: 5px;">{{filteredCredsList.length}}</span>
+                </div>
+                @for(orgCred of filteredCredsList; track orgCred) {
+                    <mat-card style="margin: 10px; padding: 10px;" class="orgCard">
+                        <div style="display: flex; flex-direction: row; align-items: center;">
+                            <mat-card-title><span class="badge text-bg-secondary flexCenter" style="height: 32px;"><b>{{orgCred.orgName}}</b></span></mat-card-title>
+                            <button class="btn btn-light form-control flexCenter editSaveBtn" [attr.data-edit]="orgCred.edit" style='width: fit-content; border:1px solid gray;height:32px; width:32px;' (click)="editOrg(orgCred)">
+                                <i [class]="orgCred.edit ? 'bi-floppy' : 'bi bi-pencil'"></i>
+                            </button>
+                            @if(orgCred.edit) {
+                                <div style="margin-left:5px;height: 100%; text-align: center; font-weight: bolder;">Please click Save</div>
+                            }
+                        </div>
+                        <br/>
+                        <mat-card-content>
+                            <span class="orgManagerLabel">Auth Mode : </span><input class="orgManagerInput" [(ngModel)]="orgCred.authMode" disabled>
+                            @if(orgCred.authMode == 'soapLogin' || orgCred.authMode == '' || orgCred.authMode == null) {
+                                <span class="orgManagerLabel">Login Url : </span><input class="orgManagerInput" [(ngModel)]="orgCred.loginUrl" [disabled]="!orgCred.edit">
+                                <span class="orgManagerLabel">Username : </span><input class="orgManagerInput" [(ngModel)]="orgCred.username" [disabled]="!orgCred.edit">
+                                <span class="orgManagerLabel">Password : </span><input class="orgManagerInput" [(ngModel)]="orgCred.password" [disabled]="!orgCred.edit">
+                                <br/>
+                            } @else {
+                                <span class="orgManagerLabel">Instance Url : </span><input class="orgManagerInput" [(ngModel)]="orgCred.instanceUrl" [disabled]="!orgCred.edit">
+                                <span class="orgManagerLabel">Access Token : </span><input class="orgManagerInput" [(ngModel)]="orgCred.accessToken" [disabled]="!orgCred.edit">
+                            }
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.allowAnonymousApex" id="allowAnonymousApex" [disabled]="!orgCred.edit"/><label class="form-check-label" for="allowAnonymousApex">Allow Anonymous Apex</label>
+                            <br/>
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.allowCodeModification" id="allowCodeModification" [disabled]="!orgCred.edit"/><label class="form-check-label" for="allowCodeModification">Allow Code Modification</label>
+                            <br/>
+                            <br/>
+    
+                            <button class="btn btn-primary" (click)="authenticate(orgCred)" [disabled]="authentication || orgCred.edit">Authenticate</button>
+                            <button class="btn btn-danger" (click)="deleteOrg(orgCred)" [disabled]="authentication || orgCred.edit">Delete</button>
+                            <br/><br/>
+                            <b>Auth Status</b> : <span [class]="orgCred.authenticated == 'Success' ? 'badge text-bg-success' : 'badge text-bg-danger'">{{orgCred.authenticated}}</span>
+                        </mat-card-content>
+                    </mat-card>
+                }
+            </div>
+    
+            <app-code-browser [hidden]="selectedTabTemplate != 'codeBrowser'" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-code-browser>   
+            
+            <app-query-tool [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'queryTool'" ></app-query-tool>
+    
+            <app-anonymous-apex style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'anonApex'"></app-anonymous-apex>
+    
+            <app-help [hidden]="selectedTabTemplate != 'help'"></app-help>
+        </div>
+        <!-- <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms" selectedIndex="1" id="tab-group">
+            <mat-tab label="Credentials Manager">
+                <div class="container jumbotron">
+                    @for(orgCred of orgCredsList; track orgCred) {
+                        <mat-card style="margin: 20px; padding: 20px;">
+                            <mat-card-title>{{orgCred.orgName}}</mat-card-title>
+                            <br/>
+                            <mat-card-content style="font-size: 16px;">
+                                <b>Username</b> : {{orgCred.username}} <br/>
+                                <b>Password</b> : {{orgCred.password}} <br/><br/>
+                                <button class="btn btn-primary" (click)="authenticate(orgCred)" [disabled]="authentication">Authenticate</button>
+                                <button class="btn btn-danger" (click)="deleteCreds(orgCred)" [disabled]="authentication">Delete</button>
+                                <br/><br/>
+                                <b>Auth Status</b> : {{orgCred.authenticated}}
+                            </mat-card-content>
+                        </mat-card>
+                    }
+                </div>
+            </mat-tab>
+            <mat-tab label="Code Browser">
+                    <div style="height: 100%;">
+                        <app-code-browser style='width:100%; height:100%;' [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-code-browser>
+                    </div>
+            </mat-tab>
+            <mat-tab label="Query Tool">
+                <app-query-tool [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-query-tool>
+            </mat-tab>
+            <mat-tab label="Anon. Apex">
+                    <app-anonymous-apex [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-anonymous-apex>
+            </mat-tab>
+        </mat-tab-group> -->
+    </div>
+</div>
+  
+<router-outlet />

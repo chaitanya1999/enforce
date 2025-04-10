@@ -1,0 +1,47 @@
+div.typeaheadRoot {
+    display: flex;
+    flex-direction: column;
+}
+
+div.typeaheadRoot * {
+    font-size: 12px;
+}
+
+div.typeaheadRoot input {
+    width: 100%;
+}
+
+div.typeaheadRoot div.typeaheadContainer {
+    position: relative;
+}
+
+div.typeahead {
+    position: absolute;
+    width: 100%;
+    background-color: white ;
+    z-index: 99999;
+}
+
+div.typeahead select {
+    height: 100%;
+    width: 100%;
+    appearance: none;
+}
+
+.listOption {
+    background-color: white;
+    border: 0.5px solid black;
+    padding: 10px;
+}
+
+.listOption.keyboardFocused {
+    background-color: #ACCEF7;
+}
+
+/* .listOption:focus {
+    background-color: darkcyan;
+} */
+
+.listOption:hover {
+    background-color: skyblue;
+}

@@ -1,0 +1,77 @@
+<html>
+
+<head>
+    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/graphdracula/1.0.3/dracula.min.js"></script> -->
+    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.3.0/raphael.min.js"></script> -->
+    <script type="text/javascript" src="./cytoscape.min.js"></script>
+    <script src="../../output/DependencyTree.js"></script>
+    <script>
+        var _ = document.querySelector;
+        function doInit() {
+            let cy = cytoscape({
+                container: document.getElementById('draw'), // container to render in
+                elements: [ // list of graph elements to start with
+                    { // node a
+                        data: { id: 'a' }
+                    },
+                    { // node b
+                        data: { id: 'b' }
+                    },
+                    { // edge ab
+                        data: { id: 'ab', source: 'a', target: 'b' }
+                    }
+                ],
+                style: [ // the stylesheet for the graph
+                    {
+                        selector: 'node',
+                        style: {
+                            'background-color': '#666',
+                            'label': 'data(id)'
+                        }
+                    },
+
+                    {
+                        selector: 'edge',
+                        style: {
+                            'width': 3,
+                            'line-color': '#ccc',
+                            'target-arrow-color': '#ccc',
+                            'target-arrow-shape': 'triangle',
+                            'curve-style': 'bezier'
+                        }
+                    }
+                ],
+                layout: {
+                    name: 'grid',
+                    rows: 1
+                }
+            });
+        }
+        function onInput() {
+            let className = document.querySelector('#classNameInput').value;
+            let contentOut = '';
+            let outLinkList = apexTree[className]?.outlinks || [];
+            document.querySelector('div#outlinksDiv').innerHTML = outLinkList.reduce((t, c) => t + '<br/>' + c, '');
+
+            let inLinkList = apexTree[className]?.inlinks || [];
+            document.querySelector('div#inlinksDiv').innerHTML = inLinkList.reduce((t, c) => t + '<br/>' + c, '');
+        }
+    </script>
+</head>
+
+<body onload="doInit()">
+    <canvas width="400px" height="400px" id="draw"></canvas>
+    <div style="padding: 10px;">
+        Enter Class Name = <input type="text" onchange="onInput()" id="classNameInput">
+    </div>
+    <br /><br />Classes called from this class :
+    <div id='outlinksDiv' style="margin: 10px; border: 1px solid black;">
+
+    </div>
+    <br /><br />Classes that call this class :
+    <div id='inlinksDiv' style="margin: 10px; border: 1px solid black;">
+
+    </div>
+</body>
+
+</html>

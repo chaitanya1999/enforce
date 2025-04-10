@@ -1,0 +1,50 @@
+<div class="root">
+    <h1><b>Welcome to EnForce IDE </b>developed by <b>Chaitanya V.</b></h1>
+    This online SF IDE acts as a VSCode powered Developer Console V2 allowing LWC development. 
+    <br/>
+    <br/>
+    <h2>Features -</h2> 
+    <ul type="disc">
+        <li>Connect to multiple orgs at once facilitating code retrieval and deployment using tooling API</li>
+        <li>TAB Query Tool - allowing to execute SOQL queries on any connected org</li>
+        <li>TAB Anonymous Apex - allowing to execute Anonymous Apex on any connected org</li>
+    </ul>
+    <br/>
+
+    This IDE is currently under development and is in pre-release stage where features will be rolled out gradually.
+    <br/><br/>
+
+    <h2>How to use :</h2><br/>
+    <ol type="1">
+        <li>Enable CORS on your org. Go to Setup > CORS > Add this website domain to CORS whitelist.</li>
+        <li>Tick "Enable CORS for OAuth endpoints".</li>
+        <li>Go to Org Manager tab, click Add + icon.</li>
+        <li>For authentication using username, password ( + security token ) choose Auth Mode = SOAP Login and enter the details. </li>
+        <li>For authentication using accessToken / session ID choose Auth Mode = Access Token. To obtain Session Id from an existing logged in session follow next step.  </li>
+        <li>Run the below anonymous apex script in developer console to obtain Session ID and Instance URL<br/><br/>
+            <pre>
+    String sessionId = userInfo.getSessionId();
+    System.debug('Session id '+ UserInfo.getOrganizationId() + UserInfo.getSessionId().substring(15));
+    System.debug(URL.getOrgDomainURL().toExternalForm());
+            </pre>
+        </li>
+    </ol>
+
+    <h2>Known Issues -</h2> 
+    <ul type="disc">
+        <li>Some issues with keyboard shortcuts</li>
+        <li>Deployment and other features will be rolled out slowly</li>
+        <li>Query tool and anonymous apex not released yet. Working on Code Browser tab.</li>
+    </ul>
+
+    <h2>Keyboard Shortcuts - Code Editor</h2> 
+    <ul type="disc">
+        <li>Ctrl + P = Switch to open class/component input field</li>
+        <li>Ctrl + S = Save code</li>
+        <li>Ctrl + [PgUp / Tab] = Cycle Tabs Forward</li>
+        <li>Ctrl + [PgDown / Shift+Tab] = Cycle Tabs Backwards</li>
+        <li>Ctrl + Shift + [PgDown/PgUp] = Reorder tabs left right</li>
+    </ul>
+
+
+</div>

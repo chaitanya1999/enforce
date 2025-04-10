@@ -1,0 +1,11 @@
+(window as any).global = window;
+import 'zone.js';
+import 'crypto-browserify';
+import 'path-browserify';
+import 'stream-browserify';
+import 'timers-browserify';
+import 'path-browserify';
+import 'querystring-es3';
+// import 'browserify-mime';
+global.Buffer = global.Buffer || require('buffer').Buffer;
+global.process = require('process');

@@ -1,0 +1,32 @@
+input.orgManagerInput {
+    padding: 4px;
+    margin: 4px;
+    border-radius : 6px;
+    min-width: 400px;
+    display: block;
+    border: 1px solid gray;
+}
+
+span.orgManagerLabel {
+    font-weight: bold;
+}
+
+button {
+    margin: 5px;
+    min-width: 100px;
+}
+
+.validation {
+    display: flex;
+    /* align-items: center; */
+    justify-content: center;
+    width: 100%;
+    color: red;
+    font-weight: bold;
+}
+
+input[type=checkbox] {
+    margin: 5px;
+    /* background-color: lightblue; */
+    border: 1px solid black;
+}

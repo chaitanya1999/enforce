@@ -1,0 +1,125 @@
+/* :root {
+    --fontSize : 36px;
+} */
+
+:host {
+    height: 100%;
+    align-self: stretch;
+}
+
+div.root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    /* overflow-y: auto; */
+}
+
+div.root *{
+    font-size: 14px;
+}
+
+div.topBarCard {
+    margin-bottom: 5px;
+    padding-top: 5px;
+    /* margin: 0.5px; */
+    /* background-color: rgb(99, 131, 255); */
+    /* background-color: rgb(139, 161, 252); */
+    background-color: lightblue;
+    display: flex;
+    flex-direction: column;
+    border-radius: 5px;
+    /* border : 1px solid rgb(117, 117, 117); */
+    box-shadow: 0px 0px 5px 1px #000000;
+}
+
+.topBarCard *{
+    user-select: none;
+    font-family: 'Calibri';
+    /* color: rgb(53, 53, 53); */
+}
+
+div.topBar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: start;
+    padding: 5px;
+}
+
+.topBarItem {
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+div.contents {
+    /* min-height: 100%; */
+    height: max-content;
+    width: 100%;
+    align-self: stretch;
+    overflow-y: scroll;
+    overflow-x: auto;
+    padding-bottom: 30px;
+}
+
+
+.spinnerDiv{
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    position: absolute;
+    z-index: 999;
+    /* background-color: blue; */
+    background-color: rgba(255, 255, 255, 0.4);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+}
+
+.spinnerContainer { 
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+.checkbox {
+    margin: 5px;
+    display: flex;
+    flex-direction: row;
+    justify-content: baseline;
+    color: rgb(36, 36, 36);
+    font-family: sans-serif;
+}
+
+.filter{
+    margin: 5px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+textarea.queryInput {
+    height: 100px; width: 100%;
+    border-radius: 6px;
+    border: 1px solid rgb(182, 182, 182);
+    font-style: 'monospace';
+}
+
+.topBar select.topBarItem {
+    width: fit-content;
+    /* font-size: 0.8em;
+    line-height: 1em; */
+    max-width: 200px; 
+}
+
+.filterInput {
+    background-image: url('/assets/searchicon.png');
+    background-position-x: 5px;
+    background-position-y: center;
+    background-repeat: no-repeat;
+    /* line-height: 1em; */
+    padding-left: 32px;
+    /* font-size: 0.8em; */
+    width: 300px;
+}

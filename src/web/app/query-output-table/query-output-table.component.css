@@ -1,0 +1,36 @@
+td,th{
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    padding-left: 3px;
+    padding-right: 3px;
+    font-size: 10px;
+}
+th{
+    background-color: yellow;
+}
+thead{
+    /* display:table; */
+    /* position: fixed; */
+    /* width: 100%; */
+}
+.headerRow{
+    /* position: -webkit-sticky; */
+}
+table{
+    border-collapse: collapse;
+    background-color: white;
+    /* overflow: auto; */
+    /* table-layout:fixed; */
+    width: max-content;
+}
+tr:hover{
+    background-color: rgb(167, 218, 249);
+}
+.root {
+    /* height: 100%;  */
+    width: 100%; padding: 10px;
+    /* overflow:auto; */
+    background-color: rgb(255, 255, 255);
+}

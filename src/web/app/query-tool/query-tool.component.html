@@ -1,0 +1,75 @@
+<div class="root">
+    <div class="topBarCard">
+        <div class="topBar" style="padding-top: 0px; padding-bottom: 0px;">
+        
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="flattenSubqueries" (ngModelChange)="onFlattenCheckbox($event)"/><span style="margin-left: 3px;">Flat</span>
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="toolingApi"/><span style="margin-left: 3px;">Tooling</span>
+                </label>
+            </div>
+            <div class="checkbox">
+                <label>
+                    <input type="checkbox" [(ngModel)]="fetchDeleted"/><span style="margin-left: 3px;">Deleted</span>
+                </label>
+            </div>
+            <select class="form-select topBarItem" style="margin-left:20px;" [(ngModel)]="selectedQueryHistory" (ngModelChange)="onQueryHistorySelect($event)">
+                <option ngValue="Query History">Query History</option>
+                @for(query of queryHistory; track query) {
+                    <option [ngValue]="query">{{query.label}}</option>
+                }
+            </select>
+    
+        </div>
+        <div class="topBar">    
+            <!-- Authenticate button -->
+            <!-- <button class="btn btn-primary topBarItem" (click)="authenticate()">Authenticate</button> -->
+    
+            
+            <!-- Query Input -->
+            <textarea class="queryInput" [(ngModel)]="soqlQuery" (ngModelChange)="onQueryTyped()" (keypress)="onKeyPress($event)" spellcheck="false"></textarea>
+            
+            <!-- Execute button -->
+            <button class="btn btn-primary topBarItem" (click)="executeQuery()">Execute</button>
+        </div>
+        <div class="topBar" style="padding-top: 0px; padding-bottom: 0px;">
+
+            <!-- Salesforce Org dropdown -->
+            <select class="form-select topBarItem" aria-label="Salesforce Org"
+                [ngModel]="selectedOrg"
+                (ngModelChange)="onOrgSelect($event)">
+                <option>--Org--</option>
+                @for (orgCred of orgCredsList; track orgCred) {
+                    <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
+                }
+            </select>
+            
+            <div class="filter">
+                <!-- <span style="margin-right: 5px;">Filter</span> -->
+                <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput"/>
+            </div>
+    
+        </div>
+    </div>
+    <div class="contents">
+        @if(queryOutputSuccess == true) {
+            <app-query-output-table [data]="tableData" [flattenSubqueries]="flattenSubqueries" [instanceUrl]="instanceUrl"></app-query-output-table>
+        }
+        @else {
+            <!-- <textarea style="height: fit-content; width: 100%;" readonly [value]="queryOutput"></textarea> -->
+            <div style="height: fit-content; width: 100%; white-space: pre; padding: 10px;  overflow-wrap: break-word;  word-wrap: normal; text-wrap: wrap;">{{queryOutput}}</div>
+        }
+    </div>
+</div>
+
+@if(showSpinner == true) {
+    <div class="spinnerDiv">
+        <div class="spinnerContainer">
+            <mat-spinner></mat-spinner>
+        </div>
+    </div>
+}
