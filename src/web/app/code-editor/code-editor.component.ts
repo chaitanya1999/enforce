@@ -63,6 +63,9 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         
     }
 
+    cursorPosition? : monaco.Position;
+    @Output() onCursorPositionChange : EventEmitter<any> = new EventEmitter<any>();
+
     constructor(private zone: NgZone, private configService: EditorConfigService, private readonly _ipc: IpcService) {
         this.document = inject(DOCUMENT);
         this.window = this.document?.defaultView;
@@ -143,7 +146,12 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             // }
             if(viewStateList[modelIndex]) {
                 editorInstance.restoreViewState(<any>viewStateList[modelIndex]);
-            } 
+                if(this.editorActive == this.$codeEditor)
+                    this.onCursorPositionChange.emit(this.codeEditorViewStates[modelIndex]?.cursorState?.[0].position || {lineNumber : 1, column : 1});
+            } else {
+                if(this.editorActive == this.$codeEditor)
+                    this.onCursorPositionChange.emit({lineNumber : 1, column : 1});
+            }
             this.modelIndex = modelIndex;
             this.modelType = modelType;
             this.modelId = modelId_Str;
@@ -430,6 +438,11 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             });
         });
 
+        this.codeEditorInstance!.onDidChangeCursorPosition(e => {
+            this.cursorPosition = e.position;
+            this.onCursorPositionChange.emit(e.position);
+        })
+
         this.codeEditorModels.push(this.codeEditorInstance!.getModel()!);
 
         this.setModelLanguage(this.defaultLanguage);
@@ -488,6 +501,19 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             model.original = temp;
             this.diffEditorInstance!.setModel(model);
             this.diffEditorInstance!.restoreViewState(viewstate);
+        }
+    }
+
+    @Output() wordWrap(wrapWord : boolean) {
+        if(this.codeEditorInstance) {
+            this.codeEditorInstance.updateOptions({
+                wordWrap : wrapWord ? 'on' : 'off'
+            });
+        }
+        if(this.diffEditorInstance) {
+            this.diffEditorInstance.updateOptions({
+                wordWrap : wrapWord ? 'on' : 'off'
+            });
         }
     }
 

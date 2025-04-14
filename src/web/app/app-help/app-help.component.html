@@ -1,17 +1,22 @@
 <div class="root">
-    <h1><b>Welcome to EnForce IDE </b>developed by <b>Chaitanya V.</b></h1>
+    <div style="display: flex; flex-direction: column; justify-content: center; width:fit-content;">
+        <h1 style="margin: 0px;;"><b>Welcome to EnForce IDE </b></h1>
+        <h4 style="align-self: flex-start;">developed by <b>Chaitanya V.</b></h4>
+    </div>
     This online SF IDE acts as a VSCode powered Developer Console V2 allowing LWC development. 
     <br/>
     <br/>
     <h2>Features -</h2> 
     <ul type="disc">
-        <li>Connect to multiple orgs at once facilitating code retrieval and deployment using tooling API</li>
-        <li>TAB Query Tool - allowing to execute SOQL queries on any connected org</li>
-        <li>TAB Anonymous Apex - allowing to execute Anonymous Apex on any connected org</li>
+        <li>Connect to multiple orgs at once</li>
+        <li>Facilitates Apex, Aura, LWC, VF development and deployment across multiple orgs at once (using tooling API)</li>
+        <li>Allows code comparison across multiple orgs (right click on tab) </li>
+        <li>Allows to execute SOQL queries on any connected org</li>
+        <li>Allows to execute Anonymous Apex on any connected org</li>
     </ul>
-    <br/>
+    <!-- <br/> -->
 
-    This IDE is currently under development and is in pre-release stage where features will be rolled out gradually.
+    <!-- This IDE is currently under development and is in pre-release stage where features will be rolled out gradually. -->
     <br/><br/>
 
     <h2>How to use :</h2><br/>
@@ -28,13 +33,13 @@
     System.debug(URL.getOrgDomainURL().toExternalForm());
             </pre>
         </li>
+        <li>Test authentication via authenticate button</li>
     </ol>
 
     <h2>Known Issues -</h2> 
     <ul type="disc">
-        <li>Some issues with keyboard shortcuts</li>
-        <li>Deployment and other features will be rolled out slowly</li>
-        <li>Query tool and anonymous apex not released yet. Working on Code Browser tab.</li>
+        <li>Some issues with keyboard shortcuts due to browser default behavior</li>
+        <li>Code editor : tabs drag and drop</li>
     </ul>
 
     <h2>Keyboard Shortcuts - Code Editor</h2> 

@@ -235,6 +235,7 @@ div.pathBar span {
 
 div.pathBar span:hover {
     background-color: #525858;
+    color: white;
 }
 
 div.bottomBar {
@@ -247,12 +248,15 @@ div.bottomBar {
     padding-left: 20px;
     padding-right: 20px;
     color: white;
-    background-color: rgb(83, 106, 172);
+    background-color: rgb(46 76 161);
+    /* background-color: rgb(83, 106, 172); */
     /* background-color: rgb(153, 105, 33); */
     font-weight: 600;
     display: flex;
+    flex-direction: row;
     align-items: center;
     font-family: Consolas;
+    justify-content: space-between;
 }
 
 div.bottomBar span {
@@ -268,11 +272,15 @@ div.bottomBar span {
     color: white;
     /* border: 1px solid white; */
 }
-
-div.bottomBar span:hover{
+div.bottomBar span.errors{
+    /* border-left: 1px solid black;
+    border-right: 1px solid black; */
+    background-color: rgb(83, 106, 172);
+}
+div.bottomBar span.errors:hover{
     background-color: #525858;
 }
-div.bottomBar span[data-open=true]{
+div.bottomBar span.errors[data-open=true]{
     background-color: #525858;
 }
 
@@ -334,4 +342,20 @@ div.errors-pane-content table tr td.problem-cell{
     /* width: fit-content; */
     text-wrap: auto;
     word-wrap: normal;
+}
+
+span.report-issue {
+    background-color: #ff4242;
+    align-self: flex-end;
+    justify-self: flex-end;
+}
+
+span.report-issue:hover {
+    background-color: red;
+    cursor: pointer;
+}
+span.cursor-position {
+    /* background-color: #ff4242; */
+    align-self: flex-end;
+    justify-self: flex-end;
 }

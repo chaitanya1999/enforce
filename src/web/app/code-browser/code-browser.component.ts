@@ -48,6 +48,10 @@ class CodeTab {
     bundleName : string = '';
     deploymentInProgess : boolean = false;
 
+    get isCodeEditor() {
+        return this.editorType == AppConstants.CODE_EDITOR;
+    }
+
     constructor(tabName : string, modelId : string, tabValue : string, icon : string, orgName : string, editorType : string, entityType : string, recordId? : string, temporary? : boolean) {
         this.tabName = tabName;
         this.modelId = modelId;
@@ -190,6 +194,9 @@ export class CodeBrowserComponent {
     get deploymentErrorsCount() {
         return Object.keys(this.deploymentErrors).reduce((p,c) => p+this.deploymentErrors[c].length, 0);
     }
+
+    wordWrap : boolean = false;
+    cursorPosition : any = {lineNumber : 0 , column : 0};
 
     constructor(private readonly _ipc: IpcService, private ref: ChangeDetectorRef, private snackBar: MatSnackBar
         , private globalEventsSvc: GlobalEventsService , private zone: NgZone, private injector : Injector , private changeDetectorRef : ChangeDetectorRef
@@ -481,10 +488,12 @@ export class CodeBrowserComponent {
         let switchTabModelId = null;
         this.openTabs = this.openTabs.filter(x => x.modelId != tab.modelId);
         
-        switchTabModelId = this.openTabs[0]?.modelId ?? null;
-        this.log('onTabClose | switchTabModelId = ' + switchTabModelId)
-        this.editorCmp.switchModel(switchTabModelId);
-        this.activeTabModelId = switchTabModelId;
+        if(tab.modelId == this.activeTab?.modelId) {
+            switchTabModelId = this.openTabs[0]?.modelId ?? null;
+            this.log('onTabClose | switchTabModelId = ' + switchTabModelId)
+            this.editorCmp.switchModel(switchTabModelId);
+            this.activeTabModelId = switchTabModelId;
+        }
 
         if(this.tabForContextMenu?.modelId == tab.modelId) this.tabForContextMenu = undefined;
         if(this.compareTab?.modelId == tab.modelId) this.compareTab = undefined;
@@ -830,6 +839,21 @@ export class CodeBrowserComponent {
 
     closeErrorsPane() {
         this.errorsPaneVisibility = false;
+    }
+
+    toggleWordWrap() {
+        this.wordWrap = !this.wordWrap;
+        this.editorCmp.wordWrap(this.wordWrap);
+    }
+
+    reportAnIssue() {
+        window.open('https://github.com/chaitanya1999/enforce/issues');
+    }
+
+    cursorPositionChange(evt : any) {
+        console.log('#$#$ cusror position' , evt);
+        this.cursorPosition.lineNumber = evt.lineNumber;
+        this.cursorPosition.column = evt.column;
     }
 
     log(...str: any) {

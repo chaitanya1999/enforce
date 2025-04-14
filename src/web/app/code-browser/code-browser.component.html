@@ -38,6 +38,9 @@
         <!-- language -->
         <app-custom-typeahead #languageSelector [dataset]="languageList" style="width: 10em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onLanguageSelect($event)" placeholder="Language..."></app-custom-typeahead>
         
+        <!-- word wrap -->
+        <button [class]="'btn btn-primary topBarItem ' +( wordWrap ? 'active' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" title="Word Wrap"><i class="bi bi-text-wrap"></i></button>
+
         @if(activeTab?.editorType == $diffEditor || true) {
             <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="prevDiff()" title="Previous Diff"><i class="bi bi-arrow-up"></i></button>
             <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="nextDiff()" title="Next Diff"><i class="bi bi-arrow-down"></i></button>
@@ -71,7 +74,7 @@
         <span class="">{{activeTab?.tabName}}</span>
     </div>
     <div class="codeEditor" #editorContainer (keydown)="onKeyDown($event)" (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
-        <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" [delayLoad]="false"></app-code-editor>
+        <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" [delayLoad]="false"></app-code-editor>
     </div>
     <div style="width: 100%; height: 0px; position: relative;">
         <!-- ERRORS pane -->
@@ -114,7 +117,11 @@
         }
     </div>
     <div class="bottomBar">
-        <span (click)="showErrorsPane()" [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
+        <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
+        @if(activeTab?.isCodeEditor) {
+            <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
+        }
+        <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
     </div>
 </div> 
 @if(showSpinner == true) {

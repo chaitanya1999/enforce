@@ -5,12 +5,16 @@
 :host {
     height: 100%;
     align-self: stretch;
+    /* background-color: rgba(60, 60, 60, 255); */
+    background-color: rgba(213, 213, 213, 255);
+
 }
 
 div.root {
     height: 100%;
     display: flex;
     flex-direction: column;
+    /* background-color: rgba(60, 60, 60, 255); */
     /* overflow-y: auto; */
 }
 

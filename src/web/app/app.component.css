@@ -77,6 +77,7 @@ mat-tab-group#tab-group {
 
 /*&CUSTOM TABS*/
 .tabs-container {
+    border-right: 1px solid #313131;
     /* height: 200px; */
     /* margin: 2px; */
     /* background-color: rgb(36, 36, 36); */
@@ -87,6 +88,8 @@ mat-tab-group#tab-group {
     display: flex;
     flex-direction: column;
     align-items: center;
+
+    width: 60px;
 
 }
 
@@ -168,6 +171,12 @@ mat-tab-group#tab-group {
     transition: 0.1s all linear;
     padding: 0.1rem;
     font-size: 0.8rem;
+    height: 56px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
     /* border-top-left-radius: 15px;
     border-top-right-radius: 15px; */
 }
@@ -200,8 +209,8 @@ mat-tab-group#tab-group {
     /* color: #37d7ff; */
     /* color: #FFFF00; */
     color: #FFDD00 ;
-    background-color: rgb(61, 61, 61);
-
+    /* background-color: rgb(61, 61, 61); */
+    border-left: 2px solid blue
 }
 
 .tab-content {
@@ -216,6 +225,7 @@ mat-tab-group#tab-group {
 }
 
 div.logo {
+    border-bottom: 1px solid #313131;
     /* height: 100%; */
     width: 100%;
     display: flex;
@@ -240,7 +250,7 @@ div.logo span {
     /* background-color: #37d7ff; */
     /* background-color: rgb(0, 175, 15); */
     /* border: 1px solid black; */
-    margin: 4px 4px 4px 0px;
+    /* margin: 4px 4px 4px 0px; */
     /* padding: 8px 8px 8px 0px; */
     /* color:rgba(68, 0, 255, 0.594); */
     /* color: black; */
@@ -249,10 +259,14 @@ div.logo span {
     padding: 0px 8px 0px 8px;
     line-height: 1.5;
     font-size: small;
-    border-bottom-right-radius: 16px;
-    border-top-right-radius: 16px;
-    border-bottom-left-radius: 16px;
-    border-top-left-radius: 16px;
+    /* border-bottom-right-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-top-left-radius: 8px; */
+}
+
+div.logo span:hover{
+    background-color: blue;
 }
 
 

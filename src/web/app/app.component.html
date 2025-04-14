@@ -14,12 +14,14 @@
             <div class="logo">
                 <span>EnForce<br/>IDE</span>
             </div>
-            <ul class="nav">
+            <ul class="nav" style="height: 100%;">
                 @for(tab of navTabs; track tab) {
                     <li class="tab" [attr.data-active]="tab.active" (click)="selectTab(tab)">
-                        <p [innerHTML]="tab.tabName">
-                            
-                        </p>
+                        @if(tab.icon != null) {
+                            <img [src]="tab.active ? tab.iconActive : tab.icon" style="width:32px; height: 32px; margin:auto;" [matTooltip]="tab.tabName" matTooltipPosition="right">
+                        } @else {
+                            <p [innerHTML]="tab.tabName"></p>
+                        }
                     </li>
                 }
             </ul>
