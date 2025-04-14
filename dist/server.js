@@ -3,7 +3,9 @@ const express = require('express')
 const app = express()
 const port = process.env.PORT || 80
 let env = process.env.NODE_ENV || 'development';
-
+let staticOptions = {
+	maxAge : 86400000
+}
 let jsforceCorsProxy = jsforceAjaxProxy({enableCORS : (env == 'PROD' ? false : true)});
 
 app.get('/:file', (req, res) => {
@@ -22,9 +24,9 @@ app.get('/', (req,res) => {
 	res.sendFile('/web/index.html', { root: __dirname });
 });
 
-app.use('/assets/', express.static(__dirname + '/web/assets/'));
+app.use('/assets/', express.static(__dirname + '/web/assets/', staticOptions));
 
-app.use('/assets/monaco/vs/', express.static(__dirname + '/web/assets/monaco/vs/'));
+app.use('/assets/monaco/vs/', express.static(__dirname + '/web/assets/monaco/vs/', staticOptions));
 
 app.all('/proxy/?*', jsforceCorsProxy);
 
