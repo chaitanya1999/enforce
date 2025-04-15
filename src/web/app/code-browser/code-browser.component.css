@@ -344,6 +344,17 @@ div.errors-pane-content table tr td.problem-cell{
     word-wrap: normal;
 }
 
+div.bottomBar-left {
+    display: flex;
+    height: 100%;
+    align-items: center;
+}
+div.bottomBar-right {
+    display: flex;
+    height: 100%;
+    align-items: center;
+}
+
 span.report-issue {
     background-color: #ff4242;
     align-self: flex-end;
@@ -358,4 +369,14 @@ span.cursor-position {
     /* background-color: #ff4242; */
     align-self: flex-end;
     justify-self: flex-end;
+}
+span.open-org {
+    margin-left: 2px;
+    background-color: rgb(83, 106, 172);
+    align-self: flex-start;
+    justify-self: flex-start;
+}
+span.open-org:hover {
+    background-color: #525858;
+    cursor: pointer;
 }

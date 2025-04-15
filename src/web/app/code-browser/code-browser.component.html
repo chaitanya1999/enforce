@@ -117,11 +117,16 @@
         }
     </div>
     <div class="bottomBar">
-        <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
-        @if(activeTab?.isCodeEditor) {
-            <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
-        }
-        <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
+        <div class="bottomBar-left">
+            <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
+            <span (click)="openOrg()" class="open-org">Open Org</span>
+        </div>
+        <div class="bottomBar-right">
+            @if(activeTab?.isCodeEditor) {
+                <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
+            }
+            <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
+        </div>
     </div>
 </div> 
 @if(showSpinner == true) {

@@ -610,7 +610,7 @@ export class CodeBrowserComponent {
 
     //#region Drag Drop
     tabDragStart(evt : any) {
-        this.draggedTab = evt.target;
+            this.draggedTab = evt.target;
     }
     tabDragEnd(evt: any){
         this.draggedTab = undefined;
@@ -854,6 +854,18 @@ export class CodeBrowserComponent {
         console.log('#$#$ cusror position' , evt);
         this.cursorPosition.lineNumber = evt.lineNumber;
         this.cursorPosition.column = evt.column;
+    }
+
+    async openOrg() {
+        if(this.selectedOrg == '--Org--' || !this.selectedOrg) 
+            return;
+
+        try {
+            let url = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
+            window.open(url);
+        } catch(err) {
+            console.log(err);
+        }
     }
 
     log(...str: any) {

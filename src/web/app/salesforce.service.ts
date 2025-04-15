@@ -84,20 +84,20 @@ export class SalesforceService {
     }
 
     async FetchClassCmpList(x : any) {
-        log('IPC - FetchClassCmpList | ' , x);
+        log('SalesforceService - FetchClassCmpList | ' , x);
         let param = x[0];
         let orgName = param.orgName;
         let toFetchList = param.toFetchList;
         let ignoreCache = param.ignoreCache;
         let result : any = null;
-        log('IPC - FetchClassCmpList | Checking cache - ' + orgName + ' | ignoreCache = ' + ignoreCache);
+        log('SalesforceService - FetchClassCmpList | Checking cache - ' + orgName + ' | ignoreCache = ' + ignoreCache);
         
         if(toFetchList.length) {
             let cached = sessionStorage.getItem('fetchedClassCmpList') || '{}';
             let cachedData = JSON.parse(cached);
             result = cachedData[orgName] || [];
             if(ignoreCache || !cachedData[orgName]) {
-                log('IPC - FetchClassCmpList | Making SF call ' + toFetchList);
+                log('SalesforceService - FetchClassCmpList | Making SF call ' + toFetchList);
                 let tempResult = await (new ClassCmpListFetcher(this).main(orgName, toFetchList));
                 result = [...result , ...tempResult];
                 cachedData[orgName] = result;
@@ -109,12 +109,12 @@ export class SalesforceService {
     }
 
     async FetchCode(x : any) {
-        log('IPC - FetchCode | ' + JSON.stringify(x));
+        log('SalesforceService - FetchCode | ' + JSON.stringify(x));
         let params = x[0];
         let enforceResp = await new CodeFetcher().main(params, false, true, false);
-        log('IPC - FetchCode | fetched')
+        log('SalesforceService - FetchCode | fetched')
         let response = enforceResp[params.OrgNames[0]][0];
-        log('IPC - FetchCode | sending response back');
+        log('SalesforceService - FetchCode | sending response back');
         // console.log('#$#$ ' + JSON.stringify(response));
         return response;
     }
@@ -131,25 +131,34 @@ export class SalesforceService {
     }
 
     async executeAnonymous(x : any) {
-        log('IPC - executeAnonymous');
+        log('SalesforceService - executeAnonymous');
         let params = x[0];
         let response = await new AnonymousApex().main(params.code, params.orgName);
         return response;
     }
 
     async executeQuery(x : any) {
-        log('IPC - executeQuery | ' + JSON.stringify(x));
+        log('SalesforceService - executeQuery | ' + JSON.stringify(x));
         let params = x[0];
         let enforceResp = await new QueryTool().executeSOQL(params.orgName, params.soqlQuery, params.fetchDeleted, params.toolingApi);
-        log('IPC - executeQuery | executed. Sending response.');
+        log('SalesforceService - executeQuery | executed. Sending response.');
         return enforceResp;
     }
 
     async getInstanceURL(x : any) {
-        log('IPC - getInstanceURL');
+        log('SalesforceService - getInstanceURL');
         let params = x[0];
         this.getSessionData();
         return this.loadedSessions[params.orgName]?.instanceUrl;
+    }
+
+    async getOrgLoginUrl(x : any) {
+        log('SalesforceService - getOrgLoginUrl | ' + JSON.stringify(x));
+        await this.getSessionData();
+        let org = x[0];
+        let y = this.loadedSessions;
+        let session = this.loadedSessions[org];
+        return session.instanceUrl + '/secur/frontdoor.jsp?sid=' + session.accessToken;
     }
 
 }
