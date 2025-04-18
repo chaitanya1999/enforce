@@ -31,12 +31,12 @@
                 <div class="credsPanel">
                     <input #credsSearch class="form-control" type="text" placeholder="Search..." [(ngModel)]="searchText" (keyup)="onCredentialSearch()"/>
                     <button class="btn btn-primary" (click)="addNewOrg()">Add +</button>
-                    <span class="badge text-bg-secondary" style="display: flex;align-items: center; justify-content: center; width: 40px; margin: 5px;">{{filteredCredsList.length}}</span>
+                    <span class="badge rounded-pill text-bg-success" style="display: flex;align-items: center; justify-content: center; width: 40px; margin: 5px;">{{filteredCredsList.length}}</span>
                 </div>
                 @for(orgCred of filteredCredsList; track orgCred) {
                     <mat-card style="margin: 10px; padding: 10px;" class="orgCard">
                         <div style="display: flex; flex-direction: row; align-items: center;">
-                            <mat-card-title><span class="badge text-bg-secondary flexCenter" style="height: 32px;"><b>{{orgCred.orgName}}</b></span></mat-card-title>
+                            <mat-card-title><span class="badge text-bg-primary flexCenter" style="height: 32px;"><b>{{orgCred.orgName}}</b></span></mat-card-title>
                             <button class="btn btn-light form-control flexCenter editSaveBtn" [attr.data-edit]="orgCred.edit" style='width: fit-content; border:1px solid gray;height:32px; width:32px;' (click)="editOrg(orgCred)">
                                 <i [class]="orgCred.edit ? 'bi-floppy' : 'bi bi-pencil'"></i>
                             </button>

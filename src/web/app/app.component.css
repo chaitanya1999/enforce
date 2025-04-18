@@ -38,7 +38,9 @@
     width: 100%;
     padding: 60px;
     padding-top: 0px;
-    background-color: rgb(240, 253, 255);
+    /* background-color: rgb(240, 253, 255); */
+    background-color: rgba(213, 213, 213, 255);
+
 }
 
 .credentialsManager * {
@@ -272,9 +274,19 @@ div.logo span:hover{
 
 .credsPanel {
     margin: 10px;font-size: 12px;
-    border:1px solid lightslategray;
+    /* border:1px solid lightslategray; */
     display: flex;
     box-shadow: 3px 3px 3px 1px #888888;
+    background-color: white;
+}
+.credsPanel input.form-control{
+    border:none;
+}
+.credsPanel input.form-control:focus{
+    border:none;
+    /* border-color: rgba(126, 239, 104, 0.8); */
+    box-shadow: none;
+    outline: 0 none;
 }
 .credsPanel *{
     font-size: 12px;

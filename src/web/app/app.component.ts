@@ -222,7 +222,7 @@ export class AppComponent {
         let text = (this.credsSearch?.nativeElement?.value || '').toLowerCase();
         console.log('onCredentialSearch | ' + text);
         this.filteredCredsList = this.orgCredsList.filter(x => (x.orgName.toLowerCase().includes(text)/* || x.username.toLowerCase().includes(text)*/));
-        this.filteredCredsList.push(...this.orgCredsList.filter(x => (x.username.toLowerCase().includes(text))));
+        this.filteredCredsList.push(...this.orgCredsList.filter(x => (x.username.toLowerCase().includes(text) && !this.filteredCredsList.includes(x))));
         console.log('onCredentialSearch | ' + this.filteredCredsList.length);
     }
 

@@ -197,6 +197,8 @@ export class CodeBrowserComponent {
 
     wordWrap : boolean = false;
     cursorPosition : any = {lineNumber : 0 , column : 0};
+    organizationName : string = '';
+    organizationType : string = '';
 
     constructor(private readonly _ipc: IpcService, private ref: ChangeDetectorRef, private snackBar: MatSnackBar
         , private globalEventsSvc: GlobalEventsService , private zone: NgZone, private injector : Injector , private changeDetectorRef : ChangeDetectorRef
@@ -244,6 +246,28 @@ export class CodeBrowserComponent {
         }
 
         await this.fetchAllEntities(false);
+        
+        // Fetching organization details
+        this.log('fetching org details');
+        let params = {
+            orgName : this.selectedOrg,
+            soqlQuery : `select Id, Name, PrimaryContact, OrganizationType, InstanceName, IsSandbox, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById from Organization LIMIT 1`,
+            fetchDeleted : false,
+            toolingApi : false
+        };
+        this._ipc.callMethod('executeQuery', params).then(x =>{
+            if(x.isSuccess) {
+                this.organizationName = x.data.records?.[0]?.Name ?? '';
+                this.organizationType = x.data.records?.[0]?.OrganizationType ?? '';
+            } else {
+                this.organizationName = '';
+                this.organizationType = '';
+            }
+        }).catch(e => {
+            this.log('fetching org details - ' + JSON.stringify(e));
+            this.organizationName = '';
+            this.organizationType = '';
+        });
     }
 
     async fetchAllEntities(ignoreCache : boolean){

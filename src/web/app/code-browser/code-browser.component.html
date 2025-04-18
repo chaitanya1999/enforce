@@ -119,7 +119,8 @@
     <div class="bottomBar">
         <div class="bottomBar-left">
             <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
-            <span (click)="openOrg()" class="open-org">Open Org</span>
+            <span (click)="openOrg()" class="open-org">{{organizationName}}</span>
+            <span class="open-org">{{organizationType}}</span>
         </div>
         <div class="bottomBar-right">
             @if(activeTab?.isCodeEditor) {
