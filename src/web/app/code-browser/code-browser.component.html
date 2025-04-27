@@ -27,19 +27,41 @@
         <app-custom-typeahead #entityTypeahead [dataset]="entityList" style="width: 40em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onEntitySelect($event)" (onUnfocus)="typeaheadUnfocus()" placeholder="Type a name to open..."></app-custom-typeahead>
         
         <!-- Reload list button -->
-        <button class="btn btn-secondary topBarItem" (click)="reloadList()" title="Reload Class Cmp List"><i class="bi bi-arrow-clockwise"></i></button>
+        <button class="btn btn-secondary topBarItem" (click)="reloadList()" title="Reload Class Cmp List" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
 
         <!-- Clear cache button -->
-        <button class="btn btn-danger topBarItem" (click)="clearCachedList()" title="Clear Cached List"><i class="bi bi-trash"></i></button>
+        <button class="btn btn-danger topBarItem" (click)="clearCachedList()" title="Clear Cached List" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
 
         <!-- Clear cache button -->
-        <button class="btn btn-success topBarItem" (click)="handleSave()" title="Save"><i class="bi bi-floppy"></i></button>
+        <button class="btn btn-success topBarItem" (click)="handleSave()" title="Save" [disabled]="!isOrgSelected"><i class="bi bi-floppy"></i></button>
+
+        <!-- Create new button -->
+        <div class="btn-group">
+            <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected" >
+                <i class="bi bi-plus-circle"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
+                @for(entity of entityTypeList_singular; track entity) {
+                    <li><a class="dropdown-item" draggable=false (click)="createNewCode(entity)" role="menuitem" >{{entity.label}}</a></li>
+                }
+            </ul>
+        </div>
+        <!-- <div class="dropdown">
+            <button class="btn btn-success topBarItem dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" role="button">
+                <i class="bi bi-plus-circle"></i>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Action</a></li>
+                <li><a class="dropdown-item" href="#">Another action</a></li>
+                <li><a class="dropdown-item" href="#">Something else here</a></li>
+            </ul>
+        </div> -->
 
         <!-- language -->
         <app-custom-typeahead #languageSelector [dataset]="languageList" style="width: 10em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onLanguageSelect($event)" placeholder="Language..."></app-custom-typeahead>
         
         <!-- word wrap -->
-        <button [class]="'btn btn-primary topBarItem ' +( wordWrap ? 'active' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" title="Word Wrap"><i class="bi bi-text-wrap"></i></button>
+        <button [class]="'btn btn-primary topBarItem ' +( wordWrap ? 'active' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" title="Word Wrap" [disabled]="!isOrgSelected"><i class="bi bi-text-wrap"></i></button>
 
         @if(activeTab?.editorType == $diffEditor || true) {
             <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="prevDiff()" title="Previous Diff"><i class="bi bi-arrow-up"></i></button>

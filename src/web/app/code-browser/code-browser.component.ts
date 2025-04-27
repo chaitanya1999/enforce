@@ -23,7 +23,9 @@ import { ContextMenuEvent } from 'electron';
 import { GlobalEventsService } from '../global-events.service';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AlertDialogComponent } from '../alert-dialog/alert-dialog.component';
-import { EnForceResponse } from '../enforce-utils';
+import Utils, { EnForceResponse } from '../enforce-utils';
+import { PromptDialogComponent } from '../prompt-dialog/prompt-dialog.component';
+import { sfApiVersion } from '../salesforce.service';
 
 // import { provideRouter } from '@angular/router';
 
@@ -87,6 +89,10 @@ export class CodeBrowserComponent {
     selectedEntityType: string = '--Type--';
     showSpinner : boolean = false;
 
+    get isOrgSelected() {
+        return this.selectedOrg && this.selectedOrg != '--Org--';
+    }
+
     @Input() orgCredsList: OrgCredential[] = [
         <OrgCredential>{
             orgName: 'dummy',
@@ -97,6 +103,7 @@ export class CodeBrowserComponent {
     @Input() orgCredsMap: Map<string, OrgCredential> = new Map<string, OrgCredential>();
 
     entityTypeList: Array<SelectOption> = Object.keys(AppConstants.entityTypeVsName).map(x => ({ label : AppConstants.entityTypeVsName[x], value : x}));
+    entityTypeList_singular: Array<SelectOption> = Object.keys(AppConstants.entityTypeVsName_singular).map(x => ({ label : AppConstants.entityTypeVsName_singular[x], value : x}));;
 
     entityTypeVsList: any = {
         ApexClass: [],
@@ -327,15 +334,19 @@ export class CodeBrowserComponent {
         
         this.log('onEntityTypeSelect | ' + value);
         let i=0;
+        this.setEntityList();
+        if(clearSearch)
+            this.typeahead.clearSearchQuery();
+        this.log('onOrgSelect | this.entityList = ', this.entityList);
+    }
+
+    setEntityList() {
         this.entityList = (this.entityTypeVsList[this.selectedEntityType] || []).map( (x:any) => {
             if(this.selectedEntityType == CodeEntity.LWC)
                 return { label : x.substring(4), value : x }
             else 
                 return { label : x, value : x }
         });
-        if(clearSearch)
-            this.typeahead.clearSearchQuery();
-        this.log('onOrgSelect | this.entityList = ', this.entityList);
     }
 
     onFocused(evt: any) {
@@ -800,9 +811,9 @@ export class CodeBrowserComponent {
             this.showSpinner = true;
             tab.deploymentInProgess = true;
             let deployResponse : any = await this._ipc.callMethod('DeployCode', {
-                Id : tab.recordId,
-                Code : this.editorCmp.getContent(tab.modelId),
-                Type : tab.entityType,
+                id : tab.recordId,
+                Body : this.editorCmp.getContent(tab.modelId),
+                type : tab.entityType,
                 orgName : tab.orgName
             });
 
@@ -854,7 +865,6 @@ export class CodeBrowserComponent {
             this.showSpinner = false;
             tab.deploymentInProgess = false;
         }
-
     }
 
     showErrorsPane() {
@@ -890,6 +900,140 @@ export class CodeBrowserComponent {
         } catch(err) {
             console.log(err);
         }
+    }
+
+    async createNewCode(entity : SelectOption) {
+        let regExpression : any = {
+            'ApexClass' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            'AuraComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            'LWC' : '^[a-z][a-zA-Z0-9\\-\\_]{0,39}$',
+            'VFPage' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            'VFComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$'
+        }
+
+        if(!this.isOrgSelected) return;
+
+        if(![CodeEntity.LWC, CodeEntity.AuraComponent, CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(<any>entity.value)) {
+            alert('Not implemented yet');
+            return;
+        }
+
+        let dialogRef = this.dialog.open(PromptDialogComponent, {
+            data : {
+                text : `Enter new ${entity.label} name for org "${this.selectedOrg}"`,
+                placeholder : 'Name',
+                label : 'Name',
+                validationText : 'Please enter a valid name ' + (entity.value == 'LWC' ? '(LWC must start with lowercase)' : ''),
+                regex : regExpression[entity.value]
+            }
+        });
+
+        dialogRef.afterClosed().subscribe(async name => {
+            if(name) {
+                try {
+                    this.showSpinner = true;
+
+                    let payload : any = {};
+                    if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
+                        payload = {
+                            Body : AppConstants.defaultCode[entity.value].replace(/\{componentName\}/g, name),
+                            type : entity.value,
+                            orgName : this.selectedOrg,
+                            name : name
+                        };
+                    } else {
+                        payload = {
+                            type : entity.value,
+                            orgName : this.selectedOrg,
+                            name : name,
+                            bundle : AppConstants.defaultCode[entity.value].map((x : any) => {
+                                let y : any = {};
+                                for(let key in x) {
+                                    y[key] = x[key].replace(/\{componentName\}/g, name).replace(/\{apiVersion\}/g, sfApiVersion);
+                                }
+                                return y;
+                            })
+                        };
+                    }
+                    let deployResponse : any = await this._ipc.callMethod('DeployCode', payload);
+        
+                    let dialogRef = this.dialog.open(AlertDialogComponent, {
+                        // height: '400px',
+                        // width: '600px',
+                        data : {
+                            // content : JSON.stringify(deployResponse, null, 4)
+                            content : deployResponse.isSuccess ? 'Success.' : 'Error : ' + JSON.stringify(deployResponse.errors , null , 4)
+                        }
+                    });
+        
+                    let deployErrors : any[] = [];
+        
+                    if(deployResponse.isSuccess) {
+                        this.errorsPaneVisibility = false;
+                        let entityToLoad = '';
+                        
+                        if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
+                            this.entityTypeVsList[entity.value].push(name);
+                            entityToLoad = entity.value;
+
+                        } else if(entity.value == CodeEntity.AuraComponent) {
+                            let bundleName = name;
+                            let fileNames = [
+                                bundleName + '/' + bundleName + Utils.aura_suffixMap['COMPONENT'],
+                                bundleName + '/' + bundleName + Utils.aura_suffixMap['CONTROLLER'],
+                                bundleName + '/' + bundleName + Utils.aura_suffixMap['HELPER'],
+                                bundleName + '/' + bundleName + Utils.aura_suffixMap['STYLE'],
+                            ]
+                            this.entityTypeVsList[entity.value].push(...fileNames);
+                            entityToLoad = fileNames[0];
+                        } else if(entity.value == CodeEntity.LWC) {
+                            let fileNames = payload.bundle.map((x : any) => x.filePath);
+                            console.log('^^^^ ' + fileNames);
+                            this.entityTypeVsList[entity.value].push(...fileNames);
+                            entityToLoad = fileNames[0];
+                        }
+
+                        this.loadEntity(name, null, entityToLoad, this.selectedOrg);
+
+                        if(entity.value == this.selectedEntityType) {
+                            this.setEntityList();
+                        }
+
+                    } else {
+                        this.errorsPaneVisibility = true;
+                        if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
+                            for(let deployDet of deployResponse.data?.DeployDetails?.allComponentMessages || []) {
+                                if(!deployDet.success) {
+                                    deployErrors.push({
+                                        orgName : this.selectedOrg,
+                                        tabName : '',
+                                        lineNumber : deployDet.lineNumber + ':' + (deployDet.columnNumber || ''),
+                                        problem : deployDet.problem
+                                    })
+                                }
+                            }
+                        } else if(entity.value == CodeEntity.AuraComponent || entity.value == CodeEntity.LWC) {
+                            if(deployResponse.data?.errors?.length) {
+                                let error = deployResponse.data.errors[0];
+                                let lineNo = (error.message.match(/[0-9]+,\s*[0-9]+/g) ?? [])[0] || -1;
+                                deployErrors.push({
+                                    orgName : this.selectedOrg,
+                                    tabName : '',
+                                    lineNumber : lineNo,
+                                    problem : error.message
+                                })
+                            }
+                        }
+                    }
+                    this.deploymentErrors["new"] = deployErrors;
+                } catch(err){
+                    console.error(err);
+                }
+                finally {
+                    this.showSpinner = false;
+                }
+            }
+        });
     }
 
     log(...str: any) {

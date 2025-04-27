@@ -33,6 +33,17 @@ div.topBar {
     /* margin-right: 5px; */
 }
 
+.topBar button.btn.topBarItem {
+    font-size: 1.2em;
+    padding-top: 0.1em;
+    padding-bottom: 0.1em;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+}
+.topBar button.btn.topBarItem i{
+    font-size: 1.2em;
+}
+
 .ng-autocomplete {
     width: 500px;
     color: black;

@@ -87,10 +87,10 @@ export class AppComponent {
         // { tabName : '&#128295; Anon<br/>Apex' , active : false , template : 'anonApex'},
         // { tabName : '&#63; Help' , active : true , template : 'help'},
         { tabName : 'Org Manager' , active : false , template : 'credentialsManager', icon : '../assets/tab-icon-org-manager.png', iconActive : '../assets/tab-icon-org-manager-active.png' },
-        { tabName : 'Code Browser' , active : false , template : 'codeBrowser', icon : '../assets/tab-icon-code-browser.png', iconActive : '../assets/tab-icon-code-browser-active.png' },
+        { tabName : 'Code Browser' , active : true , template : 'codeBrowser', icon : '../assets/tab-icon-code-browser.png', iconActive : '../assets/tab-icon-code-browser-active.png' },
         { tabName : 'Query Tool' , active : false , template : 'queryTool', icon : '../assets/tab-icon-query-tool.png', iconActive : '../assets/tab-icon-query-tool-active.png' },
         { tabName : 'Anonymous Apex' , active : false , template : 'anonApex', icon : '../assets/tab-icon-anonymous-apex.png', iconActive : '../assets/tab-icon-anonymous-apex-active.png' },
-        { tabName : 'Help' , active : true , template : 'help', icon : '../assets/tab-icon-help.png', iconActive : '../assets/tab-icon-help-active.png' },
+        { tabName : 'Help' , active : false , template : 'help', icon : '../assets/tab-icon-help.png', iconActive : '../assets/tab-icon-help-active.png' },
     ]
     selectedTabTemplate : string = 'codeBrowser';
 

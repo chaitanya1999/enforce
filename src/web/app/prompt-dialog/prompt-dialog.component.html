@@ -1,0 +1,14 @@
+<div style="padding: 20px;">
+    <p style="font-size: 1em; font-weight: bold;">{{text}}</p><br/>
+    <div class="form-floating mb-3">
+        <input #formInput type="input" class="form-control" id="promptInput" [placeholder]="placeholder" [(ngModel)]="inputValue" required="true" (keydown)="onKeyDown($event)">
+        <label for="promptInput">{{label}}</label>
+        <div class="invalid-feedback">
+            {{validationText}}
+        </div>
+    </div>
+    <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
+        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()">Yes</button>
+        <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">No</button>
+    </div>
+</div>

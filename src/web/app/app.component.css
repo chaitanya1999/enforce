@@ -117,7 +117,8 @@ mat-tab-group#tab-group {
     -webkit-app-region: drag;
     flex-grow: 1;
     height: 100%;
-    color: whitesmoke;
+    color: rgb(255, 232, 156);
+    font-family: 'Comic Sans MS', 'monospace';
 }
 
 .windowframe .buttons {

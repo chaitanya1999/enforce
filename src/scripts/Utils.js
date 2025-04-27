@@ -6,10 +6,10 @@ const { inherits } = require('util');
 // const SOAP = jsforce.require('./soap');
 const _ = require('lodash/core');
 
-var orgCreds = JSON.parse(fs.readFileSync('/../../data/credentials.json') || '{}');
+var orgCreds = JSON.parse(fs.readFileSync(__dirname + '/../../data/credentials.json') || '{}');
 // console.log(orgCreds);
 
-SESSION_DATA_FILE = '/../../data/sessionData.json';
+SESSION_DATA_FILE = './../../data/sessionData.json';
 
 async function handleLogin(conn, creds) {
     let sessions = loadSessionsData();

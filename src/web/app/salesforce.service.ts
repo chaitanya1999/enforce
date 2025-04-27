@@ -121,12 +121,10 @@ export class SalesforceService {
 
     async DeployCode(x : any) {
         let params = x[0];
-        log('DeployCode - ' + params.orgName);
-        let response = await (new DeployCode().main(params.orgName, {
-            type : params.Type,
-            id : params.Id,
-            Body : params.Code
-        }));
+        let orgName = params.orgName;
+        log('DeployCode - ' + orgName);
+        delete params.orgName;
+        let response = await (new DeployCode().main(orgName, params));
         return response;
     }
 

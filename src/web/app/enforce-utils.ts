@@ -39,7 +39,7 @@ export default class Utils {
                 }, useProxy);
                 result = session.loginResult;
                 let identityResult : any;
-                if(desktopMode) {
+                if(desktopMode && false) {
                     identityResult = await conn.identity();
                 } else {
                     identityResult = await conn.requestGet((creds.instanceUrl || conn.instanceUrl) + '/services/oauth2/userinfo', {});
@@ -52,7 +52,7 @@ export default class Utils {
             // Utils.debug("Invalid session/Session not found. SOAP LOGIN.");
             Utils.debug(err.message);
             if(creds.authMode == 'soapLogin' || !creds.authMode) {
-                if(desktopMode) {
+                if(desktopMode && false) {
                     result = await conn.login(creds.username, creds.password);
                     Utils.debug("SOAP Login Succesful");
                 } else {
@@ -80,7 +80,7 @@ export default class Utils {
                 }, useProxy);
                 let session = sessions[creds.orgName];
                 let identityResult : any;
-                if(desktopMode) {
+                if(desktopMode && false) {
                     identityResult = await conn.identity();
                 } else {
                     identityResult = await conn.requestGet((creds.instanceUrl || conn.instanceUrl) + '/services/oauth2/userinfo', {});

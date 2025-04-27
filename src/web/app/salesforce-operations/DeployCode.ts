@@ -1,4 +1,4 @@
-const sfApiVersion = '52.0';
+import { sfApiVersion } from '../salesforce.service';
 import * as jsforce from 'jsforce';
 import Utils, { EnForceResponse } from '../enforce-utils';
 const debug = Utils.debug;
@@ -9,10 +9,20 @@ let codeToDeploy = {
     Body : ``
 }
 
-interface CodeToDeploy {
+type CodeToDeploy = {
     type : string;
     id : string;
     Body : string;
+    apiVersion? : number
+    name? : string,
+    bundle? : Bundle[]
+}
+
+type Bundle = {
+    filePath? : string,
+    defType? : string,
+    format? : string,
+    Source : string
 }
 
 /*Bulk Deployment Mode - TO be used later*/
@@ -44,6 +54,15 @@ export class DeployCode {
     containerDeployable : {[key : string] : string} = {
         'ApexClass' : 'ApexClassMember', 'VFPage' : 'ApexPageMember', 'VFComponent' : 'ApexComponentMember'
     };
+    
+    apexObjectNames : any = {
+        'ApexClass' : 'ApexClass', 'VFComponent' : 'ApexComponent', 'VFPage' : 'ApexPage'
+    }
+
+    bundleObjectNames : any = {
+        'AuraComponent' : 'AuraDefinitionBundle',
+        'LWC' : 'LightningComponentBundle'
+    }
 
     nonContainerDeployable : {[key : string] : string}  = {'AuraComponent' : 'AuraDefinition', 'LWC' : 'LightningComponentResource'};
 
@@ -58,10 +77,107 @@ export class DeployCode {
             ({res, conn} = await Utils.handleLogin(conn, creds));
 
             // await this.bulkDeploy(conn, codeToDeploy);
-            let response = await this.singleDeploy(conn, codeToDeploy);
+
+            let response : any = null;
+            if(codeToDeploy.id)
+                response = await this.singleDeploy(conn, codeToDeploy);
+            else 
+                response = await this.createCodeComponents(conn, codeToDeploy);
+
             return response;
         } catch(err : any) {
             console.log(err);
+            return EnForceResponse.failure(err);
+        }
+    }
+
+    async createCodeComponents(conn : jsforce.Connection, codeToDeploy : CodeToDeploy) {
+        let bundleId = null;
+        try {
+            let response : any = null;
+            console.log('sfApiVersion = ' , sfApiVersion );
+            if(codeToDeploy.type in this.apexObjectNames) {
+                let objName = this.apexObjectNames[codeToDeploy.type];
+                let payload : any = {
+                    "Name" : codeToDeploy.name,
+                    "ApiVersion" : codeToDeploy.apiVersion ?? (+sfApiVersion)
+                };
+
+                if(objName == 'ApexComponent' || objName == 'ApexPage') {
+                    payload['Markup'] = codeToDeploy.Body;
+                    payload['MasterLabel'] = codeToDeploy.name;
+                } else {
+                    payload['Body'] = codeToDeploy.Body;
+                }
+
+
+                response = await conn.tooling.sobject(objName).create(payload);
+                return EnForceResponse.success(response);
+            } else {
+                
+                let bundleName = codeToDeploy.name;
+                let bundleObjName = this.bundleObjectNames[codeToDeploy.type];
+                let defObjName = this.nonContainerDeployable[codeToDeploy.type];
+
+                //create Bundle
+                let payload : any = {
+                    "DeveloperName" : bundleName,
+                    "MasterLabel" : bundleName,
+                    "ApiVersion" : codeToDeploy.apiVersion ?? (+sfApiVersion),
+                };
+                if(codeToDeploy.type == 'AuraComponent') {
+                    payload = {
+                        ...payload, 
+                        "Description" : "A Lightning Component"
+                    }
+                } else {
+                    payload = {
+                        "Metadata": {
+                            "apiVersion": codeToDeploy.apiVersion ?? (+sfApiVersion),
+                            "isExposed": false,
+                            "masterLabel": bundleName,
+                            "description" : "A Lightning web component"
+                        },
+                        "FullName" : bundleName
+                    }
+                }
+                response = await conn.tooling.sobject(bundleObjName).create(payload);
+
+                if(!response.success) return EnForceResponse.failure(response.errors);
+                bundleId = response.id ?? response.id;
+
+                let allResponses : any = [response];
+                for(let bundleItem of codeToDeploy.bundle ?? []) {
+                    let payload  : any = {};
+                    if(codeToDeploy.type == 'AuraComponent') {
+                        payload = {
+                            "AuraDefinitionBundleId" : bundleId,
+                            "Source" : bundleItem.Source,
+                            "DefType": bundleItem.defType,
+                            "Format": bundleItem.format
+                        };
+                    } else {
+                        payload = {
+                            "LightningComponentBundleId" : bundleId,
+                            "Source" : bundleItem.Source,
+                            "FilePath": bundleItem.filePath,
+                            "Format": bundleItem.format
+                        };
+                    }
+                    response = await conn.tooling.sobject(defObjName).create(payload);
+                    allResponses.push(response);
+                }
+
+                return EnForceResponse.success(allResponses);
+            }
+            // return EnForceResponse.failure("Not implemented yet for non apex object types");
+        } catch(err) {
+            console.log(err);
+            // if(bundleId) {
+            //     let bundleObjName = this.bundleObjectNames[codeToDeploy.type];
+            //     await conn.tooling.sobject(bundleObjName).delete([bundleId]);
+            //     console.log('Deleted bundle due to exception');
+            // }
             return EnForceResponse.failure(err);
         }
     }
@@ -104,9 +220,17 @@ export class DeployCode {
         debug('Deploying ' + codeToDeploy.type + ' | ' + codeToDeploy.id);
         let resp : any = null;
         try {
-            resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update({
-                Id : codeToDeploy.id, Source : codeToDeploy.Body
-            });
+            if(codeToDeploy.id) {
+                debug('UPDATE')
+                resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update({
+                    Id : codeToDeploy.id, Source : codeToDeploy.Body
+                });
+            } else {
+                debug('INSERT')
+                resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update({
+                    Id : codeToDeploy.id, Source : codeToDeploy.Body
+                });
+            }
             return EnForceResponse.success(resp);
         } catch(err : any) {
             resp = {
@@ -153,8 +277,11 @@ export class DeployCode {
         };
 
         let sobj = this.containerDeployable[type];
-        let memberRec : any = await conn.tooling.query(`SELECT Id, MetadataContainerId, Body, ContentEntityId FROM ${sobj} WHERE MetadataContainerId='${metadataContainerId}' AND ContentEntityId='${contentEntityId}' LIMIT 1`);
-        if(memberRec.totalSize > 0) {
+        let memberRec : any = {};
+        if(contentEntityId) {
+            memberRec = await conn.tooling.query(`SELECT Id, MetadataContainerId, Body, ContentEntityId FROM ${sobj} WHERE MetadataContainerId='${metadataContainerId}' AND ContentEntityId='${contentEntityId}' LIMIT 1`);
+        }
+        if(contentEntityId && memberRec.totalSize > 0) {
             debug('Reusing ' + sobj);
             memberRec = memberRec.records[0];
             // memberJson['id'] = 

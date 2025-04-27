@@ -39,6 +39,69 @@ export class AppConstants {
         'VFComponent' : 'Visualforce Component',
     }
 
+    static defaultCode : any = {
+        'ApexClass' : `
+public class {componentName} {
+    public {componentName}() {
+        // Constructor
+    }
+    
+    // Add methods and logic here
+}`,
+
+
+        'AuraComponent' : [
+            {
+                "Source" : `<aura:component>\n<!-- Add your markup here -->\n\tHello, World!\n</aura:component>`,
+                "defType" : 'COMPONENT',
+                "format": "XML"
+            }, {
+                "Source" : `({\n\tcontrollerFn : function(component, event, helper) {\n\t\t\n\t}\n})`,
+                "defType" : 'CONTROLLER',
+                "format": "JS"
+                
+            }, {
+                "Source" : `({\n\thelperFn : function(component, event, helper) {\n\t\t\n\t}\n})`,
+                "defType" : 'HELPER',
+                "format": "JS"
+                
+            }, {
+                "Source" : `.THIS {\n}`,
+                "defType" : 'STYLE',
+                "format": "CSS"
+            }
+        ],
+
+
+        'LWC' : [
+            {
+                "Source" : `import { LightningElement } from 'lwc';\nexport default class {componentName} extends LightningElement {\n\t// JS logic here\n}`,
+                "format": "js",
+                "filePath": "lwc/{componentName}/{componentName}.js"
+            },
+            {
+                "Source" : `<template>\n\tHello, World!\n</template>`,
+                "format": "html",
+                "filePath": "lwc/{componentName}/{componentName}.html",
+            },
+            {
+                "Source" : `<?xml version="1.0" encoding="UTF-8"?>\n<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">\n\t<apiVersion>{apiVersion}</apiVersion>\n\t<isExposed>false</isExposed>\n</LightningComponentBundle>`,
+                "format": "js",
+                "filePath": "lwc/{componentName}/{componentName}.js-meta.xml"    
+            },
+            {
+                "Source" : `div{}`,
+                "format": "css",
+                "filePath": "lwc/{componentName}/{componentName}.css"
+            }
+        ],
+
+        'VFPage':`\n<apex:page>\n\t<h1>Hello, World!</h1>\n</apex:page>`,
+
+
+        'VFComponent':`<apex:component>\n\t<h1>Hello, World!</h1>\n</apex:component>`
+    }
+
     static sleep(ms : number) : Promise<void> {
         return new Promise((res) => setTimeout(res, ms));
     }
