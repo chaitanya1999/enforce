@@ -60,6 +60,8 @@
                             <br/>
                             <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.allowCodeModification" id="allowCodeModification" [disabled]="!orgCred.edit"/><label class="form-check-label" for="allowCodeModification">Allow Code Modification</label>
                             <br/>
+                            <input class="form-check-input" type="checkbox" [(ngModel)]="orgCred.corsProxy" id="corsProxy" [disabled]="!orgCred.edit"/><label class="form-check-label" for="corsProxy">Use CORS Proxy (Experimental)</label>
+                            <br/>
                             <br/>
     
                             <button class="btn btn-primary" (click)="authenticate(orgCred)" [disabled]="authentication || orgCred.edit">Authenticate</button>

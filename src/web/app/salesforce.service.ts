@@ -93,7 +93,7 @@ export class SalesforceService {
         log('SalesforceService - FetchClassCmpList | Checking cache - ' + orgName + ' | ignoreCache = ' + ignoreCache);
         
         if(toFetchList.length) {
-            let cached = sessionStorage.getItem('fetchedClassCmpList') || '{}';
+            let cached = /*sessionStorage.getItem('fetchedClassCmpList') ||*/ '{}';
             let cachedData = JSON.parse(cached);
             result = cachedData[orgName] || [];
             if(ignoreCache || !cachedData[orgName]) {
@@ -101,7 +101,7 @@ export class SalesforceService {
                 let tempResult = await (new ClassCmpListFetcher(this).main(orgName, toFetchList));
                 result = [...result , ...tempResult];
                 cachedData[orgName] = result;
-                sessionStorage.setItem('fetchedClassCmpList', JSON.stringify(cachedData));
+                // sessionStorage.setItem('fetchedClassCmpList', JSON.stringify(cachedData));
             }
         }
 

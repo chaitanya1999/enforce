@@ -10,4 +10,5 @@ export interface OrgCredential {
     authMode: any;
     accessToken: any;
     instanceUrl: any;
+    corsProxy: boolean;
 }

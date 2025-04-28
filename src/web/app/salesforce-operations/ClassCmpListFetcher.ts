@@ -82,7 +82,7 @@ export class ClassCmpListFetcher {
             let auraList = Array.from(auraRecords).filter((y:any) => y['DefType'] in suffix).map((x:any) => {
                 return x['AuraDefinitionBundle'].DeveloperName + '/' + x['AuraDefinitionBundle'].DeveloperName + suffix[x['DefType']];
             })
-            let auraListStr = auraList.reduce( (x,y) => `${x}\n${y}`);
+            let auraListStr = auraList.reduce( (x,y) => `${x}\n${y}`, '');
             debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, auraListStr);
             debug('Completed');
@@ -115,7 +115,7 @@ export class ClassCmpListFetcher {
             // fs?.mkdirSync(outputFile, { recursive: true });
             outputFile += `${orgName}_apex.txt`;
             let apexList = Array.from(apexRecords).map((x:any) => x['Name']);
-            let apexListStr = apexList.reduce( (x,y) => `${x}\n${y}`);
+            let apexListStr = apexList.reduce( (x,y) => `${x}\n${y}`, '');
             debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, apexListStr);
             debug('Completed');
@@ -148,7 +148,7 @@ export class ClassCmpListFetcher {
             // fs?.mkdirSync(outputFile, { recursive: true });
             outputFile += `${orgName}_lwc.txt`;
             let lwcList = Array.from(lwcRecords).map((x:any) => x['FilePath']);
-            let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`);
+            let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`, '');
             debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, lwcListStr);
             debug('Completed');
@@ -181,7 +181,7 @@ export class ClassCmpListFetcher {
             // fs?.mkdirSync(outputFile, { recursive: true });
             outputFile += `${orgName}_vfpage.txt`;
             let vfList = Array.from(vfRecords).map((x:any) => x['Name']);
-            let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`);
+            let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
             debug('Completed');
@@ -215,7 +215,7 @@ export class ClassCmpListFetcher {
             // fs?.mkdirSync(outputFile, { recursive: true });
             outputFile += `${orgName}_vfcmp.txt`;
             let vfList = Array.from(vfRecords).map((x:any) => x['Name']);
-            let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`);
+            let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
             debug('Completed');

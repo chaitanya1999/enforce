@@ -36,7 +36,7 @@ export default class Utils {
                     instanceUrl: session.instanceUrl,
                     accessToken: session.accessToken,
                     version: conn.version
-                }, useProxy);
+                }, useProxy || creds.corsProxy);
                 result = session.loginResult;
                 let identityResult : any;
                 if(desktopMode && false) {

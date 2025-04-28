@@ -903,6 +903,18 @@ export class CodeBrowserComponent {
     }
 
     async createNewCode(entity : SelectOption) {
+        if(!this.isOrgSelected) return;
+
+        let authorized = !!this.orgCredsMap.get(this.selectedOrg)?.allowCodeModification;
+        if(!authorized) {
+            let dialogRef = this.dialog.open(AlertDialogComponent, {
+                data : {
+                    content : "Code Modification not allowed. Enable it from org manager."
+                }
+            });
+        }
+
+
         let regExpression : any = {
             'ApexClass' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
             'AuraComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
@@ -911,7 +923,6 @@ export class CodeBrowserComponent {
             'VFComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$'
         }
 
-        if(!this.isOrgSelected) return;
 
         if(![CodeEntity.LWC, CodeEntity.AuraComponent, CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(<any>entity.value)) {
             alert('Not implemented yet');
