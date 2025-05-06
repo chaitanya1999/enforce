@@ -6,6 +6,7 @@ import {CodeFetcher} from './salesforce-operations/FetchCode';
 import { DeployCode } from './salesforce-operations/DeployCode';
 import { AnonymousApex } from './salesforce-operations/AnonymousApex';
 import { QueryTool } from './salesforce-operations/QueryTool';
+import LZString from 'lz-string';
 // let Utils = {
 //     loadSessionsData : () => {},
 //     getAllOrgs : () => {}
@@ -21,6 +22,7 @@ export class SalesforceService {
 	channelVsFunction : any = {};
 	loadedOrgs : any = [];
 	loadedSessions : any = [];
+    MAX_ORG_COUNT_FOR_CACHED_COMPONENTS = 5;
 
     constructor() { }
 
@@ -79,7 +81,8 @@ export class SalesforceService {
     setCredentials(param : any) {
         let orgCreds = param[0];
         Utils.setAllOrgs(orgCreds);
-        this.loadedOrgs = orgCreds;
+        // this.loadedOrgs = orgCreds;
+        this.getOrgs();
         return true;
     }
 
@@ -93,14 +96,33 @@ export class SalesforceService {
         log('SalesforceService - FetchClassCmpList | Checking cache - ' + orgName + ' | ignoreCache = ' + ignoreCache);
         
         if(toFetchList.length) {
-            let cached = /*sessionStorage.getItem('fetchedClassCmpList') ||*/ '{}';
-            let cachedData = JSON.parse(cached);
+            // let cached = /*sessionStorage.getItem('fetchedClassCmpList') ||*/ '{}';
+            // let cachedData = JSON.parse(cached);
+            let cachedDataStr = sessionStorage.getItem('cachedClassCmpList');
+            cachedDataStr = cachedDataStr ? LZString.decompressFromUTF16(cachedDataStr) : '{}';
+            let cachedData = JSON.parse(cachedDataStr);
+
+            let loadedComponentsOrgs = JSON.parse(sessionStorage.getItem('cachedClassCmpOrgs') || '[]');
+
             result = cachedData[orgName] || [];
             if(ignoreCache || !cachedData[orgName]) {
                 log('SalesforceService - FetchClassCmpList | Making SF call ' + toFetchList);
                 let tempResult = await (new ClassCmpListFetcher(this).main(orgName, toFetchList));
                 result = [...result , ...tempResult];
-                cachedData[orgName] = result;
+                if(result.every((x:EnForceResponse) => x.isSuccess)) {
+                    log('SalesforceService - FetchClassCmpList | Caching Data ');
+                    cachedData[orgName] = result;
+                    if(!loadedComponentsOrgs.includes(orgName)) loadedComponentsOrgs.push(orgName);
+                    while(loadedComponentsOrgs.length > this.MAX_ORG_COUNT_FOR_CACHED_COMPONENTS) {
+                        log('SalesforceService - FetchClassCmpList | Cache limit exceeded. Deleting org - ' + loadedComponentsOrgs[0]);
+                        delete cachedData[loadedComponentsOrgs[0]];
+                        let delOrg = loadedComponentsOrgs.shift();
+                    }
+                    sessionStorage.setItem('cachedClassCmpOrgs', JSON.stringify(loadedComponentsOrgs || []));
+                    let compressedString = LZString.compressToUTF16(JSON.stringify(cachedData));
+                    sessionStorage.setItem('cachedClassCmpList', compressedString);
+                }
+                // cachedData[orgName] = result;
                 // sessionStorage.setItem('fetchedClassCmpList', JSON.stringify(cachedData));
             }
         }

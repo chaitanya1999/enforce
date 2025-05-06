@@ -86,6 +86,7 @@ export class CodeBrowserComponent {
     }
 
     selectedOrg: string = '--Org--';
+    selectedOrgInstanceUrl : string = '';
     selectedEntityType: string = '--Type--';
     showSpinner : boolean = false;
 
@@ -203,6 +204,7 @@ export class CodeBrowserComponent {
     }
 
     wordWrap : boolean = false;
+    whitespaceDifferences : boolean = true;
     cursorPosition : any = {lineNumber : 0 , column : 0};
     organizationName : string = '';
     organizationType : string = '';
@@ -240,41 +242,48 @@ export class CodeBrowserComponent {
     }
 
     async onOrgSelect(value: any) {
-        this.log('onOrgSelect | value = ' , value);
-        this.selectedOrg = value;
-        this.log('onOrgSelect | selectedOrg = ' + this.selectedOrg);
-        if(this.selectedOrg == '--Org--' || !this.selectedOrg) 
-            return;
+        try {
+            this.log('onOrgSelect | value = ' , value);
+            this.selectedOrg = value;
+            this.log('onOrgSelect | selectedOrg = ' + this.selectedOrg);
+            if(this.selectedOrg == '--Org--' || !this.selectedOrg) 
+                return;
 
-        if(this.defaultTabOpen) {
-            this.defaultTabOpen = false;
-            this.openTabs = [];
-            this.editorCmp.clearAllModels();
-        }
-
-        await this.fetchAllEntities(false);
-        
-        // Fetching organization details
-        this.log('fetching org details');
-        let params = {
-            orgName : this.selectedOrg,
-            soqlQuery : `select Id, Name, PrimaryContact, OrganizationType, InstanceName, IsSandbox, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById from Organization LIMIT 1`,
-            fetchDeleted : false,
-            toolingApi : false
-        };
-        this._ipc.callMethod('executeQuery', params).then(x =>{
-            if(x.isSuccess) {
-                this.organizationName = x.data.records?.[0]?.Name ?? '';
-                this.organizationType = x.data.records?.[0]?.OrganizationType ?? '';
-            } else {
+            if(this.defaultTabOpen) {
+                this.defaultTabOpen = false;
+                this.openTabs = [];
+                this.editorCmp.clearAllModels();
+            }
+            
+            // Fetching organization details
+            this.log('fetching org details');
+            let params = {
+                orgName : this.selectedOrg,
+                soqlQuery : `select Id, Name, PrimaryContact, OrganizationType, InstanceName, IsSandbox, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById from Organization LIMIT 1`,
+                fetchDeleted : false,
+                toolingApi : false
+            };
+            this._ipc.callMethod('executeQuery', params).then(x =>{
+                if(x.isSuccess) {
+                    this.organizationName = x.data.records?.[0]?.Name ?? '';
+                    this.organizationType = x.data.records?.[0]?.OrganizationType ?? '';
+                } else {
+                    this.organizationName = '';
+                    this.organizationType = '';
+                }
+            }).catch(e => {
+                this.log('fetching org details - ' + JSON.stringify(e));
                 this.organizationName = '';
                 this.organizationType = '';
-            }
-        }).catch(e => {
-            this.log('fetching org details - ' + JSON.stringify(e));
-            this.organizationName = '';
-            this.organizationType = '';
-        });
+            });
+
+            this.selectedOrgInstanceUrl = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
+
+            await this.fetchAllEntities(false);
+
+        } catch(err) {
+            this.log('onOrgSelect ERROR => ' + JSON.stringify(err));
+        }
     }
 
     async fetchAllEntities(ignoreCache : boolean){
@@ -895,7 +904,8 @@ export class CodeBrowserComponent {
             return;
 
         try {
-            let url = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
+            // let url = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
+            let url = this.selectedOrgInstanceUrl || (await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg));
             window.open(url);
         } catch(err) {
             console.log(err);
@@ -1045,6 +1055,10 @@ export class CodeBrowserComponent {
                 }
             }
         });
+    }
+    
+    toggleSpaceDiff() {
+        this.editorCmp.showWhitespaceDifference(this.whitespaceDifferences = !this.whitespaceDifferences);
     }
 
     log(...str: any) {

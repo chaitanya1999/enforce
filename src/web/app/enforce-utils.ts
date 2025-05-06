@@ -104,7 +104,7 @@ export default class Utils {
 
     static newJsforceConnection(options : any, corsProxy : boolean = false) {
         if(corsProxy) {
-            options.proxyUrl = (environment.production ? '/proxy' : 'http://localhost/proxy');
+            options.proxyUrl = (environment.production ? '/proxy' : `http://${window.location.hostname}/proxy`);
         }
         return new jsforce.Connection(options);
     }

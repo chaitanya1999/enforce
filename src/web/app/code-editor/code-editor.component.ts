@@ -517,6 +517,14 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         }
     }
 
+    @Output() showWhitespaceDifference(value : boolean) {
+        if(this.diffEditorInstance) {
+            this.diffEditorInstance.updateOptions({
+                ignoreTrimWhitespace : value
+            })
+        }
+    }
+
     log(...str: any) {
         if(!str) str = [];
         str.unshift('code-editor.component |');

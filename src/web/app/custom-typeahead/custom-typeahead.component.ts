@@ -28,7 +28,7 @@ export class CustomTypeaheadComponent {
     keyboardHoverIndex = -1;
     @ViewChildren('listOptionDiv') view_listOptions : any;
 
-    maxSelectSize: number = 5;
+    maxSelectSize: number = 10;
     @ViewChild('typeaheadSelect') typeaheadSelect!: any;
     @ViewChild('typeaheadInput') typeaheadInput!: any;
     isSomeOptionFocused: boolean = false;
@@ -77,10 +77,13 @@ export class CustomTypeaheadComponent {
         this.filter();
     }
     filter() {
-        this.displayList = this.dataset
-            // .filter((x: any) => x.label.toLowerCase().includes(this.searchQuery.toLowerCase()))
-            .filter((x: any) => this.matchRuleExpl(x.label.toLowerCase() , "*"+this.searchQuery.toLowerCase()))
+        this.displayList = [
+                // ...this.dataset.filter((x: any) => this.matchRuleExpl(x.label.toLowerCase() , this.searchQuery.toLowerCase())),
+                ...this.dataset.filter((x: any) => this.matchRuleExpl(x.label.toLowerCase() , this.searchQuery.toLowerCase()))]
             .filter((x: any, index: number) => index < this.maxListSize);
+        
+        
+        // .filter((x: any) => x.label.toLowerCase().includes(this.searchQuery.toLowerCase()))
     }
 
     //Explanation code
@@ -137,7 +140,8 @@ export class CustomTypeaheadComponent {
             this.view_listOptions._results[this.keyboardHoverIndex].nativeElement.scrollIntoView({block: "nearest"});            
 
         } else if(evt.key == 'ArrowUp') {
-            this.keyboardHoverIndex = (this.keyboardHoverIndex - 1 + this.displayList.length) % this.displayList.length;
+            if(this.keyboardHoverIndex == -1) this.keyboardHoverIndex = this.displayList.length-1;
+            else this.keyboardHoverIndex = (this.keyboardHoverIndex - 1 + this.displayList.length) % this.displayList.length;
             this.view_listOptions._results[this.keyboardHoverIndex].nativeElement.scrollIntoView({block: "nearest"});
 
         } else if(evt.key == 'Enter') {
@@ -149,7 +153,19 @@ export class CustomTypeaheadComponent {
         }
     }
 
-    onSelectOption(option: SelectOption) {
+    onSelectOption(option: SelectOption | null, evt? : any) {
+        if(!option) {
+            let label = evt.target.value;
+            let selectedOption = evt.target.selectedOptions[0];
+            let value = selectedOption.dataset.value;
+            let value1 = selectedOption.dataset.value1;
+            let x = this.dataset.find((x:SelectOption) => x.label == label && x.value == value);
+            if(x) option = x;
+            else {
+                alert('asdfasdf');
+                return;
+            }
+        } 
         this.log('onSelect | selected = ' + option.value);
         this.searchQuery = option.label;
         this.selectedOption = option;

@@ -3,13 +3,15 @@
     <div class="typeaheadContainer">
         @if(displayTypeahead == true) {
             <div class="typeahead">
-                <select #typeaheadSelect (mouseenter)="onTypeaheadFocus()" (mouseleave)="onTypeaheadUnfocus()" [size]="displayListSize" (focus)="onSelectFocus()">
+                <select #typeaheadSelect (mouseenter)="onTypeaheadFocus()" (mouseleave)="onTypeaheadUnfocus()" [size]="displayListSize" (focus)="onSelectFocus()" (change)="onSelectOption(null,$event)">
                     @for(option of displayList; track option; let index=$index)  {
                         @if(index == keyboardHoverIndex) {
-                            <option #listOptionDiv class="listOption keyboardFocused" (click)="onSelectOption(option)" title={{option.label}}>{{option.label}}</option>
+                            <option #listOptionDiv class="listOption keyboardFocused" title={{option.label}} [attr.data-value]="option.value" [attr.data-index]="index">{{option.label}}</option>
+                            <!-- (click)="onSelectOption(option)" -->
                         }
                         @else {
-                            <option #listOptionDiv class="listOption" (click)="onSelectOption(option)" title={{option.label}}>{{option.label}}</option>
+                            <option #listOptionDiv class="listOption" title={{option.label}} [attr.data-value]="option.value" [attr.data-index]="index">{{option.label}}</option>
+                            <!-- (click)="onSelectOption(option)" -->
                         }
                     }
                 </select>

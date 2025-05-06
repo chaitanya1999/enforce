@@ -18,8 +18,9 @@ div.typeaheadRoot div.typeaheadContainer {
 div.typeahead {
     position: absolute;
     width: 100%;
-    background-color: white ;
+    /* background-color: white ; */
     z-index: 99999;
+    background: transparent;
 }
 
 div.typeahead select {
@@ -28,10 +29,27 @@ div.typeahead select {
     appearance: none;
 }
 
+div.typeahead select::-webkit-scrollbar {
+    /* height: 6px; */
+    width: 4px;
+}
+  
+div.typeahead select::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+div.typeahead select::-webkit-scrollbar-thumb {
+    background-color: #888;
+    border-radius: 4px;
+}
+
 .listOption {
     background-color: white;
-    border: 0.5px solid black;
-    padding: 10px;
+    border: 0.5px solid lightgray;
+    border-collapse: collapse;
+    padding: 7px;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .listOption.keyboardFocused {
@@ -45,3 +63,15 @@ div.typeahead select {
 .listOption:hover {
     background-color: skyblue;
 }
+
+/* .form-control,.form-select,select,option{
+    background-color: rgb(31, 31, 31);
+    border: 1px solid black;
+    color: darkgray
+}
+
+.form-control:focus,.form-select:focus,select:focus {
+    background-color: rgb(45, 52, 61);
+    border: 1px solid black;
+    color: darkgray
+} */
