@@ -31,7 +31,7 @@
     
             
             <!-- Query Input -->
-            <textarea class="queryInput" [(ngModel)]="soqlQuery" (ngModelChange)="onQueryTyped()" (keypress)="onKeyPress($event)" spellcheck="false"></textarea>
+            <textarea #queryInput class="queryInput" [(ngModel)]="soqlQuery" (ngModelChange)="onQueryTyped()" (keypress)="onKeyPress($event)" spellcheck="false"></textarea>
             
             <!-- Execute button -->
             <button class="btn btn-primary topBarItem" (click)="executeQuery()">Execute</button>
@@ -52,6 +52,8 @@
                 <!-- <span style="margin-right: 5px;">Filter</span> -->
                 <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput"/>
             </div>
+
+            {{parseQuerySituation}}
     
         </div>
     </div>

@@ -1,11 +1,34 @@
-<div class="rootRoot">
-    <!-- <div class="sidePanel">
-        <div class="sidePanelToggle">
-            <span style="height: 100px; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
+<div class="rootRoot" (keydown)="onKeyDown($event)">
+    <div class="sidePanel" #sidePanelElement draggable="false">
+        <div class="panelContent" [hidden]="!sidePanelDisplay">
+            @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
+                <div style="border: 1px solid rgb(63, 63, 63);margin-top:max(20px, 10vh)">
+                    <!-- <div style=" margin: 4px; margin-bottom:0px; display: flex; justify-content: center; color: white; user-select: none;">
+                        Bundle Details                
+                    </div> -->
+                    <div class="bundleTitle">
+                        {{activeEntityTypeLabel}} : <br/>
+                    </div>
+                    <div class="bundleTitle" style="margin-top: -4px; border-top: none;">
+                        {{activeTab?.bundleDetails?.bundleName}}
+                        <!-- <span style="margin:auto; text-align: center;"></span> -->
+                    </div>
+                    @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
+                        <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
+                            {{bundleItem.label}}                
+                        </div>
+                    }
+                </div>
+            } @else {
+                <div style="color: white; margin:auto;">Nothing here !</div>
+            }
         </div>
-    </div> -->
-    <div class="root">
-        <div class="topBar">
+    </div>
+    <div class="sidePanelToggle" (click)="toggleSidePanel($event)" draggable="false">
+        <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
+    </div>
+    <div class="root" #rootElement>
+        <div class="topBar" (click)="clickEmptySpace($event)" data-emptyspace="true">
             <!-- Salesforce Org dropdown -->
             <select class="form-select topBarItem" aria-label="Salesforce Org" style="max-width: fit-content; min-width: min-content; font-size: var(--fontSize);"
                 [ngModel]="selectedOrg"
@@ -75,87 +98,88 @@
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="swapDiff()" title="Swap Diff"><i class="bi bi-arrow-left-right"></i></button>
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="toggleSpaceDiff()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
             }
+            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
     
         </div>
-            <div class="tabContainer" (mousewheel)="tabContainerScroll($event)" #tabContainer>
-                @for(tab of openTabs; track tab) {
-                    <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
-                        [attr.data-modified]="tab.contentChanged"
-                        (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
-                        <img [src]="tab.icon" width="16px" height="16px"  />
-                        <div class="tabHeading">
-                            <span>{{tab.tabName}}</span>
-                            <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
-                        </div>
-                        <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
+        <div class="tabContainer" (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
+            @for(tab of openTabs; track tab) {
+                <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
+                    [attr.data-modified]="tab.contentChanged"
+                    (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
+                    <img [src]="tab.icon" width="16px" height="16px"  />
+                    <div class="tabHeading">
+                        <span>{{tab.tabName}}</span>
+                        <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
                     </div>
-                }
-            </div>
-            <div class="pathBar">
-                <span class="">{{activeTab?.orgName}}</span>
-                <span><i class="bi bi-caret-right-fill"></i></span>
-                <span class="">{{activeTab?.entityDisplayType}}</span>
-                <span><i class="bi bi-caret-right-fill"></i></span>
-                @if(activeTab?.bundleName != '') {
-                    <span class="">{{activeTab?.bundleName}}</span>
-                    <span><i class="bi bi-caret-right-fill"></i></span>
-                }
-                <span class="">{{activeTab?.tabName}}</span>
-            </div>
-            <div class="codeEditor" #editorContainer (keydown)="onKeyDown($event)" (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
-                <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" [delayLoad]="false"></app-code-editor>
-            </div>
-            <div style="width: 100%; height: 0px; position: relative;">
-                <!-- ERRORS pane -->
-                @if(this.errorsPaneVisibility) {
-                    <div class="errors-pane">
-                        <div class="errors-pane-header">
-                            <span class="errors-pane-header-title">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-octagon-fill" viewBox="0 0 16 16">
-                                    <path d="M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
-                                </svg>
-                                ERRORS :
-                            </span>
-                            <span class="close-button" (click)="closeErrorsPane()">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#EE1111" stroke="white" class="bi bi-x-square-fill" viewBox="0 0 16 16">
-                                    <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>
-                                </svg>
-                            </span>
-                        </div>
-                        <div class="errors-pane-content">
-                            <table>
-                                <tr>
-                                    <th>Org Name</th>
-                                    <th>Tab Name</th>
-                                    <th>Line Number</th>
-                                    <th>Problem</th>
-                                </tr>
-                                @for(org of deploymentErrorsKeys; track org) {
-                                    @for(error of deploymentErrors[org]; track error) {
-                                        <tr>
-                                            <td>{{error.orgName}}</td>
-                                            <td>{{error.tabName}}</td>
-                                            <td>{{error.lineNumber}}</td>
-                                            <td class="problem-cell">{{error.problem}}</td>
-                                        </tr>
-                                    }
-                                }
-                            </table>
-                        </div>
-                    </div>
-                }
-            </div>
-            <div class="bottomBar">
-                <div class="bottomBar-left">
-                    <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
-                    <span (click)="openOrg()" class="open-org" [title]="selectedOrgInstanceUrl">{{organizationName}}</span>
-                    <span class="open-org">{{organizationType}}</span>
+                    <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
                 </div>
-                <div class="bottomBar-right">
-                    @if(activeTab?.isCodeEditor) {
-                        <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
-                    }
-                    <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
+            }
+        </div>
+        <div class="pathBar">
+            <span class="">{{activeTab?.orgName}}</span>
+            <span><i class="bi bi-caret-right-fill"></i></span>
+            <span class="">{{activeTab?.entityDisplayType}}</span>
+            <span><i class="bi bi-caret-right-fill"></i></span>
+            @if(activeTab?.bundleName != '') {
+                <span class="">{{activeTab?.bundleName}}</span>
+                <span><i class="bi bi-caret-right-fill"></i></span>
+            }
+            <span class="">{{activeTab?.tabName}}</span>
+        </div>
+        <div class="codeEditor" #editorContainer (keydown)="onKeyDown($event)" (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
+            <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" [delayLoad]="false"></app-code-editor>
+        </div>
+        <div style="width: 100%; height: 0px; position: relative;">
+            <!-- ERRORS pane -->
+            @if(this.errorsPaneVisibility) {
+                <div class="errors-pane">
+                    <div class="errors-pane-header">
+                        <span class="errors-pane-header-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-octagon-fill" viewBox="0 0 16 16">
+                                <path d="M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+                            </svg>
+                            ERRORS :
+                        </span>
+                        <span class="close-button" (click)="closeErrorsPane()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#EE1111" stroke="white" class="bi bi-x-square-fill" viewBox="0 0 16 16">
+                                <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>
+                            </svg>
+                        </span>
+                    </div>
+                    <div class="errors-pane-content">
+                        <table>
+                            <tr>
+                                <th>Org Name</th>
+                                <th>Tab Name</th>
+                                <th>Line Number</th>
+                                <th>Problem</th>
+                            </tr>
+                            @for(org of deploymentErrorsKeys; track org) {
+                                @for(error of deploymentErrors[org]; track error) {
+                                    <tr>
+                                        <td>{{error.orgName}}</td>
+                                        <td>{{error.tabName}}</td>
+                                        <td>{{error.lineNumber}}</td>
+                                        <td class="problem-cell">{{error.problem}}</td>
+                                    </tr>
+                                }
+                            }
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+        <div class="bottomBar">
+            <div class="bottomBar-left">
+                <span (click)="showErrorsPane()" class='errors' [attr.data-open]="errorsPaneVisibility">Errors : {{deploymentErrorsCount}}</span>
+                <span (click)="openOrg()" class="open-org" [title]="selectedOrgInstanceUrl">{{organizationName}}</span>
+                <span class="open-org">{{organizationType}}</span>
+            </div>
+            <div class="bottomBar-right">
+                @if(activeTab?.isCodeEditor) {
+                    <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
+                }
+                <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
             </div>
         </div>
     </div> 

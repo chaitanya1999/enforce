@@ -3,6 +3,6 @@
     flex-direction: column;
     justify-content: stretch;
     align-items: stretch;
-    height: 90%;
+    /* height: 90%; */
     background-color: yellow;;
 }

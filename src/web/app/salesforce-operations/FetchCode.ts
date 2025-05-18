@@ -151,15 +151,27 @@ export class CodeFetcher {
         let count = 0;
         let returnData : any = { count : 0 , entityName : entityName };
         try {
-            if (auraComponents.names.length == 0 || auraComponents.defTypes.length == 0) {
+            //ids indicate individual aura definition
+            //names indicate bundle names, defTypes indicate which aura definition to fetch from the bundle
+            if (auraComponents.ids?.length == 0 && (auraComponents.names.length == 0 || auraComponents.defTypes.length == 0)) {
                 debug('No AuraComponents to be fetched');
                 return EnForceResponse.success(returnData);
             }
             debug('To Fetch => ' + JSON.stringify(auraComponents.names));
             debug('Querying Aura Code...');
-            let cmpNames = Utils.arrayToInClauseRHS(auraComponents.names, true);
-            let defTypes = Utils.arrayToInClauseRHS(auraComponents.defTypes, true);
-            let soqlQuery = `select Id,DefType,source,Format,AuraDefinitionBundle.DeveloperName from AuraDefinition where AuraDefinitionBundle.DeveloperName IN ${cmpNames} and DefType IN ${defTypes}`;
+            let soqlQuery = `select Id,DefType,source,Format,AuraDefinitionBundle.DeveloperName from AuraDefinition `;
+            
+            if(auraComponents.ids?.length) {
+                debug('AuraDefinition ID MODE');
+                let auraDefIds = Utils.arrayToInClauseRHS(auraComponents.ids, true);
+                soqlQuery += ` where Id IN ${auraDefIds} `;
+            } else {
+                debug('AuraDefinitionBundle Name + DefType MODE');
+                let cmpNames = Utils.arrayToInClauseRHS(auraComponents.names, true);
+                let defTypes = Utils.arrayToInClauseRHS(auraComponents.defTypes, true);
+                soqlQuery += ` where AuraDefinitionBundle.DeveloperName IN ${cmpNames} and DefType IN ${defTypes} `;
+            }
+
             let res = await conn.tooling.query(soqlQuery);
             debug(`Queried Succesfully. ${res.records.length} records.`);
 
@@ -211,13 +223,22 @@ export class CodeFetcher {
         let count = 0;
         let returnData : any =  { count : 0 , entityName : entityName };
         try {
-            if (apexClasses.names.length == 0) {
+            if (apexClasses.names.length == 0 && apexClasses.ids?.length == 0) {
                 debug('No ApexClass to be fetched');
                 return EnForceResponse.success(returnData);
             }
             debug('To Fetch => ' + JSON.stringify(apexClasses.names));
             debug('Querying ApexClass Code...');
-            let soqlQuery = `select Id,Name,Body from ApexClass where Name IN ${Utils.arrayToInClauseRHS(apexClasses.names, true)} order by name`;
+            let soqlQuery = `select Id,Name,Body from ApexClass `;
+
+            if(apexClasses.ids?.length) {
+                debug('ApexClass ID MODE');
+                soqlQuery += ` where Id IN ${Utils.arrayToInClauseRHS(apexClasses.ids, true)} order by name `;
+            } else {
+                debug('ApexClass Name MODE');
+                soqlQuery += ` where Name IN ${Utils.arrayToInClauseRHS(apexClasses.names, true)} order by name `;
+            }
+
             debug('QUERY => ' + soqlQuery);
             let res = await conn.tooling.query(soqlQuery);
             debug(`Queried Succesfully. ${res.records.length} records.`);
@@ -260,7 +281,7 @@ export class CodeFetcher {
         let count = 0;
         let returnData : any =  { count : 0 , entityName : entityName };
         try {
-            if (lwcComponents.names?.length == 0 && lwcComponents.fileNames?.length == 0) {
+            if (lwcComponents.names?.length == 0 && lwcComponents.fileNames?.length == 0 && lwcComponents.ids?.length == 0) {
                 debug('No LWC Components to be fetched');
                 return EnForceResponse.success(returnData);
             }
@@ -269,12 +290,19 @@ export class CodeFetcher {
             // let defTypes = Utils.arrayToInClauseRHS(lwcComponents.defTypes, true);
             let soqlQuery = ``;
             if(lwcComponents.names?.length) {
+                debug('LWC Bundle name MODE');
                 let cmpNames = Utils.arrayToInClauseRHS(lwcComponents.names, true);
                 soqlQuery = `select id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${cmpNames}`; // and Format IN ${defTypes}
+            } else if (lwcComponents.ids?.length) {
+                debug('LWC FilePath MODE');
+                let fileIds = Utils.arrayToInClauseRHS(lwcComponents.ids, true);
+                soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where Id IN ${fileIds}`; // and Format IN ${defTypes}
             } else {
+                debug('LWC FilePath MODE');
                 let fileNames = Utils.arrayToInClauseRHS(lwcComponents.fileNames, true);
                 soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where FilePath IN ${fileNames}`; // and Format IN ${defTypes}
             }
+
             debug('SOQL => ' + soqlQuery);
             let res = await conn.tooling.query(soqlQuery);
             debug(`Queried Succesfully. ${res.records.length} records.`);
@@ -328,13 +356,22 @@ export class CodeFetcher {
         let count = 0;
         let returnData : any =  { count : 0 , entityName : entityName };
         try {
-            if (vfPages.names.length == 0) {
+            if (vfPages.names.length == 0 && vfPages.ids?.length == 0) {
                 debug('No VF Page to be fetched');
                 return EnForceResponse.success(returnData);
             }
             debug('To Fetch => ' + JSON.stringify(vfPages.names));
             debug('Querying Visualforce Pages Code...');
-            let soqlQuery = `select Id,Name,Markup from ApexPage where Name IN ${Utils.arrayToInClauseRHS(vfPages.names, true)} order by name`;
+            let soqlQuery = `select Id,Name,Markup from ApexPage `;
+
+            if(vfPages.ids?.length) {
+                debug('VF Page Id MODE');
+                soqlQuery += ` where Id IN ${Utils.arrayToInClauseRHS(vfPages.ids, true)} order by name `;
+            } else {
+                debug('VF Page Name MODE');
+                soqlQuery += ` where Name IN ${Utils.arrayToInClauseRHS(vfPages.names, true)} order by name `;
+            }
+
             debug('QUERY => ' + soqlQuery);
             let res = await conn.tooling.query(soqlQuery);
             debug(`Queried Succesfully. ${res.records.length} records.`);
@@ -377,13 +414,22 @@ export class CodeFetcher {
         let count = 0;
         let returnData : any =  { count : 0 , entityName : entityName };
         try {
-            if (vfComponents.names.length == 0) {
+            if (vfComponents.names.length == 0 && vfComponents.ids?.length == 0) {
                 debug('No VF Page to be fetched');
                 return EnForceResponse.success(returnData);
             }
             debug('To Fetch => ' + JSON.stringify(vfComponents.names));
             debug('Querying Visualforce Component Code...');
-            let soqlQuery = `select Id,Name,Markup from ApexComponent where Name IN ${Utils.arrayToInClauseRHS(vfComponents.names, true)} order by name`;
+            let soqlQuery = `select Id,Name,Markup from ApexComponent `;
+
+            if(vfComponents.ids?.length) {
+                debug('VF Component Id MODE');
+                soqlQuery += ` where Id IN ${Utils.arrayToInClauseRHS(vfComponents.ids, true)} order by name `;
+            } else {
+                debug('VF Component Name MODE');
+                soqlQuery += ` where Name IN ${Utils.arrayToInClauseRHS(vfComponents.names, true)} order by name `;
+            }
+
             debug('QUERY => ' + soqlQuery);
             let res = await conn.tooling.query(soqlQuery);
             debug(`Queried Succesfully. ${res.records.length} records.`);

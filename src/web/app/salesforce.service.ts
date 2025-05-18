@@ -1,12 +1,13 @@
 import { Injectable } from '@angular/core';
 import * as jsforce from 'jsforce';
-import Utils, { EnForceResponse } from './enforce-utils';
+import Utils, { EnForceResponse, NormalizedBundleDetails, NormalizedBundleItem } from './enforce-utils';
 import {ClassCmpListFetcher} from './salesforce-operations/ClassCmpListFetcher';
 import {CodeFetcher} from './salesforce-operations/FetchCode';
 import { DeployCode } from './salesforce-operations/DeployCode';
 import { AnonymousApex } from './salesforce-operations/AnonymousApex';
 import { QueryTool } from './salesforce-operations/QueryTool';
 import LZString from 'lz-string';
+import { AppConstants, CodeEntity } from './AppConstants';
 // let Utils = {
 //     loadSessionsData : () => {},
 //     getAllOrgs : () => {}
@@ -14,6 +15,10 @@ import LZString from 'lz-string';
 export const sfApiVersion = '52.0';
 const debug = Utils.debug;
 const log = Utils.debug;
+type BundlesMap = {[key: string] : NormalizedBundleDetails};
+type BundleTypeMap = {[key: string] : BundlesMap};
+type OrgBundleInfo = {[key: string] : BundleTypeMap};
+
 @Injectable({
     providedIn: 'root'
 })
@@ -23,6 +28,10 @@ export class SalesforceService {
 	loadedOrgs : any = [];
 	loadedSessions : any = [];
     MAX_ORG_COUNT_FOR_CACHED_COMPONENTS = 5;
+    loadedBundleInfo : OrgBundleInfo = {
+        // map <orgname , map <keys lwc aura , map<bundlename , NormalizedBundleDetails > > > 
+        /*org name vs map of keys lwc, aura vs map of bundle name vs array of bundle contents*/
+    }
 
     constructor() { }
 
@@ -32,19 +41,20 @@ export class SalesforceService {
             return;
         }
 		let response = await (<any>this)[channel](args);
-		setTimeout(() => {
-            if(!this.channelVsFunction[channel]) alert("Callback not found for Operation : " + channel);
-			this.channelVsFunction[channel](null, [response]);
-		},1);
+		// setTimeout(() => {
+        //     if(!this.channelVsFunction[channel]) alert("Callback not found for Operation : " + channel);
+		// 	this.channelVsFunction[channel](null, [response]);
+		// },1);
+        return response;
 	}
 	
-	on(channel: string, listener: Function) : void {
-		this.channelVsFunction[channel] = listener;
-	}
+	// on(channel: string, listener: Function) : void {
+	// 	this.channelVsFunction[channel] = listener;
+	// }
 	
-	once(channel: string, listener: Function) : void {
-		this.channelVsFunction[channel] = listener;
-	}
+	// once(channel: string, listener: Function) : void {
+	// 	this.channelVsFunction[channel] = listener;
+	// }
 
 	getSessionData() {
 		return (this.loadedSessions = Utils.loadSessionsData());
@@ -179,6 +189,82 @@ export class SalesforceService {
         let y = this.loadedSessions;
         let session = this.loadedSessions[org];
         return session.instanceUrl + '/secur/frontdoor.jsp?sid=' + session.accessToken;
+    }
+
+    async getBundleDetails(x : any) {
+        let orgName = x[0].orgName;
+        let bundleName = x[0].bundleName;
+        let entityType = x[0].entityType;
+        let query = ``;
+        let bundleContents : NormalizedBundleItem[] = [];
+        let apiVersion = null;
+        let namespace = null
+        let bundleId = null;
+
+        let bundlePresent : NormalizedBundleDetails = this.loadedBundleInfo[orgName]?.[entityType]?.[bundleName];
+        if(bundlePresent) return EnForceResponse.success(bundlePresent);
+
+        if(entityType == CodeEntity.AuraComponent) {
+            //aura
+            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix from AuraDefinition where AuraDefinitionBundle.DeveloperName = '${bundleName}'`;
+            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
+            if(!res.isSuccess) return res;
+            
+            for(let record of res.data.records) {
+                let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
+                bundleContents.push({label : record['DefType'] , value : name, id : record['Id']});
+                apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
+                bundleId = record['AuraDefinitionBundleId'];
+                namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
+            }
+            let sortOrder : any = {
+                "COMPONENT" : 1,
+                "APPLICATION" : 1,
+                "CONTROLLER" : 2,
+                "HELPER" : 3,
+                "STYLE" : 4,
+                "RENDERER" : 5,
+                "EVENT" : 6,
+                "DOCUMENTATION" : 7,
+                "DESIGN" : 8,
+                "SVG" : 9
+            }
+            bundleContents = bundleContents.sort((x:any,y:any) => {
+                return sortOrder[x.label] - sortOrder[y.label];
+            });
+        } else {
+            //lwc
+            query = `select id,Format,FilePath,LightningComponentBundleId, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix from LightningComponentResource where LightningComponentBundle.DeveloperName = '${bundleName}'`;
+            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query, toolingApi : true}]);
+            if(!res.isSuccess) return res;
+
+            for(let record of res.data.records) {
+                let name = record['FilePath'];
+                name = name.substring(name.lastIndexOf('/')+1);
+                bundleContents.push({label : name , value : record['FilePath'], id : record['Id']});
+                apiVersion = record['LightningComponentBundle']['ApiVersion'];
+                bundleId = record['LightningComponentBundleId'];
+                namespace = record['LightningComponentBundle']['NamespacePrefix'];
+            }
+        }
+        let bundleDetails = <NormalizedBundleDetails>{
+            bundleId : bundleId,
+            bundleName : bundleName,
+            contents : bundleContents,
+            apiVersion : apiVersion,
+            entityType,
+            namespacePrefix : namespace
+        };
+
+        if(!this.loadedBundleInfo[orgName]) {
+            this.loadedBundleInfo[orgName] = {}
+        }
+        if(!this.loadedBundleInfo[orgName][entityType]){
+            this.loadedBundleInfo[orgName][entityType] = {};
+        }
+        this.loadedBundleInfo[orgName][entityType][bundleName] = bundleDetails;        
+
+        return EnForceResponse.success(bundleDetails);         
     }
 
 }

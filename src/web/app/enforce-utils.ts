@@ -7,6 +7,7 @@ export default class Utils {
 
     static aura_suffixMap : any = {
         'COMPONENT' : '.cmp',
+        'APPLICATION' : '.app',
         'CONTROLLER' : 'Controller.js',
         'HELPER' : 'Helper.js',
         'STYLE' : '.css',
@@ -192,5 +193,51 @@ export class EnForceResponse {
         if(!Array.isArray(errors))
             errors = [errors];
         return new EnForceResponse(false, errors, optionalData || null);
+    }
+}
+
+export class NormalizedCodeEntity {
+    Id: string;
+    Name: string;
+    BundleId: string | null;
+    BundleName: string | null;
+    ApiVersion: string;
+    NamespacePrefix: string | null;
+
+    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string,NamespacePrefix: string | null) {
+        this.Id = Id;
+        this.Name = Name;
+        this.BundleId = BundleId;
+        this.BundleName = BundleName;
+        this.ApiVersion = ApiVersion;
+        this.NamespacePrefix = NamespacePrefix;
+    }
+}
+
+export class NormalizedBundleDetails {
+    bundleId : string;
+    bundleName : string;
+    contents : NormalizedBundleItem[];
+    apiVersion : string;
+    entityType : string;
+    namespacePrefix : string;
+    constructor(bundleId : string , bundleName : string , contents : any , apiVersion : string, entityType : string, namespacePrefix : string) {
+        this.bundleId = bundleId;
+        this.bundleName = bundleName;
+        this.contents = contents;
+        this.apiVersion = apiVersion;
+        this.entityType = entityType;
+        this.namespacePrefix = namespacePrefix;
+    }
+}
+
+export class NormalizedBundleItem {
+    label: string;
+    value: string;
+    id: string;
+    constructor(label: string, value: string, id: string) {
+        this.label = label;
+        this.value = value;
+        this.id = id;
     }
 }

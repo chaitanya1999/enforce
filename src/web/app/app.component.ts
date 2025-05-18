@@ -176,9 +176,14 @@ export class AppComponent {
 	}
 
     selectTab(tab : NavTab) {
+        let reselected = tab.active;
         this.navTabs.forEach(x => x.active = false);
         tab.active = true;
         this.selectedTabTemplate = tab.template;
+        this.globalEventsSvc.tabSelectEvent.emit({
+            reselected : reselected,
+            tab : tab
+        });
     }
 
     minimize() {

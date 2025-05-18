@@ -5,6 +5,7 @@ div.typeaheadRoot {
 
 div.typeaheadRoot * {
     font-size: 12px;
+    user-select: none;
 }
 
 div.typeaheadRoot input {

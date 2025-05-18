@@ -25,23 +25,23 @@ export class IpcService {
         this._ipc = _sfSvc;
     }
 
-    public on(channel: string, listener: any): void {
-        if (!this._ipc) {
-            return;
-        }
-        // this._ipc.on(channel, listener);
-        this._ipc.once(channel, listener);
-    }
+    // public on(channel: string, listener: any): void {
+    //     if (!this._ipc) {
+    //         return;
+    //     }
+    //     // this._ipc.on(channel, listener);
+    //     this._ipc.once(channel, listener);
+    // }
 
-    public send(channel: string, ...args: Array<any>): void {
-        if (!this._ipc) {
-            return;
-        }
-        if(['minimize','maximize','close'].includes(channel))
-            this.electronIpc?.send(channel, ...args);
-        else
-            this._ipc.send(channel, ...args);
-    }
+    // public send(channel: string, ...args: Array<any>): void {
+    //     if (!this._ipc) {
+    //         return;
+    //     }
+    //     if(['minimize','maximize','close'].includes(channel))
+    //         this.electronIpc?.send(channel, ...args);
+    //     else
+    //         this._ipc.send(channel, ...args);
+    // }
 
 
     public async getOrgs(){
@@ -49,14 +49,18 @@ export class IpcService {
         if(!this._ipc) {
             return;
         }
-        return new Promise(function(this: IpcService, resolve: Function, reject: Function){
-            this.on('getOrgs', function(x: any, y: any){
-                console.log('ipc.service | getOrgs | resolved ' , y);
-                resolve(y[0]);
-            });
-            console.log('ipc.service | getOrgs | req')
-            this.send('getOrgs');
-        }.bind(this));
+        console.log('ipc.service | getOrgs | req');
+        let y : any =  await this._ipc.send('getOrgs');
+        console.log('ipc.service | getOrgs | resolved ', y);
+        return y;
+        // return new Promise(function(this: IpcService, resolve: Function, reject: Function){
+        //     this.on('getOrgs', function(x: any, y: any){
+        //         console.log('ipc.service | getOrgs | resolved ' , y);
+        //         resolve(y[0]);
+        //     });
+        //     console.log('ipc.service | getOrgs | req')
+        //     this.send('getOrgs');
+        // }.bind(this));
     }
 
     public async authenticate(orgName : string) {
@@ -64,14 +68,18 @@ export class IpcService {
         if(!this._ipc) {
             return;
         }
-        return new Promise(function(this: IpcService, resolve: Function, reject: Function){
-            this.on('authenticate', function(x: any, y: any){
-                console.log('ipc.service | authenticate | resolved ', y);
-                resolve(y[0]);
-            });
-            console.log('ipc.service | authenticate | req');
-            this.send('authenticate', orgName);
-        }.bind(this));
+        console.log('ipc.service | authenticate | req');
+        let y : any =  await this._ipc.send('authenticate', orgName);
+        console.log('ipc.service | authenticate | resolved ', y);
+        return y;
+        // return new Promise(function(this: IpcService, resolve: Function, reject: Function){
+        //     this.on('authenticate', function(x: any, y: any){
+        //         console.log('ipc.service | authenticate | resolved ', y);
+        //         resolve(y[0]);
+        //     });
+        //     console.log('ipc.service | authenticate | req');
+        //     this.send('authenticate', orgName);
+        // }.bind(this));
     }
 
     public async callMethod(methodName: string, ...param: any) : Promise<any>{
@@ -79,14 +87,24 @@ export class IpcService {
         if(!this._ipc) {
             return;
         }
-        return new Promise(function(this: IpcService, resolve: Function, reject: Function){
-            this.on(methodName, function(x: any, y: any){
-                console.log(`ipc.service | callMethod - ${methodName} | resolved `);
-                resolve(y[0]);
-            });
-            console.log(`ipc.service | callMethod - ${methodName} | req`);
-            this.send(methodName, ...param);
-        }.bind(this));
+        
+        console.log(`ipc.service | callMethod - ${methodName} | req`);
+        if(['minimize','maximize','close'].includes(methodName)) {
+            // this.send(methodName, ...param);
+            return this.electronIpc?.send(methodName, ...param);
+        } else {
+            let y : any = await this._ipc.send(methodName, ...param);
+            console.log(`ipc.service | callMethod - ${methodName} | resolved `);
+            return y;
+        }
+        // return new Promise(function(this: IpcService, resolve: Function, reject: Function){
+        //     this.on(methodName, function(x: any, y: any){
+        //         console.log(`ipc.service | callMethod - ${methodName} | resolved `);
+        //         resolve(y[0]);
+        //     });
+        //     console.log(`ipc.service | callMethod - ${methodName} | req`);
+        //     this.send(methodName, ...param);
+        // }.bind(this));
     }
 
 }

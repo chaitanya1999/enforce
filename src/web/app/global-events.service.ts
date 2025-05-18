@@ -6,6 +6,7 @@ import { EventEmitter, Injectable } from '@angular/core';
 export class GlobalEventsService {
 
     globalClickEvent : EventEmitter<any> = new EventEmitter();
+    tabSelectEvent : EventEmitter<any> = new EventEmitter();
 
     constructor() { }
 }

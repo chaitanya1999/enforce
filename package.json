@@ -41,6 +41,7 @@
         "@jetstreamapp/soql-parser-js": "^6.1.0",
         "@sindresorhus/is": "^4.6.0",
         "@types/mime-types": "^2.1.4",
+        "angular-resizable-element": "^7.0.2",
         "bootstrap": "^5.3.3",
         "bootstrap-icons": "^1.11.3",
         "crypto-browserify": "^3.12.1",

@@ -1,13 +1,13 @@
-const codeToFetch = require('../codeToFetch')
+// const codeToFetch = require('../codeToFetch')
 const sfApiVersion = '52.0';
 const jsforce = require('jsforce');
 const fs = require('fs')
-const Utils = require('../Utils');
+const Utils = require('./Utils');
 const fileStream = new console.Console(fs.createWriteStream('../../output/DependencyTree.js'));
 const debug = Utils.debug;
 
 //add apex classes/triggers here
-const orgName = "";
+const orgName = "vhucdev";
 const apexClass = "";
 
 class ApexDependencyTree {
@@ -24,7 +24,7 @@ class ApexDependencyTree {
         try{
             let adjList = {};
 
-            let creds = codeToFetch.getCreds(orgName);
+            let creds = Utils.getOrg(orgName);
             let res = null, conn = null, log = this.log;
             debug('orgName = ' + orgName);
             ({res, conn} = await Utils.handleLogin(this.conn, creds));

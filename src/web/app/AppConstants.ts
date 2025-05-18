@@ -3,6 +3,7 @@ export class AppConstants {
     static DIFF_EDITOR : string = 'diff-editor';
     static aura_suffixVsDefTypes : any = {
         '.cmp' : 'COMPONENT',
+        '.app' : 'APPLICATION',
         'Controller.js' : 'CONTROLLER',
         'Helper.js' : 'HELPER',
         '.css' : 'STYLE',
@@ -12,8 +13,21 @@ export class AppConstants {
         '.design' : 'DESIGN',
         '.svg' : 'SVG'
     };
+    static aura_defTypeVsSuffix : any = {
+        'COMPONENT' : '.cmp',
+        'APPLICATION' : '.app',
+        'CONTROLLER' : 'Controller.js',
+        'HELPER' : 'Helper.js',
+        'STYLE' : '.css',
+        'RENDERER' : 'Renderer.js',
+        'EVENT' : '.evt',
+        'DOCUMENTATION' : '.auradoc',
+        'DESIGN' : '.design',
+        'SVG' : '.svg'
+    };
     static defTypeVsLanguage : any = {
         'COMPONENT' : 'xml',
+        'APPLICATION' : 'xml',
         'CONTROLLER' : 'javascript',
         'HELPER' : 'javascript',
         'STYLE' : 'css',

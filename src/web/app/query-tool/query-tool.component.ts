@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild } from '@angular/core';
 import { OrgCredential } from '../OrgCredential';
 import { FormsModule } from '@angular/forms';
 import { IpcService } from '../../ipc.service';
@@ -54,6 +54,9 @@ export class QueryToolComponent {
     selectedQueryHistory : SelectOption = this.defaultQueryHistoryOption;
     // selectedQueryHistoryQuery : string = '';
     MAX_QUERY_HISTORY : number = 15;
+
+    @ViewChild('queryInput') queryInputBox : ElementRef | undefined;
+    parseQuerySituation : string = ''
 
     constructor(private _ipc:IpcService, private ref: ChangeDetectorRef){
 
@@ -215,6 +218,42 @@ export class QueryToolComponent {
 
     onQueryTyped() {
         this.selectedQueryHistory = this.defaultQueryHistoryOption;
+        this.parseQuery();
+    }
+
+    parseQuery() {
+        let cursorPos = this.queryInputBox?.nativeElement.selectionStart;
+        if(!cursorPos || cursorPos==-1) {
+            this.parseQuerySituation = '';
+            return;
+        }
+
+        let tokenizedQuery = this.soqlQuery?.split(' ') || [];
+        let prefixSum : any = [];
+        let sum=0;
+        tokenizedQuery.forEach((x:string) => {
+            sum+=(x.length || 1);
+            prefixSum.push(sum);
+        });
+
+        let firstFromIndex = tokenizedQuery.findIndex(x => x.toUpperCase() == 'FROM');
+        if(!firstFromIndex || firstFromIndex == -1) {
+            this.parseQuerySituation = '';
+            return;
+        }
+        let nextTokenAfterFirstFrom = firstFromIndex+1;
+        if(nextTokenAfterFirstFrom < tokenizedQuery.length) while(nextTokenAfterFirstFrom < tokenizedQuery.length) {
+            if(tokenizedQuery[nextTokenAfterFirstFrom].match(/\s+/g)?.length) nextTokenAfterFirstFrom++;
+            else break;
+        } else {
+            nextTokenAfterFirstFrom = -1;
+        }
+
+        //check if cursor is after first FROM
+        if(cursorPos > prefixSum[firstFromIndex]-1) {
+            if(nextTokenAfterFirstFrom == -1 || cursorPos<=(prefixSum[nextTokenAfterFirstFrom]-tokenizedQuery[nextTokenAfterFirstFrom].length))
+                this.parseQuerySituation = 'show object names';
+        }
     }
 
     onQueryHistorySelect(event: any) {
