@@ -126,7 +126,7 @@
             }
             <span class="">{{activeTab?.tabName}}</span>
         </div>
-        <div class="codeEditor" #editorContainer (keydown)="onKeyDown($event)" (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
+        <div class="codeEditor" #editorContainer (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
             <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" [delayLoad]="false"></app-code-editor>
         </div>
         <div style="width: 100%; height: 0px; position: relative;">

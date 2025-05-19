@@ -645,8 +645,12 @@ export class CodeBrowserComponent {
         if(evt.ctrlKey) str += 'CTRL ';
         if(evt.shiftKey) str += 'SHIFT ';
         str += evt.key;
+        if(evt.repeat) {
+            str += ' [REPEAT]';
+        }
         console.log('#$#$ Keyboard Shortcut = ' , str);
-        // if(this.matchShortcut(this.pressedKeys, ['Control', 'Shift', 'Tab']) || this.matchShortcut(this.pressedKeys, ['Control', 'PageUp'])) {
+        if(evt.repeat)  return;
+
         if((evt.ctrlKey && evt.shiftKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageUp')) {
             evt.stopPropagation();
             evt.preventDefault();
@@ -1141,7 +1145,7 @@ export class CodeBrowserComponent {
             this.sidePanelElement!.nativeElement.style.width = 'max(15%, 200px)';
             this.rootElement!.nativeElement.style.width = 'calc(100% - max(15%, 200px) - 12px)';
         } else {
-            this.rootElement!.nativeElement.style.width = 'calc(100% - 0px)';
+            this.rootElement!.nativeElement.style.width = 'calc(100% - 0px - 12px)';
             this.sidePanelElement!.nativeElement.style.width = '0px';
         }
     }
