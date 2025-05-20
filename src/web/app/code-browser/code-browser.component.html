@@ -2,20 +2,25 @@
     <div class="sidePanel" #sidePanelElement draggable="false">
         <div class="panelContent" [hidden]="!sidePanelDisplay">
             @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
-                <div style="border: 1px solid rgb(63, 63, 63);margin-top:max(20px, 10vh)">
+                <div style="border: 1px solid rgb(63, 63, 63);margin-top:max(16px, 10vh)">
                     <!-- <div style=" margin: 4px; margin-bottom:0px; display: flex; justify-content: center; color: white; user-select: none;">
                         Bundle Details                
                     </div> -->
                     <div class="bundleTitle">
-                        {{activeEntityTypeLabel}} : <br/>
+                        <!-- <span style="margin:auto; text-transform: capitalize; margin-top: 5px;" class="badge rounded-pill text-bg-success">{{activeEntityTypeLabel}}</span> -->
+                        <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
+                        <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
                     </div>
-                    <div class="bundleTitle" style="margin-top: -4px; border-top: none;">
-                        {{activeTab?.bundleDetails?.bundleName}}
-                        <!-- <span style="margin:auto; text-align: center;"></span> -->
-                    </div>
+                    <!-- <div class="bundleTitle" style="margin-top: -4px;">
+                    </div> -->
                     @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
                         <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
                             {{bundleItem.label}}                
+                        </div>
+                    }
+                    @if(activeTab?.isAuraApplication) {
+                        <div class="bundleTitle auraAppPreview" (click)="previewAuraApplication()">
+                            PREVIEW APPLICATION
                         </div>
                     }
                 </div>

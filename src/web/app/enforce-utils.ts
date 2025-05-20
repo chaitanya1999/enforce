@@ -1,5 +1,6 @@
 import * as jsforce from 'jsforce';
 import { environment } from './environment';
+import { CodeEntity } from './AppConstants';
 
 export default class Utils {
 

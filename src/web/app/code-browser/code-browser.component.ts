@@ -51,6 +51,9 @@ class CodeTab {
     deploymentInProgess : boolean = false;
     codeEntity? : NormalizedCodeEntity;
     bundleDetails? : NormalizedBundleDetails;
+    get isAuraApplication(){
+        return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
+    }
 
     get isCodeEditor() {
         return this.editorType == AppConstants.CODE_EDITOR;
@@ -245,6 +248,16 @@ export class CodeBrowserComponent {
             // e.preventDefault();
         })
         this.activeTab = this.openTabs[0];
+        // this.openTabs[0].entityType = 'AuraComponent';
+        // this.openTabs[0].tabValue = 'asdf';
+        // this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
+        //     '', 'Dummy Bundle', [
+        //         new NormalizedBundleItem('APPLICATION', '', ''),
+        //         new NormalizedBundleItem('CONTROLLER', 'asdf', ''),
+        //         new NormalizedBundleItem('HELPER', '', ''),
+        //         new NormalizedBundleItem('STYLE', '', '')
+        //     ], '59.0', 'AuraComponent', ''
+        // )
 
         this.globalEventsSvc.tabSelectEvent.subscribe((x:any) => {
             if(x.reselected == true && x.tab.tabName == 'Code Browser') this.toggleSidePanel(null);
@@ -1193,6 +1206,14 @@ export class CodeBrowserComponent {
         if((<HTMLElement>event.target).dataset?.['emptyspace']) {
             this.editorCmp.focus();
         }
+    }
+
+    async previewAuraApplication() {
+        let instanceUrl = await this._ipc.callMethod('getInstanceURL', {orgName : this.activeTab!.orgName});
+        let domainPrefix = new URL(instanceUrl).hostname.split('.')[0]; // => 'myorg-dev-ed'
+        let appName = this.activeTab?.bundleDetails?.bundleName + ' .app';
+        if(instanceUrl.includes('.sandbox.')) domainPrefix += '.sandbox';
+        window.open('https://' + domainPrefix + '.lightning.force.com/c/' + appName);
     }
     
     log(...str: any) {
