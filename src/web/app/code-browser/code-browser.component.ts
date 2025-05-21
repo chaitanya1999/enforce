@@ -1211,7 +1211,7 @@ export class CodeBrowserComponent {
     async previewAuraApplication() {
         let instanceUrl = await this._ipc.callMethod('getInstanceURL', {orgName : this.activeTab!.orgName});
         let domainPrefix = new URL(instanceUrl).hostname.split('.')[0]; // => 'myorg-dev-ed'
-        let appName = this.activeTab?.bundleDetails?.bundleName + ' .app';
+        let appName = this.activeTab?.bundleDetails?.bundleName + '.app';
         if(instanceUrl.includes('.sandbox.')) domainPrefix += '.sandbox';
         window.open('https://' + domainPrefix + '.lightning.force.com/c/' + appName);
     }
