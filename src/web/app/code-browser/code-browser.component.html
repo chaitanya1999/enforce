@@ -1,33 +1,53 @@
 <div class="rootRoot" (keydown)="onKeyDown($event)">
-    <div class="sidePanel" #sidePanelElement draggable="false">
-        <div class="panelContent" [hidden]="!sidePanelDisplay">
-            @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
-                <div style="border: 1px solid rgb(63, 63, 63);margin-top:max(16px, 10vh)">
-                    <!-- <div style=" margin: 4px; margin-bottom:0px; display: flex; justify-content: center; color: white; user-select: none;">
-                        Bundle Details                
-                    </div> -->
-                    <div class="bundleTitle">
-                        <!-- <span style="margin:auto; text-transform: capitalize; margin-top: 5px;" class="badge rounded-pill text-bg-success">{{activeEntityTypeLabel}}</span> -->
-                        <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
-                        <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
-                    </div>
-                    <!-- <div class="bundleTitle" style="margin-top: -4px;">
-                    </div> -->
-                    @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
-                        <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
-                            {{bundleItem.label}}                
+    <div class="sidePanel" #sidePanelElement draggable="false" [hidden]="!sidePanelDisplay">
+        <!-- <div class="panelContent" [hidden]="!sidePanelDisplay"> -->
+            <!-- <div class="customAccordion"> -->
+                 <!-- margin-top:max(16px, 10vh) -->
+                <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body1"  data-toggle-collapsed="false" style="margin-top: 10px;">
+                    Bundle Details
+                </div>
+                <div class="customAccordion-body" data-toggle-id="body1">
+                    @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
+                        <div class="bundleTitle" style="position: relative;">
+                            <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
+                            <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
+                            <div class="reload-bundle">
+                                <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true)"></i>
+                            </div>
                         </div>
-                    }
-                    @if(activeTab?.isAuraApplication) {
-                        <div class="bundleTitle auraAppPreview" (click)="previewAuraApplication()">
-                            PREVIEW APPLICATION
-                        </div>
+                        @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
+                            <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
+                                {{bundleItem.label}}                
+                            </div>
+                        }
+                        @if(activeTab?.isAuraApplication) {
+                            <div class="bundleTitle auraAppPreview" (click)="previewAuraApplication()">
+                                PREVIEW APPLICATION
+                            </div>
+                        }
+                    } @else {
+                        <span style="color:white;width: 100%; height: 100px; display: flex; align-items:center; justify-content:center; font-size: 0.8em;">Nothing here !</span>
                     }
                 </div>
-            } @else {
-                <div style="color: white; margin:auto;">Nothing here !</div>
-            }
-        </div>
+            <!-- </div> -->
+            <!-- <div class="customAccordion"> -->
+                <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false">
+                    Open Editors
+                </div>
+                <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
+                    @for(tab of openTabs; track tab) {
+                        <!-- @if(!tab.temporary) { -->
+                            <div [class]="tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab'" (click)="onTabClick(tab)" [title]="tab.tabName"
+                            (contextmenu)="onTabContextMenu(tab, $event)">
+                                <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
+                                <div class="editorTab-name"><span>{{tab.tabName}}</span></div>
+                                <div class="editorTab-orgName"><span>{{tab.orgName}}</span></div>
+                            </div>
+                        <!-- } -->
+                    }
+                </div>
+            <!-- </div> -->
+        <!-- </div> -->
     </div>
     <div class="sidePanelToggle" (click)="toggleSidePanel($event)" draggable="false">
         <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
@@ -35,7 +55,7 @@
     <div class="root" #rootElement>
         <div class="topBar" (click)="clickEmptySpace($event)" data-emptyspace="true">
             <!-- Salesforce Org dropdown -->
-            <select class="form-select topBarItem" aria-label="Salesforce Org" style="max-width: fit-content; min-width: min-content; font-size: var(--fontSize);"
+            <select class="form-select topBarItem" aria-label="Salesforce Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 3;"
                 [ngModel]="selectedOrg"
                 (ngModelChange)="onOrgSelect($event)">
                 <option>--Org--</option>
@@ -48,7 +68,7 @@
             <!-- <button class="btn btn-primary topBarItem" (click)="authenticate()">Authenticate</button> -->
     
             <!-- Code category list -->
-            <select class="form-select topBarItem" aria-label="Category" style="max-width: fit-content;min-width: min-content;" #orgselect
+            <select class="form-select topBarItem" aria-label="Category" style="max-width: fit-content;flex-shrink: 3;" #orgselect
                 [ngModel]="selectedEntityType"
                 (ngModelChange)="onEntityTypeSelect($event)">
                 <option>--Type--</option>
@@ -66,7 +86,7 @@
             <!-- Clear cache button -->
             <button class="btn btn-danger topBarItem" (click)="clearCachedList()" title="Clear Cached List" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
     
-            <!-- Clear cache button -->
+            <!-- Save button -->
             <button class="btn btn-success topBarItem" (click)="handleSave()" title="Save" [disabled]="!isOrgSelected"><i class="bi bi-floppy"></i></button>
     
             <!-- Create new button -->
@@ -103,6 +123,9 @@
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="swapDiff()" title="Swap Diff"><i class="bi bi-arrow-left-right"></i></button>
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="toggleSpaceDiff()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
             }
+
+            <button class="btn btn-secondary topBarItem" style="flex-shrink:0;" (click)="changeFontSize(true)" title="Increase Font Size"><i class="bi bi-patch-plus"></i></button>
+            <button class="btn btn-secondary topBarItem" style="flex-shrink:0;" (click)="changeFontSize(false)" title="Decrease Font Size"><i class="bi bi-patch-minus"></i></button>
             <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
     
         </div>
@@ -132,7 +155,9 @@
             <span class="">{{activeTab?.tabName}}</span>
         </div>
         <div class="codeEditor" #editorContainer (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
-            <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" [delayLoad]="false"></app-code-editor>
+            <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)"
+                [delayLoad]="false"></app-code-editor>
+                <!-- [loadingSpinner]="activeTab?.loadingSpinner || false" -->
         </div>
         <div style="width: 100%; height: 0px; position: relative;">
             <!-- ERRORS pane -->
@@ -200,10 +225,12 @@
         <ul class="dropdown-menu dropdown-menu-dark" role="menu" aria-labelledby="dropdownMenu" stye="">
             <li class="dropdown-item" (click)="selectForCompare()">Select For Compare</li>
             <li class="dropdown-item" (click)="compareWithSelected()" [hidden]="compareTab == null">Compare with Selected</li>
-            <li class="dropdown-item" (click)="reloadEntity()">Reload from Org</li>
-            <li class="dropdown-item">Load from another org</li>
+            <li class="dropdown-item" (click)="reloadEntity()">Reload</li>
+            <li class="dropdown-item" (click)="loadEntityFromOtherOrg()">Load from current org</li>
+            <li class="dropdown-item" (click)="copyFilename(false)">Copy Name</li>
+            <li class="dropdown-item" (click)="copyFilename(true)">Copy Full Name</li>
             <!-- <li class="dropdown-divider"></li>
             <li class="dropdown-item"><a class="dropdown-item" tabindex="-1" href="#">Separated link</a></li> -->
-            </ul>
+        </ul>
     </div>
 </div>

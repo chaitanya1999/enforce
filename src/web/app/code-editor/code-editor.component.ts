@@ -9,6 +9,7 @@ import { createHighlighter } from 'shiki'
 import { IpcService } from '../../ipc.service';
 import { DOCUMENT } from '@angular/common';
 import { inject } from '@angular/core';
+import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
 import { GlobalEventsService } from '../global-events.service';
 
 
@@ -16,7 +17,7 @@ import { GlobalEventsService } from '../global-events.service';
 @Component({
     selector: 'app-code-editor',
     standalone: true,
-    imports: [],
+    imports: [MatProgressSpinnerModule],
     templateUrl: './code-editor.component.html',
     styleUrl: './code-editor.component.css'
 })
@@ -65,6 +66,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
     cursorPosition? : monaco.Position;
     @Output() onCursorPositionChange : EventEmitter<any> = new EventEmitter<any>();
+
+    @Input() loadingSpinner : boolean = false;
 
     constructor(private zone: NgZone, private configService: EditorConfigService, private readonly _ipc: IpcService) {
         this.document = inject(DOCUMENT);
@@ -412,7 +415,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             automaticLayout: true,
             // wordWrap: 'on'
             // glyphMargin: true
-            theme: theme
+            theme: theme,
+            fontSize: this.fontSize,
         });
 
         this.diffEditorInstance = monaco.editor.createDiffEditor(
@@ -425,7 +429,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 glyphMargin: true,
                 ignoreTrimWhitespace: false,
                 originalEditable: true,
-                automaticLayout: true
+                automaticLayout: true,
+                fontSize: this.fontSize,
             }
         );
 
@@ -523,6 +528,13 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 ignoreTrimWhitespace : value
             })
         }
+    }
+
+    fontSize = 12;
+    @Output() changeFontSize(increment : boolean) {
+        if(increment) this.fontSize ++;
+        else this.fontSize --;
+        this.codeEditorInstance?.updateOptions({fontSize: this.fontSize});
     }
 
     log(...str: any) {

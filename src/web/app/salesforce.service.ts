@@ -195,6 +195,7 @@ export class SalesforceService {
         let orgName = x[0].orgName;
         let bundleName = x[0].bundleName;
         let entityType = x[0].entityType;
+        let ignoreCache = x[0].ignoreCache;
         let query = ``;
         let bundleContents : NormalizedBundleItem[] = [];
         let apiVersion = null;
@@ -202,7 +203,7 @@ export class SalesforceService {
         let bundleId = null;
 
         let bundlePresent : NormalizedBundleDetails = this.loadedBundleInfo[orgName]?.[entityType]?.[bundleName];
-        if(bundlePresent) return EnForceResponse.success(bundlePresent);
+        if(bundlePresent && !ignoreCache) return EnForceResponse.success(bundlePresent);
 
         if(entityType == CodeEntity.AuraComponent) {
             //aura

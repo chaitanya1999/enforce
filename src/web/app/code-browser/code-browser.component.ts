@@ -51,6 +51,7 @@ class CodeTab {
     deploymentInProgess : boolean = false;
     codeEntity? : NormalizedCodeEntity;
     bundleDetails? : NormalizedBundleDetails;
+    loadingSpinner : boolean = false;
     get isAuraApplication(){
         return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
     }
@@ -151,9 +152,10 @@ export class CodeBrowserComponent {
 
     openTabs : CodeTab[] = [
         new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/sfLogo.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
-        // new CodeTab("Apple Apple" , 'codeEditor_-10' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Apple Apple" , 'codeEditor_-11' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Apple Apple Apple Apple" , 'codeEditor_-12' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Apple Apple" , 'codeEditor_-10' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Apple Apple" , 'codeEditor_-11' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg1', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Apple Apple Apple Apple" , 'codeEditor_-12' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg22', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("SomeFunnyLongComponentNameToTest" , 'codeEditor_-19' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg23', AppConstants.CODE_EDITOR, '', '', true),
         // new CodeTab("Temp" , 'codeEditor_-13' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
         // new CodeTab("Temp" , 'codeEditor_-14' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
         // new CodeTab("Temp" , 'codeEditor_-15' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
@@ -239,6 +241,11 @@ export class CodeBrowserComponent {
     async ngOnInit() {
         this.globalEventsSvc.globalClickEvent.subscribe( (data) => {
             this.showTabRightClickMenu = false;
+            let contextMenu: HTMLElement = document.querySelector('.tabRightClickMenu')!;
+            contextMenu.setAttribute('style',`
+                left : ${window.innerWidth}px;
+                top : ${0}px;
+            `);
             this.log('globalClickEvent');
         } );
 
@@ -248,16 +255,16 @@ export class CodeBrowserComponent {
             // e.preventDefault();
         })
         this.activeTab = this.openTabs[0];
-        // this.openTabs[0].entityType = 'AuraComponent';
-        // this.openTabs[0].tabValue = 'asdf';
-        // this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
-        //     '', 'Dummy Bundle', [
-        //         new NormalizedBundleItem('APPLICATION', '', ''),
-        //         new NormalizedBundleItem('CONTROLLER', 'asdf', ''),
-        //         new NormalizedBundleItem('HELPER', '', ''),
-        //         new NormalizedBundleItem('STYLE', '', '')
-        //     ], '59.0', 'AuraComponent', ''
-        // )
+        this.openTabs[0].entityType = 'AuraComponent';
+        this.openTabs[0].tabValue = 'asdf';
+        this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
+            '', 'Dummy Bundle', [
+                new NormalizedBundleItem('APPLICATION', '', ''),
+                new NormalizedBundleItem('CONTROLLER', 'asdf', ''),
+                new NormalizedBundleItem('HELPER', '', ''),
+                new NormalizedBundleItem('STYLE', '', '')
+            ], '59.0', 'AuraComponent', ''
+        )
 
         this.globalEventsSvc.tabSelectEvent.subscribe((x:any) => {
             if(x.reselected == true && x.tab.tabName == 'Code Browser') this.toggleSidePanel(null);
@@ -523,30 +530,8 @@ export class CodeBrowserComponent {
                     this.editorCmp.switchModel(modelId);
                     this.editorCmp.focus();
 
-                    this.log('loadEntity | getBundleDetails ');
-                    if(isBundle) this._ipc.callMethod('getBundleDetails', {
-                        orgName : this.selectedOrg,
-                        bundleName : bundleName,
-                        entityType : codeTab.entityType
-                    }).then( (x:EnForceResponse) => {
-                        if(x.isSuccess) {
-                            this.log('loadEntity | getBundleDetails | Success = ' , x);
-                            codeTab.bundleDetails = x.data;
-                        } else {
-                            this.log('loadEntity | getBundleDetails | ERROR = ' , x);
-                            this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
-                                duration: 2000,
-                                verticalPosition : 'top'
-                            });
-                        }
-
-                    }).catch( (x:any) => {
-                        this.log('loadEntity | getBundleDetails | ERROR = ' , x);
-                        this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
-                            duration: 2000,
-                            verticalPosition : 'top'
-                        });
-                    });
+                    this.log('loadEntity | loadBundleDetails ');
+                    if(isBundle) this.loadBundleDetails(codeTab, false);
 
                 } else {
                     this.editorCmp.setContent(code, tabToReload.modelId);
@@ -771,16 +756,23 @@ export class CodeBrowserComponent {
     onTabContextMenu(tab : CodeTab, event: any) {
 
         event.preventDefault(); 
-
+        if(tab.temporary) return;
         if(tab.editorType == AppConstants.DIFF_EDITOR) return;
 
         this.tabForContextMenu = tab;
         this.showTabRightClickMenu = true;
-        let contextMenu: HTMLElement = document.querySelector('.tabRightClickMenu')!;
-        contextMenu.setAttribute('style',`
-            left : ${event.clientX}px;
-            top : ${event.clientY}px;
-        `);
+        setTimeout(() => {
+            let contextMenu: HTMLElement = document.querySelector('.tabRightClickMenu')!;
+            let x = event.clientX , y = event.clientY;
+            console.log('#$#$ contextMenu.offsetWidth = ' + contextMenu.offsetWidth);
+            console.log('#$#$ contextMenu.offsetHeight = ' + contextMenu.offsetHeight);
+            if(x + contextMenu.scrollWidth > window.innerWidth) x-= contextMenu.scrollWidth;
+            if(y + contextMenu.scrollHeight > window.innerHeight) y-= contextMenu.scrollHeight;
+            contextMenu.setAttribute('style',`
+                left : ${x}px;
+                top : ${y}px;
+            `);
+        }, 100);
     }
 
     selectForCompare() {
@@ -1177,18 +1169,18 @@ export class CodeBrowserComponent {
         codeEntity = this.entityIdVsObjectMap[id];
         this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
 
-        // this.openTabs = [
-        //     new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/sfLogo.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
-        //     new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Apple Apple Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // ]
+        this.openTabs = [
+            new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/sfLogo.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
+            new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Apple Apple Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        ]
     }
 
     clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
@@ -1214,6 +1206,71 @@ export class CodeBrowserComponent {
         let appName = this.activeTab?.bundleDetails?.bundleName + '.app';
         if(instanceUrl.includes('.sandbox.')) domainPrefix += '.sandbox';
         window.open('https://' + domainPrefix + '.lightning.force.com/c/' + appName);
+    }
+
+    loadEntityFromOtherOrg() {
+        let tab = this.tabForContextMenu!;
+        this.loadEntity(tab.tabValue, null, tab.entityType, this.selectedOrg, tab.codeEntity);
+    }
+
+    copyFilename(fullName : boolean) {
+        if (navigator.clipboard && window.isSecureContext) {
+            let name : string = this.tabForContextMenu?.tabName || '';
+            let text = (fullName ? name : name.substring(0, name.lastIndexOf('.'))) || '';
+            navigator.clipboard.writeText(text);
+            this.snackBar.open('Copied !', 'Close', {
+                duration: 500,
+                verticalPosition : 'top'
+            });
+        } 
+    }
+
+    handleAccordion(evt : MouseEvent) {
+        let target = evt.target;
+        if(!(target instanceof HTMLElement)) return;
+        let t_id = target!.dataset['toggleContent'];
+        let collapsed = target!.dataset['toggleCollapsed']=='true' || false;
+        let toggleContent : HTMLElement | null = document.querySelector(`[data-toggle-id=${t_id}]`);
+        if(!toggleContent) return;
+        if(collapsed) {
+            toggleContent.style.display = 'block';
+        } else {
+            toggleContent.style.display = 'none';
+        }
+        collapsed = !collapsed;
+        target.dataset['toggleCollapsed'] = '' + collapsed;
+        // toggleContent.dataset['toggleCollapsed'] = '' + collapsed;
+    }
+
+    async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean) {
+        this._ipc.callMethod('getBundleDetails', {
+            orgName : this.selectedOrg,
+            bundleName : codeTab.bundleName,
+            entityType : codeTab.entityType,
+            ignoreCache : ignoreCache
+        }).then( (x:EnForceResponse) => {
+            if(x.isSuccess) {
+                this.log('loadEntity | getBundleDetails | Success = ' , x);
+                codeTab.bundleDetails = x.data;
+            } else {
+                this.log('loadEntity | getBundleDetails | ERROR = ' , x);
+                this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
+                    duration: 2000,
+                    verticalPosition : 'top'
+                });
+            }
+
+        }).catch( (x:any) => {
+            this.log('loadEntity | getBundleDetails | ERROR = ' , x);
+            this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
+                duration: 2000,
+                verticalPosition : 'top'
+            });
+        });
+    }
+
+    changeFontSize(increment : boolean) {
+        this.editorCmp.changeFontSize(increment);
     }
     
     log(...str: any) {
