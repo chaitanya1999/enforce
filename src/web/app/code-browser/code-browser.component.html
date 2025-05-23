@@ -17,7 +17,10 @@
                         </div>
                         @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
                             <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
-                                {{bundleItem.label}}                
+                                {{bundleItem.label}}
+                                @if(bundleItem.toBeCreated) {
+                                    <span style="justify-self: flex-end; flex-grow:1;text-align: right;">(create)</span>
+                                }
                             </div>
                         }
                         @if(activeTab?.isAuraApplication) {

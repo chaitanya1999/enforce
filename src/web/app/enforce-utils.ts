@@ -234,8 +234,9 @@ export class NormalizedBundleDetails {
 
 export class NormalizedBundleItem {
     label: string;
-    value: string;
-    id: string;
+    value?: string;
+    id?: string;
+    toBeCreated?: boolean;
     constructor(label: string, value: string, id: string) {
         this.label = label;
         this.value = value;

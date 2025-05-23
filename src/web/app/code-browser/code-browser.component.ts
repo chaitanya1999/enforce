@@ -254,17 +254,18 @@ export class CodeBrowserComponent {
             // e.stopPropagation();
             // e.preventDefault();
         })
-        this.activeTab = this.openTabs[0];
-        this.openTabs[0].entityType = 'AuraComponent';
-        this.openTabs[0].tabValue = 'asdf';
-        this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
-            '', 'Dummy Bundle', [
-                new NormalizedBundleItem('APPLICATION', '', ''),
-                new NormalizedBundleItem('CONTROLLER', 'asdf', ''),
-                new NormalizedBundleItem('HELPER', '', ''),
-                new NormalizedBundleItem('STYLE', '', '')
-            ], '59.0', 'AuraComponent', ''
-        )
+        // this.activeTab = this.openTabs[0];
+        // this.openTabs[0].entityType = 'AuraComponent';
+        // this.openTabs[0].tabValue = 'asdf';
+        // this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
+        //     '', 'Dummy Bundle', [
+        //         new NormalizedBundleItem('APPLICATION', '', ''),
+        //         new NormalizedBundleItem('CONTROLLER', 'asdf', ''),
+        //         new NormalizedBundleItem('HELPER', '', ''),
+        //         new NormalizedBundleItem('STYLE', '', '')
+        //     ], '59.0', 'AuraComponent', ''
+        // );
+        // this.openTabs[0].bundleDetails.contents[3].toBeCreated = true;
 
         this.globalEventsSvc.tabSelectEvent.subscribe((x:any) => {
             if(x.reselected == true && x.tab.tabName == 'Code Browser') this.toggleSidePanel(null);
@@ -1185,8 +1186,8 @@ export class CodeBrowserComponent {
 
     clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
         if(bundleDetails) { 
-            this.loadEntity(bundleItem.value, null, bundleDetails.entityType, this.activeTab!.orgName,
-                new NormalizedCodeEntity(bundleItem.id, bundleItem.value, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix));
+            this.loadEntity(bundleItem.value!, null, bundleDetails.entityType, this.activeTab!.orgName,
+                new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix));
         }
     }
 
@@ -1242,13 +1243,18 @@ export class CodeBrowserComponent {
         // toggleContent.dataset['toggleCollapsed'] = '' + collapsed;
     }
 
+    reloadingBundleDetails : boolean = false
     async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean) {
+        if(this.reloadingBundleDetails) return;
+
+        this.reloadingBundleDetails = true;
         this._ipc.callMethod('getBundleDetails', {
             orgName : this.selectedOrg,
             bundleName : codeTab.bundleName,
             entityType : codeTab.entityType,
             ignoreCache : ignoreCache
         }).then( (x:EnForceResponse) => {
+            this.reloadingBundleDetails = false;
             if(x.isSuccess) {
                 this.log('loadEntity | getBundleDetails | Success = ' , x);
                 codeTab.bundleDetails = x.data;
@@ -1261,6 +1267,7 @@ export class CodeBrowserComponent {
             }
 
         }).catch( (x:any) => {
+            this.reloadingBundleDetails = false;
             this.log('loadEntity | getBundleDetails | ERROR = ' , x);
             this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
                 duration: 2000,

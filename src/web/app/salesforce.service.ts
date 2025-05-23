@@ -206,18 +206,6 @@ export class SalesforceService {
         if(bundlePresent && !ignoreCache) return EnForceResponse.success(bundlePresent);
 
         if(entityType == CodeEntity.AuraComponent) {
-            //aura
-            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix from AuraDefinition where AuraDefinitionBundle.DeveloperName = '${bundleName}'`;
-            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
-            if(!res.isSuccess) return res;
-            
-            for(let record of res.data.records) {
-                let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
-                bundleContents.push({label : record['DefType'] , value : name, id : record['Id']});
-                apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
-                bundleId = record['AuraDefinitionBundleId'];
-                namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
-            }
             let sortOrder : any = {
                 "COMPONENT" : 1,
                 "APPLICATION" : 1,
@@ -230,7 +218,30 @@ export class SalesforceService {
                 "DESIGN" : 8,
                 "SVG" : 9
             }
-            bundleContents = bundleContents.sort((x:any,y:any) => {
+            let existingDefTypes = Object.keys(sortOrder).reduce((p: any, c : string) => {
+                p[c] = false;
+                return p;
+            }, {});
+            //aura
+            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix from AuraDefinition where AuraDefinitionBundle.DeveloperName = '${bundleName}'`;
+            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
+            if(!res.isSuccess) return res;
+            
+            for(let record of res.data.records) {
+                existingDefTypes[record['DefType']] = true;
+                let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
+                bundleContents.push({label : record['DefType'] , value : name, id : record['Id']});
+                apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
+                bundleId = record['AuraDefinitionBundleId'];
+                namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
+            }
+            // for(let key in existingDefTypes) {
+            //     if(existingDefTypes[key] == false && key != 'COMPONENT' && key != 'APPLICATION' ) { //either application or component, one must exist
+            //         let value = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[key];
+            //         bundleContents.push({label : key , value : value, toBeCreated : true});
+            //     }
+            // }
+            bundleContents = bundleContents.sort((x:any, y:any) => {
                 return sortOrder[x.label] - sortOrder[y.label];
             });
         } else {
