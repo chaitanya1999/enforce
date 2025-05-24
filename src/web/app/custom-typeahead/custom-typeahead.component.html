@@ -1,5 +1,5 @@
 <div class="typeaheadRoot">
-    <input #typeaheadInput class="form-control" type="text" [placeholder]="placeholder" (click)="onClick($event)" (focus)="onFocus($event)" (blur)="onBlur($event)" [(ngModel)]="searchQuery" (ngModelChange)="onChange($event)" (keydown)="onKeyDown($event)" spellcheck="false"/>
+    <input #typeaheadInput [style]="inputStyle" class="form-control" type="text" [placeholder]="placeholder" (click)="onClick($event)" (focus)="onFocus($event)" (blur)="onBlur($event)" [(ngModel)]="searchQuery" (ngModelChange)="onChange($event)" (keydown)="onKeyDown($event)" spellcheck="false"/>
     <div class="typeaheadContainer">
         @if(displayTypeahead == true) {
             <div class="typeahead">

@@ -26,15 +26,15 @@ export class AppConstants {
         'SVG' : '.svg'
     };
     static defTypeVsLanguage : any = {
-        'COMPONENT' : 'xml',
-        'APPLICATION' : 'xml',
+        'COMPONENT' : 'html',
+        'APPLICATION' : 'html',
         'CONTROLLER' : 'javascript',
         'HELPER' : 'javascript',
         'STYLE' : 'css',
         'RENDERER' : 'javascript',
-        'EVENT' : 'xml',
-        'DOCUMENTATION' :  'xml',
-        'DESIGN' : 'xml',
+        'EVENT' : 'html',
+        'DOCUMENTATION' :  'html',
+        'DESIGN' : 'html',
         'SVG' : 'svg'
     };
 

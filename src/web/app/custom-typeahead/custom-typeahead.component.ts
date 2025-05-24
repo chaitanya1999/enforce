@@ -38,6 +38,8 @@ export class CustomTypeaheadComponent {
     @Output() onSelect = new EventEmitter();
     @Output() onUnfocus = new EventEmitter();
 
+    @Input() inputStyle : string = '';
+
     get displayListSize(): number {
         return Math.max(2, Math.min(this.maxSelectSize, this.displayList.length));
     }

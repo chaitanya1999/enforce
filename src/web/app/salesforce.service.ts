@@ -32,6 +32,9 @@ export class SalesforceService {
         // map <orgname , map <keys lwc aura , map<bundlename , NormalizedBundleDetails > > > 
         /*org name vs map of keys lwc, aura vs map of bundle name vs array of bundle contents*/
     }
+    loadedOrganizationDetails : any = {
+        //orgname vs { organizationType, organizationName }
+    }
 
     constructor() { }
 
@@ -277,6 +280,30 @@ export class SalesforceService {
         this.loadedBundleInfo[orgName][entityType][bundleName] = bundleDetails;        
 
         return EnForceResponse.success(bundleDetails);         
+    }
+
+    async getOrganizationDetails(params : any) {
+        let organizationName = '';
+        let organizationType = '';
+        if(!this.loadedOrganizationDetails[params[0]]) {
+            let qParams = {
+                orgName : params,
+                soqlQuery : `select Id, Name, PrimaryContact, OrganizationType, InstanceName, IsSandbox, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById from Organization LIMIT 1`,
+                fetchDeleted : false,
+                toolingApi : false
+            };
+            let response = await this.executeQuery([qParams]);
+            
+            if(response.isSuccess) {
+                organizationName = response.data.records?.[0]?.Name ?? '';
+                organizationType = response.data.records?.[0]?.OrganizationType ?? '';
+            } else {
+                organizationName = '';
+                organizationType = '';
+            }
+            this.loadedOrganizationDetails[params[0]] = {organizationName, organizationType}
+        }
+        return this.loadedOrganizationDetails[params[0]];
     }
 
 }

@@ -40,11 +40,16 @@
                 <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
                     @for(tab of openTabs; track tab) {
                         <!-- @if(!tab.temporary) { -->
-                            <div [class]="tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab'" (click)="onTabClick(tab)" [title]="tab.tabName"
+                            <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
+                            (click)="onTabClick(tab)" 
                             (contextmenu)="onTabContextMenu(tab, $event)">
-                                <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
-                                <div class="editorTab-name"><span>{{tab.tabName}}</span></div>
-                                <div class="editorTab-orgName"><span>{{tab.orgName}}</span></div>
+                                @if(tab.pinned) {
+                                    <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
+                                } @else {
+                                    <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
+                                }
+                                <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
+                                <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
                             </div>
                         <!-- } -->
                     }
@@ -57,8 +62,8 @@
     </div>
     <div class="root" #rootElement>
         <div class="topBar" (click)="clickEmptySpace($event)" data-emptyspace="true">
-            <!-- Salesforce Org dropdown -->
-            <select class="form-select topBarItem" aria-label="Salesforce Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 3;"
+            <!-- SF Org dropdown -->
+            <select class="form-select topBarItem connectedButton-left" aria-label="Salesforce Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 4;" #orgselect
                 [ngModel]="selectedOrg"
                 (ngModelChange)="onOrgSelect($event)">
                 <option>--Org--</option>
@@ -71,7 +76,7 @@
             <!-- <button class="btn btn-primary topBarItem" (click)="authenticate()">Authenticate</button> -->
     
             <!-- Code category list -->
-            <select class="form-select topBarItem" aria-label="Category" style="max-width: fit-content;flex-shrink: 3;" #orgselect
+            <select class="form-select topBarItem connectedButton-mid" aria-label="Category" style="max-width: fit-content;flex-shrink: 4;border-right: 1px solid black;"
                 [ngModel]="selectedEntityType"
                 (ngModelChange)="onEntityTypeSelect($event)">
                 <option>--Type--</option>
@@ -81,20 +86,20 @@
             </select>
     
             <!-- class component name list -->
-            <app-custom-typeahead #entityTypeahead [dataset]="entityList" style="min-width: 100px; width: 40em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onEntitySelect($event)" (onUnfocus)="typeaheadUnfocus()" placeholder="Type a name to open..."></app-custom-typeahead>
+            <app-custom-typeahead inputStyle="margin-left:0px; border-radius:0px;height:30px;" class="entityTypeahead" #entityTypeahead [dataset]="entityList" style="min-width: 100px; width: 40em; flex-shrink:  1;" (onSelect)="onEntitySelect($event)" (onUnfocus)="typeaheadUnfocus()" placeholder="Type a name to open..."></app-custom-typeahead>
             
             <!-- Reload list button -->
-            <button class="btn btn-secondary topBarItem" (click)="reloadList()" title="Reload Class Cmp List" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-mid" (click)="reloadList()" matTooltip="Reload Class Cmp List" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
     
             <!-- Clear cache button -->
-            <button class="btn btn-danger topBarItem" (click)="clearCachedList()" title="Clear Cached List" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedList()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
     
             <!-- Save button -->
-            <button class="btn btn-success topBarItem" (click)="handleSave()" title="Save" [disabled]="!isOrgSelected"><i class="bi bi-floppy"></i></button>
+            <button class="btn btn-success topBarItem connectedButton-left" (click)="handleSave()" matTooltip="Save" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-floppy"></i></button>
     
             <!-- Create new button -->
             <div class="btn-group">
-                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected" >
+                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-right" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected"  matTooltip="Create New" matTooltipPosition="below" >
                     <i class="bi bi-plus-circle"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
@@ -103,47 +108,49 @@
                     }
                 </ul>
             </div>
-            <!-- <div class="dropdown">
-                <button class="btn btn-success topBarItem dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" role="button">
-                    <i class="bi bi-plus-circle"></i>
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="#">Action</a></li>
-                    <li><a class="dropdown-item" href="#">Another action</a></li>
-                    <li><a class="dropdown-item" href="#">Something else here</a></li>
-                </ul>
-            </div> -->
     
             <!-- language -->
             <app-custom-typeahead #languageSelector [dataset]="languageList" style="width: 7em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onLanguageSelect($event)" placeholder="Language..."></app-custom-typeahead>
             
-            <!-- word wrap -->
-            <button [class]="'btn btn-primary topBarItem ' +( wordWrap ? 'active' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" title="Word Wrap" [disabled]="!isOrgSelected"><i class="bi bi-text-wrap"></i></button>
     
+            <!-- DIFF buttons -->
             @if(activeTab?.editorType == $diffEditor || true) {
-                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="prevDiff()" title="Previous Diff"><i class="bi bi-arrow-up"></i></button>
-                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="nextDiff()" title="Next Diff"><i class="bi bi-arrow-down"></i></button>
-                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="swapDiff()" title="Swap Diff"><i class="bi bi-arrow-left-right"></i></button>
-                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="toggleSpaceDiff()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-left" style="flex-shrink:0;" (click)="prevDiff()" matTooltipPosition="below" matTooltip="Previous Diff"><i class="bi bi-arrow-up"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="nextDiff()" matTooltipPosition="below" matTooltip="Next Diff"><i class="bi bi-arrow-down"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="swapDiff()" matTooltipPosition="below" matTooltip="Swap Diff"><i class="bi bi-arrow-left-right"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-right" style="flex-shrink:0;" (click)="toggleSpaceDiff()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
             }
 
-            <button class="btn btn-secondary topBarItem" style="flex-shrink:0;" (click)="changeFontSize(true)" title="Increase Font Size"><i class="bi bi-patch-plus"></i></button>
-            <button class="btn btn-secondary topBarItem" style="flex-shrink:0;" (click)="changeFontSize(false)" title="Decrease Font Size"><i class="bi bi-patch-minus"></i></button>
-            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" title="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
+            <!-- Font size buttons -->
+             <!-- word wrap -->
+            <button [class]="'btn btn-primary topBarItem connectedButton-left ' +( wordWrap ? 'wrapActive' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" matTooltip="Word Wrap" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-text-wrap"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="changeFontSize(true)" matTooltip="Increase Font Size" matTooltipPosition="below"><i class="bi bi-patch-plus"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-right" style="flex-shrink:0;" (click)="changeFontSize(false)" matTooltip="Decrease Font Size" matTooltipPosition="below"><i class="bi bi-patch-minus"></i></button>
+            
+            <!-- Open in popup window -->
+            <button class="btn btn-primary topBarItem" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Open in popup window"><i class="bi bi-window-stack"></i></button>
+            
+            <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
     
         </div>
         <div class="tabContainer" (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
             @for(tab of openTabs; track tab) {
-                <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
-                    [attr.data-modified]="tab.contentChanged"
-                    (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
-                    <img [src]="tab.icon" width="16px" height="16px"  />
-                    <div class="tabHeading">
-                        <span>{{tab.tabName}}</span>
-                        <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
+                @if(!tab.hidden) {
+                    <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
+                        [attr.data-modified]="tab.contentChanged"
+                        (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
+                        <img [src]="tab.icon" width="16px" height="16px"  />
+                        <div class="tabHeading">
+                            <span>{{tab.tabName}}</span>
+                            <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
+                        </div>
+                        @if(tab.pinned) {
+                            <span class="tabPin" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
+                        } @else {
+                            <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
+                        }
                     </div>
-                    <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
-                </div>
+                }
             }
         </div>
         <div class="pathBar">
@@ -226,12 +233,22 @@
     
     <div class="tabRightClickMenu" [hidden]="showTabRightClickMenu == false">
         <ul class="dropdown-menu dropdown-menu-dark" role="menu" aria-labelledby="dropdownMenu" stye="">
-            <li class="dropdown-item" (click)="selectForCompare()">Select For Compare</li>
-            <li class="dropdown-item" (click)="compareWithSelected()" [hidden]="compareTab == null">Compare with Selected</li>
-            <li class="dropdown-item" (click)="reloadEntity()">Reload</li>
-            <li class="dropdown-item" (click)="loadEntityFromOtherOrg()">Load from current org</li>
-            <li class="dropdown-item" (click)="copyFilename(false)">Copy Name</li>
-            <li class="dropdown-item" (click)="copyFilename(true)">Copy Full Name</li>
+            @if(tabForContextMenu?.editorType == $codeEditor) {
+                <li class="dropdown-item" (click)="selectForCompare()">Select For Compare</li>
+                <li class="dropdown-item" (click)="compareWithSelected()" [hidden]="compareTab == null">Compare with Selected</li>
+                <li class="dropdown-item" (click)="reloadEntity()">Reload</li>
+                <li class="dropdown-item" (click)="loadEntityFromOtherOrg()">Load from current org</li>
+                <li class="dropdown-item" (click)="copyFilename(false)">Copy Name</li>
+                <li class="dropdown-item" (click)="copyFilename(true)">Copy Full Name</li>
+            }
+            <li class="dropdown-item" (click)="hideShowTab()">
+                @if(tabForContextMenu?.hidden){Unhide Tab}
+                @else {Hide Tab}
+            </li>
+            <li class="dropdown-item" (click)="pinUnpinTab(null)">
+                @if(tabForContextMenu?.pinned){Unpin Tab}
+                @else {Pin Tab}
+            </li>
             <!-- <li class="dropdown-divider"></li>
             <li class="dropdown-item"><a class="dropdown-item" tabindex="-1" href="#">Separated link</a></li> -->
         </ul>

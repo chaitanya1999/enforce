@@ -13,10 +13,8 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { CustomTypeaheadComponent } from '../custom-typeahead/custom-typeahead.component';
-// import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { AppConstants , CodeEntity } from '../AppConstants';
 import {MatProgressSpinnerModule} from '@angular/material/progress-spinner';
-// import { CodeEditorModule, CodeModel } from '@ngstack/code-editor';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { CodeEditorComponent } from '../code-editor/code-editor.component';
 import { ContextMenuEvent } from 'electron';
@@ -27,13 +25,8 @@ import Utils, { EnForceResponse, NormalizedBundleDetails, NormalizedBundleItem, 
 import { PromptDialogComponent } from '../prompt-dialog/prompt-dialog.component';
 import { sfApiVersion } from '../salesforce.service';
 import { ResizableModule } from 'angular-resizable-element';
-// import { provideRouter } from '@angular/router';
+import {MatTooltipModule} from '@angular/material/tooltip';
 
-// export const appConfig: ApplicationConfig = {
-//     providers: [importProvidersFrom(CodeEditorModule.forRoot({
-//       // ... config
-//     }))]
-// };
 
 class CodeTab {
     tabName : string;
@@ -52,6 +45,8 @@ class CodeTab {
     codeEntity? : NormalizedCodeEntity;
     bundleDetails? : NormalizedBundleDetails;
     loadingSpinner : boolean = false;
+    hidden : boolean = false;
+    pinned : boolean = false;
     get isAuraApplication(){
         return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
     }
@@ -77,7 +72,7 @@ class CodeTab {
 @Component({
     selector: 'app-code-browser',
     standalone: true,
-    imports: [CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule],
+    imports: [CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule, MatTooltipModule],
     templateUrl: './code-browser.component.html',
     styleUrl: './code-browser.component.css',
     // schemas: [CUSTOM_ELEMENTS_SCHEMA]
@@ -151,20 +146,20 @@ export class CodeBrowserComponent {
 
 
     openTabs : CodeTab[] = [
-        new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/sfLogo.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
-        // new CodeTab("Apple Apple" , 'codeEditor_-10' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Apple Apple" , 'codeEditor_-11' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg1', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Apple Apple Apple Apple" , 'codeEditor_-12' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg22', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("SomeFunnyLongComponentNameToTest" , 'codeEditor_-19' , 'Temp' , 'assets/sfLogo.png' , 'dummyOrg23', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-13' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-14' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-15' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-16' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-17' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        // new CodeTab("Temp" , 'codeEditor_-18' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
+        // new CodeTab("Apple Apple" , 'codeEditor_-10' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Apple Apple" , 'codeEditor_-11' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg1', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Apple Apple Apple Apple" , 'codeEditor_-12' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg22', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("SomeFunnyLongComponentNameToTest" , 'codeEditor_-19' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg23', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-13' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-14' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-15' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-16' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-17' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // new CodeTab("Temp" , 'codeEditor_-18' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
     ];
     defaultTabOpen : boolean = true;
-    _activeTabModelId : string = 'codeEditor_-1';
+    _activeTabModelId : string | null = 'codeEditor_-1';
     set activeTabModelId(x) {
         this._activeTabModelId = x;
         this.activeTab = this.openTabs.filter(y => y.modelId == x)[0] ?? null;
@@ -173,6 +168,9 @@ export class CodeBrowserComponent {
     }
     get activeTabModelId() {
         return this._activeTabModelId;
+    }
+    isTabActive(tab : CodeTab) {
+        return this.activeTabModelId == tab.modelId;
     }
     activeTab : CodeTab | null = null;
     pressedKeys : Set<String> = new Set<String>();
@@ -254,7 +252,7 @@ export class CodeBrowserComponent {
             // e.stopPropagation();
             // e.preventDefault();
         })
-        // this.activeTab = this.openTabs[0];
+        this.activeTab = this.openTabs[0];
         // this.openTabs[0].entityType = 'AuraComponent';
         // this.openTabs[0].tabValue = 'asdf';
         // this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
@@ -293,28 +291,8 @@ export class CodeBrowserComponent {
                 this.editorCmp.clearAllModels();
             }
             
-            // Fetching organization details
-            this.log('fetching org details');
-            let params = {
-                orgName : this.selectedOrg,
-                soqlQuery : `select Id, Name, PrimaryContact, OrganizationType, InstanceName, IsSandbox, CreatedDate, CreatedById, LastModifiedDate, LastModifiedById from Organization LIMIT 1`,
-                fetchDeleted : false,
-                toolingApi : false
-            };
-            this._ipc.callMethod('executeQuery', params).then(x =>{
-                if(x.isSuccess) {
-                    this.organizationName = x.data.records?.[0]?.Name ?? '';
-                    this.organizationType = x.data.records?.[0]?.OrganizationType ?? '';
-                } else {
-                    this.organizationName = '';
-                    this.organizationType = '';
-                }
-            }).catch(e => {
-                this.log('fetching org details - ' + JSON.stringify(e));
-                this.organizationName = '';
-                this.organizationType = '';
-            });
-
+            // // Fetching organization details
+            // this.log('fetching org details');
             this.selectedOrgInstanceUrl = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
 
             await this.fetchAllEntities(false);
@@ -487,6 +465,11 @@ export class CodeBrowserComponent {
                     duration: 2000,
                     verticalPosition : 'top'
                 });
+            } else if(!response.data['count']) {
+                this.snackBar.open('Not Found : ' + identifier, 'Close', {
+                    duration: 2000,
+                    verticalPosition : 'top'
+                });
             } else {
                 code = response.data[name];
                 let recordId = response.data.Id;
@@ -514,7 +497,7 @@ export class CodeBrowserComponent {
                     if(lang == 'javascript') {
                         icon = 'assets/js.png';
                     } else if(lang == 'apex') {
-                        icon = 'assets/sfLogo.png';
+                        icon = 'assets/cloudIcon.png';
                     } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
                         icon = 'assets/html_icon.png';
                     } else if(lang == 'css') {
@@ -527,9 +510,10 @@ export class CodeBrowserComponent {
                     codeTab.codeEntity = codeEntity;
                     this.openTabs.push(codeTab);
                     this.changeDetectorRef.detectChanges();
-                    this.activeTabModelId = modelId;
-                    this.editorCmp.switchModel(modelId);
-                    this.editorCmp.focus();
+                    // this.activeTabModelId = modelId;
+                    // this.editorCmp.switchModel(modelId);
+                    // this.editorCmp.focus();
+                    this.selectTab(codeTab);
 
                     this.log('loadEntity | loadBundleDetails ');
                     if(isBundle) this.loadBundleDetails(codeTab, false);
@@ -565,35 +549,58 @@ export class CodeBrowserComponent {
     }
 
     selectTab(tab : CodeTab) {
+        tab.hidden = false;
         this.ignoreUnfocus = true;
         this.activeTabModelId = tab.modelId;
         this.editorCmp.switchModel(tab.modelId);
-        console.log(Date.now() + ' #$#$ FOCUS DEBUG 0 ' , document.activeElement);
+        // console.log(Date.now() + ' #$#$ FOCUS DEBUG 0 ' , document.activeElement);
         this.editorCmp.focus();
         this.selectedLanguage = this.editorCmp.getModelLanguage();
         this.languageSelector.setSearchQuery(this.selectedLanguage);
-        console.log(Date.now() + ' #$#$ FOCUS DEBUG ' , document.activeElement);
+        // console.log(Date.now() + ' #$#$ FOCUS DEBUG ' , document.activeElement);
         this.ignoreUnfocus = false;
+        
+        this.fetchOrgDetails(tab);
+    }
+
+    async fetchOrgDetails(tab : CodeTab) {
+        this.log('fetchOrgDetails');
+        //fetch org details
+        let data : any = await this._ipc.callMethod('getOrganizationDetails', tab.orgName);
+        this.organizationName = data.organizationName;
+        this.organizationType = data.organizationType;
     }
 
     onTabClose(tab : CodeTab) {
         this.log('onTabClose | tab modelId CLOSE = ' + tab.modelId);
         if(!tab.temporary) this.editorCmp.clearModel(tab.modelId);
-        let switchTabModelId = null;
-        this.openTabs = this.openTabs.filter(x => x.modelId != tab.modelId);
         
         if(!tab.temporary && tab.modelId == this.activeTab?.modelId) {
-            switchTabModelId = this.openTabs[0]?.modelId ?? null;
-            this.log('onTabClose | switchTabModelId = ' + switchTabModelId)
-            this.editorCmp.switchModel(switchTabModelId);
-            this.activeTabModelId = switchTabModelId;
+            this.switchTabAfterClosingHiding(tab);
         }
+        this.openTabs = this.openTabs.filter(x => x.modelId != tab.modelId);
 
         if(this.tabForContextMenu?.modelId == tab.modelId) this.tabForContextMenu = undefined;
         if(this.compareTab?.modelId == tab.modelId) this.compareTab = undefined;
 
         this.deploymentErrors[tab.modelId] = [];
         this.editorCmp.focus();
+    }
+
+    switchTabAfterClosingHiding(closedHiddenTab : CodeTab) {
+        let index = this.openTabs.findIndex( (x:CodeTab) => closedHiddenTab.modelId == x.modelId);
+        //! ASSERT index != -1
+        let newTabIndex = null;
+        for(let i=0; i<index; i++) {
+            let iTab = this.openTabs[i];
+            if(!iTab.hidden) newTabIndex = i;
+        }
+        if(!newTabIndex) for(let i=index+1; i<this.openTabs.length; i++) {
+            let iTab = this.openTabs[i];
+            if(!iTab.hidden) {newTabIndex = i;break;}
+        }
+        if(newTabIndex) this.selectTab(this.openTabs[newTabIndex]);
+        else this.activeTabModelId = null; 
     }
 
     open() {
@@ -668,11 +675,22 @@ export class CodeBrowserComponent {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
-            if(tabIndex < this.openTabs.length-1) {
-                let tab1 = this.openTabs[tabIndex];
-                let tab2 = this.openTabs[tabIndex+1];
-                this.openTabs[tabIndex] = tab2;
-                this.openTabs[tabIndex+1] = tab1;
+            let tab = this.openTabs[tabIndex];
+            let tabIdVsIndex = this.openTabs.reduce((p:any,c:CodeTab,ci:number) => (p[c.modelId] = ci, p), {});
+            let eligibleTabs : Array<CodeTab> = this.openTabs.filter(x => !x.hidden);
+            if(tab.pinned) {
+                eligibleTabs = eligibleTabs.filter(x => x.pinned);
+                // end = this.openTabs.length - 1 - [...this.openTabs].reverse().findIndex(x => x.pinned); //last pinned tab
+            } else {
+                eligibleTabs = eligibleTabs.filter(x => !x.pinned);
+                // start = this.openTabs.findIndex(x => !x.pinned); //first tab which is not pinned
+            }
+            let tabEligibleIndex = eligibleTabs.findIndex((x:CodeTab) => x.modelId == tab.modelId);
+            if(tabEligibleIndex < eligibleTabs.length - 1) {
+                let tab1 = tab;
+                let tab2 = eligibleTabs[tabEligibleIndex+1];
+                this.openTabs[tabIdVsIndex[tab1.modelId]] = tab2;
+                this.openTabs[tabIdVsIndex[tab2.modelId]] = tab1;
             }
             this.scrollToTab(this.activeTab!);
         }
@@ -680,17 +698,26 @@ export class CodeBrowserComponent {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
-            if(tabIndex > 0) {
-                let tab1 = this.openTabs[tabIndex];
-                let tab2 = this.openTabs[tabIndex-1];
-                this.openTabs[tabIndex] = tab2;
-                this.openTabs[tabIndex-1] = tab1;
+            let tab = this.openTabs[tabIndex];
+            let tabIdVsIndex = this.openTabs.reduce((p:any,c:CodeTab,ci:number) => (p[c.modelId] = ci, p), {});
+            let eligibleTabs : Array<CodeTab> = this.openTabs.filter(x => !x.hidden);
+            if(tab.pinned) {
+                eligibleTabs = eligibleTabs.filter(x => x.pinned);
+            } else {
+                eligibleTabs = eligibleTabs.filter(x => !x.pinned);
+            }
+            let tabEligibleIndex = eligibleTabs.findIndex((x:CodeTab) => x.modelId == tab.modelId);
+            if(tabEligibleIndex > 0) {
+                let tab1 = tab;
+                let tab2 = eligibleTabs[tabEligibleIndex-1];
+                this.openTabs[tabIdVsIndex[tab1.modelId]] = tab2;
+                this.openTabs[tabIdVsIndex[tab2.modelId]] = tab1;
             }
             this.scrollToTab(this.activeTab!);
         }
         else if(evt.ctrlKey && evt.key.toLowerCase() == 'o') {
-            evt.preventDefault();
             this.orgSelect.nativeElement.click();
+            evt.preventDefault();
         }
         else if(evt.ctrlKey && evt.key.toLowerCase() == 'p') {
             evt.preventDefault();
@@ -709,6 +736,11 @@ export class CodeBrowserComponent {
             evt.stopPropagation();
             evt.preventDefault();
             this.toggleSidePanel(null);
+        }
+        else if(evt.altKey && evt.key.toLowerCase() == 'z') {
+            evt.stopPropagation();
+            evt.preventDefault();
+            this.toggleWordWrap();
         }
     }
 
@@ -758,7 +790,7 @@ export class CodeBrowserComponent {
 
         event.preventDefault(); 
         if(tab.temporary) return;
-        if(tab.editorType == AppConstants.DIFF_EDITOR) return;
+        // if(tab.editorType == AppConstants.DIFF_EDITOR) return;
 
         this.tabForContextMenu = tab;
         this.showTabRightClickMenu = true;
@@ -799,24 +831,29 @@ export class CodeBrowserComponent {
         let diffModelId = this.editorCmp.createDiffEditorModel(tab1.modelId!, tab2.modelId!);
 
         //create diff tab
-        this.openTabs.push(new CodeTab(diffTabName, diffModelId, diffTabName, 'assets/log icon.png', diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType));
+        let tab = new CodeTab(diffTabName, diffModelId, diffTabName, 'assets/log icon.png', diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
+        this.openTabs.push(tab);
 
+        this.selectTab(tab);
         //set diff model
-        this.editorCmp.switchModel(diffModelId);
+        // this.editorCmp.switchModel(diffModelId);
 
         //set diff tab
-        this.activeTabModelId = diffModelId;
+        // this.activeTabModelId = diffModelId;
     }
 
     getDiffTabValueString(tab1 : CodeTab, tab2 : CodeTab) {
+        if(tab1.tabName == tab2.tabName) return `Diff : ${tab1.tabName}`;
         return `Diff : ${tab1?.tabName} <> ${tab2?.tabName}`;
     }
 
     getDiffOrgNameString(tab1 : CodeTab, tab2 : CodeTab) {
+        if(tab1.orgName == tab2.orgName) return `${tab1.orgName}`;
         return `${tab1.orgName} <> ${tab2.orgName}`;
     }
-
+    
     getDiffEntityType(tab1 : CodeTab, tab2 : CodeTab) {
+        if(tab1.entityType == tab2.entityType) return `${tab1.entityType}`;
         return `${tab1.entityType} <> ${tab2.entityType}`;
     }
 
@@ -847,15 +884,18 @@ export class CodeBrowserComponent {
     }
 
     tabContainerScroll(e : any) {
-        if (e.deltaY > 0) {
-            this.tabContainer.nativeElement.scrollLeft += 100;
-            e.preventDefault();
-
-        }
-        else {
-            this.tabContainer.nativeElement.scrollLeft -= 100;
-            e.preventDefault();
-        }
+        // console.log(e.deltaY);
+        let delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+        this.tabContainer.nativeElement.scrollLeft += delta*0.5;
+        e.preventDefault();
+        // if (delta > 0) {
+        //     this.tabContainer.nativeElement.scrollLeft += delta*0.1;
+        //     e.preventDefault();
+        // }
+        // else {
+        //     this.tabContainer.nativeElement.scrollLeft -= delta*0.1;
+        //     e.preventDefault();
+        // }
     }
 
     onLanguageSelect(language : SelectOption) {
@@ -1070,7 +1110,7 @@ export class CodeBrowserComponent {
                         let entityToLoad = '';
                         
                         if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
-                            this.entityTypeVsList[entity.value].push(new NormalizedCodeEntity('', name, null, null, sfApiVersion, null));
+                            this.entityTypeVsList[entity.value].push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null));
                             entityToLoad = entity.value;
 
                         } else if(entity.value == CodeEntity.AuraComponent) {
@@ -1162,26 +1202,28 @@ export class CodeBrowserComponent {
     }
 
     dummyButton() {
-        let id = this.entityList[0].value;
+        let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        let id = entity1.value;
         let codeEntity = this.entityIdVsObjectMap[id];
         this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
         
-        id = this.entityList[1].value;
+        id = entity2.value;
         codeEntity = this.entityIdVsObjectMap[id];
         this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
 
-        this.openTabs = [
-            new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/sfLogo.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
-            new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Apple Apple Apple Apple" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-            new CodeTab("Temp" , '' , 'Temp' , 'assets/sfLogo.png' , '', AppConstants.CODE_EDITOR, '', '', true),
-        ]
+        // this.openTabs = [
+        //     new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
+        //     new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Apple Apple" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Apple Apple Apple Apple" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        //     new CodeTab("Temp" , '' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
+        // ]
     }
 
     clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
@@ -1192,7 +1234,10 @@ export class CodeBrowserComponent {
     }
 
     scrollToTab(tab : CodeTab) {
-        document.querySelector(`div.tab[data-tab-modelid=${tab.modelId}]`)?.scrollIntoView({block:"nearest", behavior:'smooth', inline:"nearest"});
+        setTimeout(() => {
+            document.querySelector(`div.tab[data-tab-modelid=${tab.modelId}]`)?.scrollIntoView({block:"nearest", behavior:'smooth', inline:"nearest"});
+        }, 20);
+        
     }
 
     clickEmptySpace(event : Event) {
@@ -1278,6 +1323,40 @@ export class CodeBrowserComponent {
 
     changeFontSize(increment : boolean) {
         this.editorCmp.changeFontSize(increment);
+    }
+
+    hideShowTab() {
+        let tab = this.tabForContextMenu;
+        if(tab){ 
+            tab.hidden = !tab.hidden;
+            if(!tab.temporary && tab.hidden && tab.modelId == this.activeTab?.modelId) {
+                this.switchTabAfterClosingHiding(tab);
+            }
+            if(!tab.hidden) {
+                this.selectTab(tab);
+            }
+        }
+    }
+    pinUnpinTab(event : Event | null, tab? : CodeTab) {
+        if(!tab) tab = this.tabForContextMenu;
+        if(tab){ 
+            if(event && tab.pinned) event.stopPropagation();
+            tab.pinned = !tab.pinned;
+            //move to the first
+            let index = this.openTabs.findIndex((t:CodeTab) => t.modelId == tab.modelId);
+            this.openTabs.splice(index,1);
+            let indexToInsert = this.openTabs.findIndex((t:CodeTab) => !t.pinned);
+            this.openTabs = [
+                ...this.openTabs.slice(0, indexToInsert),
+                tab,
+                ...this.openTabs.slice(indexToInsert)
+            ]
+            if(tab.pinned && this.isTabActive(tab)) this.scrollToTab(tab);
+        }
+    }
+
+    openAsPopup() {
+        window.open('/', '', 'popup');
     }
     
     log(...str: any) {

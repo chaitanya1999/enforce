@@ -238,11 +238,12 @@ div.auraAppPreview:hover {
 }
 
 div.editorTab {
+    border: 1px dashed transparent;
     flex-grow: 1;
     width: 100%;
     padding: 5px;
-    padding-top: 7px;
-    padding-bottom: 7px;
+    padding-top: 5px;
+    padding-bottom: 5px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -255,35 +256,80 @@ div.editorTab.editorTabactive {
 div.editorTab:hover {
     background-color: rgb(77, 77, 77);
 }
+div.editorTab.tabHidden{
+    border: 1px dashed gray;
+    box-sizing: border-box;
+}
 div.editorTab-name{
     /* display: flex;
     align-items: center; */
     /* line-height: 1; */
     height: 100%;
     align-self: center;
+    padding-left: 2px;
+    /* max-width: 50%; */
+    flex-grow: 1;
     text-overflow: ellipsis; flex-shrink:1; overflow: hidden;white-space: nowrap;
 }
 div.editorTab-orgName{
     height: 100%;
+    max-width: 30%;
+    text-overflow: ellipsis;
     align-self: center;
     /* display: flex;
     align-items: center; */
     justify-self:flex-end;
     /* line-height: 1; */
+    overflow: hidden;
+    white-space: nowrap;
     font-size: 0.7em; margin-left: 6px;margin-right: 4px;flex-shrink:0;flex-grow:1;text-align:right;
 }
 
+div.editorTab span.close-icon i{
+    margin:auto;
+}
 div.editorTab span.close-icon{
-    height:100%;
+    /* height:100%; */
+    /* font-size: 2em;
+    line-height: 1;
+    margin-left:2px; */
+    height: 24px;
+    width: 24px;
     font-size: 2em;
-    margin-left:2px;
-    margin-right:2px;
     color:gray;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 div.editorTab span.close-icon:hover{
     color:white;
     background-color: rgb(35, 35, 35);
     border-radius: 20px;
+}
+div.editorTab span.pin-icon i{
+    margin: auto;
+}
+div.editorTab span.pin-icon{
+    /* height:100%;
+    padding-top:0.15em;
+    padding-bottom:0.15em;
+    margin-right:0.15em;
+    font-size: 1.7em;
+    line-height: 1;
+    margin-left:2px;
+    color:gray; */
+    height: 24px;
+    width: 24px;
+    font-size: 2em;
+    color:gray;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+div.editorTab span.pin-icon:hover{
+    color:white;
+    background-color: rgb(35, 35, 35);
+    border-radius: 8px;
 }
 
 div.root {
@@ -337,6 +383,7 @@ div.topBar {
     margin-top: 5px;
     margin-bottom: 5px;
     user-select: none;
+    height:30px;
     /* margin-right: 5px; */
 }
 
@@ -351,6 +398,22 @@ div.topBar {
 .topBar button.btn.topBarItem i {
     font-size: 1.2em;
 }
+
+.topBarItem.connectedButton-left {
+    border-top-right-radius:0px;border-bottom-right-radius:0px;
+}
+.topBarItem.connectedButton-right {
+    border-top-left-radius:0px;border-bottom-left-radius:0px;
+    margin-left:1px;
+}
+.topBarItem.connectedButton-mid {
+    margin-left:1px; border-radius:0px;
+}
+
+button.wrapActive {
+    background-color: darkblue;
+}
+
 
 .ng-autocomplete {
     width: 500px;
@@ -501,6 +564,23 @@ span.tabCross {
 }
 
 span.tabCross:hover {
+    background-color: rgba(209, 209, 209, 0.2);
+    border-radius: 5px;
+}
+span.tabPin{
+    height: 20px;
+    width: 20px;
+}
+span.tabPin i{
+    /* margin: auto; */
+    height: 100%;
+    display: flex;
+    line-height: 1;
+    justify-content: center;
+    align-items: center;
+}
+
+span.tabPin:hover {
     background-color: rgba(209, 209, 209, 0.2);
     border-radius: 5px;
 }

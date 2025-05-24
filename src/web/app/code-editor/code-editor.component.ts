@@ -408,31 +408,39 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
         // let theme = 'vs-dark';
 
-        this.codeEditorInstance = monaco.editor.create(this._editorContainer!.nativeElement, {
-            value: this.code,
-            language: 'java',
-            // theme: 'vs-dark',
-            automaticLayout: true,
-            // wordWrap: 'on'
-            // glyphMargin: true
-            theme: theme,
-            fontSize: this.fontSize,
+        this.zone.runOutsideAngular(() => {
+            let codeEditorInstance = monaco.editor.create(this._editorContainer!.nativeElement, {
+                value: this.code,
+                language: 'java',
+                // theme: 'vs-dark',
+                automaticLayout: true,
+                // wordWrap: 'on'
+                // glyphMargin: true
+                theme: theme,
+                fontSize: this.fontSize,
+            });
+    
+            let diffEditorInstance = monaco.editor.createDiffEditor(
+                this._diffContainer!.nativeElement,
+                {
+                    theme: theme,
+                    hideUnchangedRegions: {
+                        enabled: false
+                    },
+                    glyphMargin: true,
+                    ignoreTrimWhitespace: false,
+                    originalEditable: true,
+                    automaticLayout: true,
+                    fontSize: this.fontSize,
+                }
+            );
+
+            this.zone.run(() => {
+                this.codeEditorInstance = codeEditorInstance;
+                this.diffEditorInstance = diffEditorInstance;
+            })
         });
 
-        this.diffEditorInstance = monaco.editor.createDiffEditor(
-            this._diffContainer!.nativeElement,
-            {
-                theme: theme,
-                hideUnchangedRegions: {
-                    enabled: false
-                },
-                glyphMargin: true,
-                ignoreTrimWhitespace: false,
-                originalEditable: true,
-                automaticLayout: true,
-                fontSize: this.fontSize,
-            }
-        );
 
         // To support two-way binding of the code
         this.codeEditorInstance!.getModel()!.onDidChangeContent(e => {
