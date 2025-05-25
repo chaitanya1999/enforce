@@ -13,6 +13,9 @@ interface SelectOption {
     label: string,
     value: string,
     value1? : string;
+    value2? : string;
+    org1? : string;
+    org2? : string;
     focused? : boolean;
 }
 

@@ -234,6 +234,7 @@ div.logo {
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: #0d6efd;
     /* padding: 4px; */
 }
 
@@ -268,7 +269,7 @@ div.logo span {
     border-top-left-radius: 8px; */
 }
 
-div.logo span:hover{
+div.logo:hover{
     background-color: blue;
 }
 

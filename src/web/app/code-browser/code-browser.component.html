@@ -61,16 +61,28 @@
         <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
     </div>
     <div class="root" #rootElement>
-        <div class="topBar" (click)="clickEmptySpace($event)" data-emptyspace="true">
+        <div [class]="'topBar ' + (quickDiffModeFlag ? 'quickDiff' : '')" (click)="clickEmptySpace($event)" data-emptyspace="true">
             <!-- SF Org dropdown -->
-            <select class="form-select topBarItem connectedButton-left" aria-label="Salesforce Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 4;" #orgselect
+            <select class="form-select topBarItem connectedButton-left" aria-label="SF Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 4;" #orgselect
                 [ngModel]="selectedOrg"
-                (ngModelChange)="onOrgSelect($event)">
+                (ngModelChange)="onOrgSelect($event, 'selectedOrg')">
                 <option>--Org--</option>
                 @for (orgCred of orgCredsList; track orgCred) {
                     <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
                 }
             </select>
+
+            <!-- SF Org 2 dropdown  : DIFF Mode -->
+            @if(this.quickDiffModeFlag) {
+                <select class="form-select topBarItem connectedButton-mid" aria-label="SF Org 2" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 4;" #orgselect2
+                    [ngModel]="selectedOrg2"
+                    (ngModelChange)="onOrgSelect($event, 'selectedOrg2')">
+                    <option>--Org 2--</option>
+                    @for (orgCred of orgCredsList; track orgCred) {
+                        <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
+                    }
+                </select>
+            }
     
             <!-- Authenticate button -->
             <!-- <button class="btn btn-primary topBarItem" (click)="authenticate()">Authenticate</button> -->
@@ -95,11 +107,11 @@
             <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedList()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
     
             <!-- Save button -->
-            <button class="btn btn-success topBarItem connectedButton-left" (click)="handleSave()" matTooltip="Save" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-floppy"></i></button>
+            <button class="btn btn-success topBarItem connectedButton-left" (click)="handleSave()" matTooltip="Save" matTooltipPosition="below" [disabled]="!isOrgSelected || quickDiffModeFlag"><i class="bi bi-floppy"></i></button>
     
             <!-- Create new button -->
             <div class="btn-group">
-                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-right" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected"  matTooltip="Create New" matTooltipPosition="below" >
+                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-right" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected || quickDiffModeFlag"  matTooltip="Create New" matTooltipPosition="below" >
                     <i class="bi bi-plus-circle"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
@@ -118,7 +130,8 @@
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-left" style="flex-shrink:0;" (click)="prevDiff()" matTooltipPosition="below" matTooltip="Previous Diff"><i class="bi bi-arrow-up"></i></button>
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="nextDiff()" matTooltipPosition="below" matTooltip="Next Diff"><i class="bi bi-arrow-down"></i></button>
                 <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="swapDiff()" matTooltipPosition="below" matTooltip="Swap Diff"><i class="bi bi-arrow-left-right"></i></button>
-                <button [disabled]="activeTab?.editorType != $diffEditor" class="btn btn-light topBarItem connectedButton-right" style="flex-shrink:0;" (click)="toggleSpaceDiff()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" [class]="'btn btn-light topBarItem connectedButton-mid ' + (!sideBySideDiff ? 'active' : '')" style="flex-shrink:0;" (click)="toggleInlineDiff()" matTooltipPosition="below" matTooltip="Toggle Inline/Side by side Diff"><i class="bi bi-layout-split"></i></button>
+                <button [disabled]="activeTab?.editorType != $diffEditor" [class]="'btn btn-light topBarItem connectedButton-right ' + (!whitespaceDifferences ? 'active' : '')" style="flex-shrink:0;" (click)="toggleSpaceDiff()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button>
             }
 
             <!-- Font size buttons -->
@@ -130,10 +143,13 @@
             <!-- Open in popup window -->
             <button class="btn btn-primary topBarItem" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Open in popup window"><i class="bi bi-window-stack"></i></button>
             
+            <!-- Quick Diff Mode -->
+            <button [class]="'btn btn-primary topBarItem ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
+            
             <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
     
         </div>
-        <div class="tabContainer" (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
+        <div [class]="'tabContainer ' + (quickDiffModeFlag ? 'quickDiff' : '') " (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
             @for(tab of openTabs; track tab) {
                 @if(!tab.hidden) {
                     <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"

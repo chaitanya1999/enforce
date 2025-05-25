@@ -204,14 +204,16 @@ export class NormalizedCodeEntity {
     BundleName: string | null;
     ApiVersion: string;
     NamespacePrefix: string | null;
+    OrgName : string;
 
-    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string,NamespacePrefix: string | null) {
+    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string,NamespacePrefix: string | null, OrgName : string) {
         this.Id = Id;
         this.Name = Name;
         this.BundleId = BundleId;
         this.BundleName = BundleName;
         this.ApiVersion = ApiVersion;
         this.NamespacePrefix = NamespacePrefix;
+        this.OrgName = OrgName;
     }
 }
 

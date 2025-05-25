@@ -428,7 +428,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                         enabled: false
                     },
                     glyphMargin: true,
-                    ignoreTrimWhitespace: false,
+                    ignoreTrimWhitespace: true,
                     originalEditable: true,
                     automaticLayout: true,
                     fontSize: this.fontSize,
@@ -543,6 +543,13 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         if(increment) this.fontSize ++;
         else this.fontSize --;
         this.codeEditorInstance?.updateOptions({fontSize: this.fontSize});
+        this.diffEditorInstance?.updateOptions({fontSize: this.fontSize});
+    }
+
+    @Output() toggleInlineDiff(value : boolean) {
+        this.diffEditorInstance?.updateOptions({
+            renderSideBySide : value
+        })
     }
 
     log(...str: any) {

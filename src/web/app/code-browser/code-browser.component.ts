@@ -93,12 +93,17 @@ export class CodeBrowserComponent {
     }
 
     selectedOrg: string = '--Org--';
+    selectedOrg2: string = '--Org 2--';
     selectedOrgInstanceUrl : string = '';
     selectedEntityType: string = '--Type--';
     showSpinner : boolean = false;
 
     get isOrgSelected() {
         return this.selectedOrg && this.selectedOrg != '--Org--';
+    }
+
+    get isOrg2Selected() {
+        return this.selectedOrg && this.selectedOrg != '--Org 2--';
     }
 
     @Input() orgCredsList: OrgCredential[] = [
@@ -118,6 +123,7 @@ export class CodeBrowserComponent {
         AuraComponent: [],
         LWC: []
     }
+    entityTypeVsList2: {[key: string] : Array<NormalizedCodeEntity>} = {}
 
     entityList: any = []
     entityIdVsObjectMap : {[key: string] : NormalizedCodeEntity} = {};
@@ -216,10 +222,12 @@ export class CodeBrowserComponent {
     }
 
     wordWrap : boolean = false;
-    whitespaceDifferences : boolean = true;
+    whitespaceDifferences : boolean = false;
     cursorPosition : any = {lineNumber : 0 , column : 0};
     organizationName : string = '';
     organizationType : string = '';
+
+    quickDiffModeFlag : boolean = false;
 
     get activeEntityTypeLabel() {
         return AppConstants.entityTypeVsName_singular[this.activeTab!.entityType];
@@ -277,12 +285,12 @@ export class CodeBrowserComponent {
         this.showSpinner = false;
     }
 
-    async onOrgSelect(value: any) {
+    async onOrgSelect(value: any, orgProperty : string) {
         try {
             this.log('onOrgSelect | value = ' , value);
-            this.selectedOrg = value;
-            this.log('onOrgSelect | selectedOrg = ' + this.selectedOrg);
-            if(this.selectedOrg == '--Org--' || !this.selectedOrg) 
+            (<any>this)[orgProperty] = value;
+            this.log(`onOrgSelect | ${orgProperty} = ` + value);
+            if(value == '--Org--' || !value || value == '--Org 2--') 
                 return;
 
             if(this.defaultTabOpen) {
@@ -291,42 +299,52 @@ export class CodeBrowserComponent {
                 this.editorCmp.clearAllModels();
             }
             
-            // // Fetching organization details
-            // this.log('fetching org details');
-            this.selectedOrgInstanceUrl = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
+            if(this.quickDiffModeFlag) {
+                if(this.selectedOrg == this.selectedOrg2 && this.isOrgSelected && this.isOrg2Selected) {
+                    this.snackBar.open('Both orgs cannot be same in Quick Diff Mode', 'Close', {
+                        duration: 2000,
+                        verticalPosition : 'top'
+                    });
+                    return ;
+                }
+                this.selectedOrgInstanceUrl = '';
+            }
+            else 
+                this.selectedOrgInstanceUrl = await this._ipc.callMethod('getOrgLoginUrl', value);
 
-            await this.fetchAllEntities(false);
+            await this.fetchAllEntities(false, orgProperty);
 
         } catch(err) {
-            this.log('onOrgSelect ERROR => ' + JSON.stringify(err));
+            this.log('onOrgSelect ERROR => ' , (err));
         }
     }
 
-    async fetchAllEntities(ignoreCache : boolean){
-        this.showSpinner = true;
-        // this.selectedEntity = '';
-        // this.selectedEntityType = '';
-        this.entityList = [];
-        this.entityTypeVsList = {
-            ApexClass: [],
-            AuraComponent: [],
-            LWC: []
-        };
+    async fetchAllEntities(ignoreCache : boolean, orgProperty? : string){
+        //? orgProperty = selectedOrg1 / selectedOrg2 based on user selectoin
+        //? orgProperty = undefined === selectedOrg1
 
-        this.snackBar.open('Loading all class components list', 'Close', {
+        if(!orgProperty) orgProperty = 'selectedOrg';
+        let orgToFetchFrom = (<any>this)[orgProperty];
+
+        this.log('fetchAllEntities');
+        this.showSpinner = true;
+        
+        this.entityList = [];
+        let entityTypeVsList : any = {};
+
+        this.snackBar.open('Loading all classes and components list', 'Close', {
             duration: 2000,
             verticalPosition : 'top'
         });
 
         let response: EnForceResponse[] = <EnForceResponse[]>(await this._ipc.callMethod('FetchClassCmpList', {
-            orgName: this.selectedOrg,
+            orgName: orgToFetchFrom,
             toFetchList: this.entityTypeList.map((x) => x.value),
             ignoreCache: ignoreCache
         }));
-        this.log('onOrgSelect | response = ', response);
+        this.log('fetchAllEntities | response = ', response);
 
         let success = true;
-        let error = '';
         for (let resp of response) {
             if(!resp.isSuccess) {
                 success = false;
@@ -335,15 +353,21 @@ export class CodeBrowserComponent {
                     verticalPosition : 'top'
                 });
             } else {
-                this.entityTypeVsList[resp.data.type] = resp.data.list || [];
+                entityTypeVsList[resp.data.type] = resp.data.list || [];
             }
         }
 
-        this.log('onOrgSelect | this.entityTypeVsList = ', this.entityTypeVsList);
+        if(orgProperty == 'selectedOrg') {
+            this.entityTypeVsList = entityTypeVsList;
+            this.log('fetchAllEntities | this.entityTypeVsList = ', this.entityTypeVsList);
+        } else {
+            this.entityTypeVsList2 = entityTypeVsList;
+            this.log('fetchAllEntities | this.entityTypeVsList2 = ', this.entityTypeVsList2);
+        }
 
         if(success) {
             this.onEntityTypeSelect(this.selectedEntityType);
-            this.snackBar.open('List fetched succesfully', 'Close', {
+            this.snackBar.open('List loaded succesfully', 'Close', {
                 duration: 2000, // Set the duration in milliseconds
                 verticalPosition : 'top'
             });
@@ -352,31 +376,53 @@ export class CodeBrowserComponent {
     }
 
     async onEntityTypeSelect(value: any) {
-        let clearSearch = value != this.selectedEntityType;
+        let clearSearch = value != this.selectedEntityType; //clear if entity type selection is changed
         this.selectedEntityType = value;
 
         if(value == '--Type--') return;
         
         this.log('onEntityTypeSelect | ' + value);
-        let i=0;
         this.setEntityList();
         if(clearSearch)
             this.typeahead.clearSearchQuery();
-        this.log('onOrgSelect | this.entityList = ', this.entityList);
+        this.log('onEntityTypeSelect | this.entityList = ', this.entityList);
     }
 
     setEntityList() {
+        let org1 = this.selectedOrg , org2 = null;
+        let selEntityType = this.selectedEntityType;
+        if(this.quickDiffModeFlag && this.isOrg2Selected) org2 = this.selectedOrg2;
+
         this.entityIdVsObjectMap = {};
-        (this.entityTypeVsList[this.selectedEntityType] || []).forEach((codeEntity: NormalizedCodeEntity) => {
-            this.entityIdVsObjectMap[codeEntity.Id] = codeEntity;
-        });
-        this.entityList = (this.entityTypeVsList[this.selectedEntityType] || []).map( (codeEntity:NormalizedCodeEntity) => {
+        let entityLabelMap : any = {}; //for unique items in quick diff mode
+
+        //selected org 1 handling
+        this.entityTypeVsList[selEntityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
+            this.entityIdVsObjectMap[org1 + ':' + codeEntity.Id] = codeEntity;
             let x = codeEntity.Name;
-            if(this.selectedEntityType == CodeEntity.LWC)
-                return { label : x.substring(4), value : codeEntity.Id }
-            else 
-                return { label : x, value : codeEntity.Id }
+            if(selEntityType == CodeEntity.LWC)
+                x = x.substring(4);
+            entityLabelMap[x] = { label : x, value : codeEntity.Id, value2 : null, org1 : org1, org2 : org2 };
         });
+
+        if(org2) {
+            this.entityTypeVsList2[selEntityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
+                this.entityIdVsObjectMap[org2 + ':' + codeEntity.Id] = codeEntity;
+                let x = codeEntity.Name;
+                if(selEntityType == CodeEntity.LWC)
+                    x = x.substring(4);
+
+                let entityOption = entityLabelMap[x] || {};
+                entityOption = {
+                    ...entityOption,
+                    label : x, value2 : codeEntity.Id, org1 : org1, org2 : org2   
+                }
+                entityLabelMap[x] = entityOption;
+            });
+        }
+
+        this.entityList = Object.values(entityLabelMap);
+
     }
 
     onFocused(evt: any) {
@@ -385,154 +431,201 @@ export class CodeBrowserComponent {
     onEntitySelect(selectOption: SelectOption) {
         this.log('onEntitySelect');
         let id = selectOption.value;
-        let codeEntity = this.entityIdVsObjectMap[id];
-        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
-    }
+        let id2 = selectOption.value2;
+        let org = this.selectedOrg;
+        let org2 = this.selectedOrg2;
+        let codeEntity = this.entityIdVsObjectMap[org + ':' + id];
+        let codeEntity2 = this.entityIdVsObjectMap[org2 + ':' + id2];
 
-    async loadEntity(identifier: string, tabToReload: CodeTab | null, entityType: string, org: string, codeEntity?: NormalizedCodeEntity) {
-        this.showSpinner = true;
-
-        this.log('loadEntity | ' , identifier);
-
-        // this.code = '';
-        let params : any = {};
-        let name = identifier;
-        let lang = 'java';
-        let icon = 'assets/log icon.png';
-        let code = '';
-        
-        //check if tab already open , then switch to the tab
-        let existingTab = this.openTabs.filter(x => x.tabValue == name && x.orgName == org && x.entityType == entityType);
-        if(!tabToReload && existingTab.length) {
-
-            this.activeTabModelId = existingTab[0].modelId;
-            this.editorCmp.switchModel(this.activeTabModelId);
-
-        } else {
-            let bundleName = '';
-            if(entityType == CodeEntity.AuraComponent) {
-                
-            }
-            if(entityType == CodeEntity.LWC) {
-                bundleName = name.substring(name.indexOf('lwc/') + 4)
-                bundleName = bundleName.substring(0, bundleName.lastIndexOf('/'));
-            }
-
-            if(entityType == CodeEntity.ApexClass) {
-                params[CodeEntity.ApexClass] = {
-                    names : [name]
-                }
-                lang = 'apex';
-            } else if(entityType == CodeEntity.AuraComponent) {
-                let componentName = name , defType = 'COMPONENT';
-                bundleName = name.substring(0,name.indexOf('/'));
-                for(let suffix in AppConstants.aura_suffixVsDefTypes) {
-                    if(name.endsWith(suffix)) {
-                        defType = AppConstants.aura_suffixVsDefTypes[suffix];
-                        componentName = name.substring(0 , name.lastIndexOf(suffix));
+        if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+            if(codeEntity && codeEntity2) {
+                this.showSpinner = true;
+                Promise.all(
+                    [this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity, true, false, true, true, true),
+                    this.loadEntity(codeEntity2.Name, null, this.selectedEntityType, org2, codeEntity2, true, false, true, true, true)]
+                ).then((result) => {
+                    let tab1 = result[0] , tab2 = result[1];
+                    if(tab1 && tab2) {
+                        if(!tab1.hidden) this.hideShowTab(tab1);
+                        if(!tab2.hidden) this.hideShowTab(tab2);
+                        this.createDiffTab(tab1, tab2);
+                    } else {
+                        if(tab1 && tab1.hidden) this.hideShowTab(tab1); 
+                        if(tab2 && tab2.hidden) this.hideShowTab(tab2);
                     }
-                }
-                params[CodeEntity.AuraComponent] = {
-                    names : [bundleName],
-                    defTypes : [defType]
-                }
-                lang = AppConstants.defTypeVsLanguage[defType];
-            } else if(entityType == CodeEntity.LWC) {
-                params[CodeEntity.LWC] = {
-                    fileNames : [name]
-                }
-                if(name.endsWith('js')) lang = 'javascript';
-                else if(name.endsWith('html')) lang = 'html';
-                else if(name.endsWith('css')) lang = 'css';
-                else if(name.endsWith('xml')) lang = 'xml';
-
-            } else if(entityType == CodeEntity.VFPage || entityType == CodeEntity.VFComponent) {
-                params[entityType] = {
-                    names : [name]
-                }
-                lang = 'xml';
-            } 
-    
-            params['OrgNames'] = [org];
-            params['CREDENTIALS'] = {
-                [org] : this.orgCredsMap.get(org)
-            }
-            
-            let response = <EnForceResponse>(await this._ipc.callMethod('FetchCode', params));
-    
-            if(!response.isSuccess) {
-                this.snackBar.open('ERROR : ' + response.errors[0].message, 'Close', {
-                    duration: 2000,
-                    verticalPosition : 'top'
-                });
-            } else if(!response.data['count']) {
-                this.snackBar.open('Not Found : ' + identifier, 'Close', {
-                    duration: 2000,
-                    verticalPosition : 'top'
+                    this.showSpinner = false;
+                }).catch((err) => {
+                    this.showSpinner = false;
                 });
             } else {
-                code = response.data[name];
-                let recordId = response.data.Id;
-    
-                if(!tabToReload) {
-                    let modelId = this.editorCmp.createCodeEditorModel(code, lang);
-
-                    //decide tab name
-                    let tabName = name , isBundle = false;
-                    if(entityType == CodeEntity.LWC || entityType == CodeEntity.AuraComponent) {
-                        tabName = tabName.substring(tabName.lastIndexOf('/') + 1);
-                        isBundle = true;
-                    }
-                    if(entityType == CodeEntity.ApexClass) {
-                        tabName += '.cls';
-                    }
-                    if(entityType == CodeEntity.VFPage) {
-                        tabName += '.page';
-                    }
-                    if(entityType == CodeEntity.VFComponent) {
-                        tabName += '.component';
-                    }
-
-                    //decide icon
-                    if(lang == 'javascript') {
-                        icon = 'assets/js.png';
-                    } else if(lang == 'apex') {
-                        icon = 'assets/cloudIcon.png';
-                    } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
-                        icon = 'assets/html_icon.png';
-                    } else if(lang == 'css') {
-                        icon = 'assets/cssIcon_2.png';
-                    }
-
-                    //create tab
-                    let codeTab = new CodeTab(tabName , modelId , name , icon , org, AppConstants.CODE_EDITOR, entityType, recordId);
-                    codeTab.bundleName = bundleName;
-                    codeTab.codeEntity = codeEntity;
-                    this.openTabs.push(codeTab);
-                    this.changeDetectorRef.detectChanges();
-                    // this.activeTabModelId = modelId;
-                    // this.editorCmp.switchModel(modelId);
-                    // this.editorCmp.focus();
-                    this.selectTab(codeTab);
-
-                    this.log('loadEntity | loadBundleDetails ');
-                    if(isBundle) this.loadBundleDetails(codeTab, false);
-
-                } else {
-                    this.editorCmp.setContent(code, tabToReload.modelId);
-                    this.snackBar.open('Reloaded ' + tabToReload.tabName, 'Close', {
+                if(!codeEntity) {
+                    this.snackBar.open(`Not Found on Org : ${org} ` + selectOption.label, 'Close', {
                         duration: 2000,
                         verticalPosition : 'top'
                     });
                 }
-
-                this.selectedLanguage = this.editorCmp.getModelLanguage();
-                this.languageSelector.setSearchQuery(this.selectedLanguage);
-
+                if(!codeEntity2) {
+                    this.snackBar.open(`Not Found on Org : ${org2} ` + selectOption.label, 'Close', {
+                        duration: 2000,
+                        verticalPosition : 'top'
+                    });
+                }
+                this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity);
             }
-        }       
+        } else {
+            this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity);
+        }
+    }
 
-        this.showSpinner = false;
+    async loadEntity(identifier: string, tabToReload: CodeTab | null, entityType: string, org: string, codeEntity: NormalizedCodeEntity, openInBackground? : boolean, openHidden? : boolean, forceReloadIfExists? : boolean, ignoreSpinner?: boolean, showSuccessToast? : boolean) {
+        if(!ignoreSpinner) this.showSpinner = true;
+
+        this.log('loadEntity | ' , identifier);
+
+        try {
+             // this.code = '';
+            let params : any = {};
+            let name = codeEntity.Name;
+            let lang = 'java';
+            let icon = 'assets/log icon.png';
+            let code = '';
+            
+            //check if tab already open , then switch to the tab
+            let existingTab = this.openTabs.filter(x => x.tabValue == name && x.orgName == org && x.entityType == entityType);
+            if(existingTab.length && forceReloadIfExists) tabToReload = existingTab[0];
+
+            if(!tabToReload && existingTab.length) {
+
+                this.activeTabModelId = existingTab[0].modelId;
+                this.editorCmp.switchModel(this.activeTabModelId);
+                return existingTab[0];
+
+            } else {
+                let bundleName = codeEntity.BundleName!;
+
+                if(entityType == CodeEntity.ApexClass) {
+                    params[CodeEntity.ApexClass] = {
+                        names : [name]
+                    }
+                    lang = 'apex';
+                } else if(entityType == CodeEntity.AuraComponent) {
+                    let componentName = name , defType = 'COMPONENT';
+                    for(let suffix in AppConstants.aura_suffixVsDefTypes) {
+                        if(name.endsWith(suffix)) {
+                            defType = AppConstants.aura_suffixVsDefTypes[suffix];
+                            componentName = name.substring(0 , name.lastIndexOf(suffix));
+                        }
+                    }
+                    params[CodeEntity.AuraComponent] = {
+                        names : [bundleName],
+                        defTypes : [defType]
+                    }
+                    lang = AppConstants.defTypeVsLanguage[defType];
+                } else if(entityType == CodeEntity.LWC) {
+                    params[CodeEntity.LWC] = {
+                        fileNames : [name]
+                    }
+                    if(name.endsWith('js')) lang = 'javascript';
+                    else if(name.endsWith('html')) lang = 'html';
+                    else if(name.endsWith('css')) lang = 'css';
+                    else if(name.endsWith('xml')) lang = 'xml';
+
+                } else if(entityType == CodeEntity.VFPage || entityType == CodeEntity.VFComponent) {
+                    params[entityType] = {
+                        names : [name]
+                    }
+                    lang = 'xml';
+                } 
+        
+                params['OrgNames'] = [org];
+                params['CREDENTIALS'] = {
+                    [org] : this.orgCredsMap.get(org)
+                }
+                
+                let response = <EnForceResponse>(await this._ipc.callMethod('FetchCode', params));
+        
+                if(!response.isSuccess) {
+                    this.snackBar.open('ERROR : ' + response.errors[0].message, 'Close', {
+                        duration: 2000,
+                        verticalPosition : 'top'
+                    });
+                } else if(!response.data['count']) {
+                    this.snackBar.open('Not Found : ' + name, 'Close', {
+                        duration: 2000,
+                        verticalPosition : 'top'
+                    });
+                } else {
+                    code = response.data[name];
+                    let recordId = response.data.Id;
+        
+                    if(!tabToReload) {
+                        let modelId = this.editorCmp.createCodeEditorModel(code, lang);
+
+                        //decide tab name
+                        let tabName = name , isBundle = false;
+                        if(entityType == CodeEntity.LWC || entityType == CodeEntity.AuraComponent) {
+                            tabName = tabName.substring(tabName.lastIndexOf('/') + 1);
+                            isBundle = true;
+                        }
+                        if(entityType == CodeEntity.ApexClass) {
+                            tabName += '.cls';
+                        }
+                        if(entityType == CodeEntity.VFPage) {
+                            tabName += '.page';
+                        }
+                        if(entityType == CodeEntity.VFComponent) {
+                            tabName += '.component';
+                        }
+
+                        //decide icon
+                        if(lang == 'javascript') {
+                            icon = 'assets/js.png';
+                        } else if(lang == 'apex') {
+                            icon = 'assets/cloudIcon.png';
+                        } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
+                            icon = 'assets/html_icon.png';
+                        } else if(lang == 'css') {
+                            icon = 'assets/cssIcon_2.png';
+                        }
+
+                        //create tab
+                        let codeTab = new CodeTab(tabName , modelId , name , icon , org, AppConstants.CODE_EDITOR, entityType, recordId);
+                        codeTab.bundleName = bundleName;
+                        codeTab.codeEntity = codeEntity;
+                        codeTab.hidden = !!openHidden;
+                        this.openTabs.push(codeTab);
+                        this.changeDetectorRef.detectChanges();
+                        // this.activeTabModelId = modelId;
+                        // this.editorCmp.switchModel(modelId);
+                        // this.editorCmp.focus();
+                        if(!openInBackground) this.selectTab(codeTab);
+
+                        this.log('loadEntity | loadBundleDetails ');
+                        if(isBundle) this.loadBundleDetails(codeTab, false);
+                        
+                        this.selectedLanguage = this.editorCmp.getModelLanguage();
+                        this.languageSelector.setSearchQuery(this.selectedLanguage);
+
+                        return codeTab;
+
+                    } else {
+                        this.editorCmp.setContent(code, tabToReload.modelId);
+                        this.snackBar.open('Reloaded ' + tabToReload.tabName, 'Close', {
+                            duration: 2000,
+                            verticalPosition : 'top'
+                        });
+                        return tabToReload;
+                    }
+                }
+                return null;
+            }
+        } catch(err) {
+            this.log(' loadEntity ERROR => ', err);
+            return null;
+        } finally {
+            if(!ignoreSpinner) this.showSpinner = false;
+        }
+
     }
     
     onTabMouseUp(tab : CodeTab, event: any) {
@@ -560,7 +653,10 @@ export class CodeBrowserComponent {
         // console.log(Date.now() + ' #$#$ FOCUS DEBUG ' , document.activeElement);
         this.ignoreUnfocus = false;
         
-        this.fetchOrgDetails(tab);
+        if(tab.isCodeEditor)
+            this.fetchOrgDetails(tab);
+        else
+            this.clearOrgDetails();
     }
 
     async fetchOrgDetails(tab : CodeTab) {
@@ -569,6 +665,11 @@ export class CodeBrowserComponent {
         let data : any = await this._ipc.callMethod('getOrganizationDetails', tab.orgName);
         this.organizationName = data.organizationName;
         this.organizationType = data.organizationType;
+    }
+    clearOrgDetails() {
+        this.log('clearOrgDetails');
+        this.organizationName = '';
+        this.organizationType = '';
     }
 
     onTabClose(tab : CodeTab) {
@@ -812,10 +913,7 @@ export class CodeBrowserComponent {
         this.compareTab = this.tabForContextMenu;
     }
 
-    compareWithSelected() {
-        let tab1 = this.compareTab!;
-        let tab2 = this.tabForContextMenu!;
-
+    createDiffTab(tab1 : CodeTab , tab2 : CodeTab) {
         //check for existing tab
         let diffTabName = this.getDiffTabValueString(tab1,tab2);
         let diffTabOrg = this.getDiffOrgNameString(tab1,tab2);
@@ -831,7 +929,36 @@ export class CodeBrowserComponent {
         let diffModelId = this.editorCmp.createDiffEditorModel(tab1.modelId!, tab2.modelId!);
 
         //create diff tab
-        let tab = new CodeTab(diffTabName, diffModelId, diffTabName, 'assets/log icon.png', diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
+        let icon = 'assets/log icon.png', lang = 'apex';
+        if(diffEntityType == CodeEntity.ApexClass) {
+            lang = 'apex';
+        } else if(diffEntityType == CodeEntity.AuraComponent) {
+            let defType = 'COMPONENT';
+            for(let suffix in AppConstants.aura_suffixVsDefTypes) {
+                if(diffTabName.endsWith(suffix)) {
+                    defType = AppConstants.aura_suffixVsDefTypes[suffix];
+                }
+            }
+            lang = AppConstants.defTypeVsLanguage[defType];
+        } else if(diffEntityType == CodeEntity.LWC) {
+            if(diffTabName.endsWith('js')) lang = 'javascript';
+            else if(diffTabName.endsWith('html')) lang = 'html';
+            else if(diffTabName.endsWith('css')) lang = 'css';
+            else if(diffTabName.endsWith('xml')) lang = 'xml';
+
+        } else if(diffEntityType == CodeEntity.VFPage || diffEntityType == CodeEntity.VFComponent) {
+            lang = 'xml';
+        }
+        if(lang == 'javascript') {
+            icon = 'assets/js.png';
+        } else if(lang == 'apex') {
+            icon = 'assets/cloudIcon.png';
+        } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
+            icon = 'assets/html_icon.png';
+        } else if(lang == 'css') {
+            icon = 'assets/cssIcon_2.png';
+        }
+        let tab = new CodeTab(diffTabName, diffModelId, diffTabName, icon, diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
         this.openTabs.push(tab);
 
         this.selectTab(tab);
@@ -840,6 +967,12 @@ export class CodeBrowserComponent {
 
         //set diff tab
         // this.activeTabModelId = diffModelId;
+    }
+    compareWithSelected() {
+        let tab1 = this.compareTab!;
+        let tab2 = this.tabForContextMenu!;
+
+        this.createDiffTab(tab1, tab2);
     }
 
     getDiffTabValueString(tab1 : CodeTab, tab2 : CodeTab) {
@@ -859,7 +992,7 @@ export class CodeBrowserComponent {
 
     reloadEntity() {
         let tab = this.tabForContextMenu!;
-        this.loadEntity(tab.tabValue, tab, tab.entityType, tab.orgName, tab.codeEntity);
+        this.loadEntity(tab.tabValue, tab, tab.entityType, tab.orgName, tab.codeEntity!);
     }
 
     prevDiff() {
@@ -904,7 +1037,7 @@ export class CodeBrowserComponent {
     }
 
     handleSave() {
-        if(this.activeTab?.editorType == AppConstants.CODE_EDITOR && !this.activeTab.temporary && !this.activeTab.deploymentInProgess) {
+        if(this.activeTab?.editorType == AppConstants.CODE_EDITOR && !this.activeTab.temporary && !this.activeTab.deploymentInProgess && !this.quickDiffModeFlag) {
             let authorized = !!this.orgCredsMap.get(this.activeTab.orgName)?.allowCodeModification;
 
             if(authorized) {
@@ -1029,7 +1162,7 @@ export class CodeBrowserComponent {
     }
 
     async createNewCode(entity : SelectOption) {
-        if(!this.isOrgSelected) return;
+        if(!this.isOrgSelected || this.quickDiffModeFlag) return;
 
         let authorized = !!this.orgCredsMap.get(this.selectedOrg)?.allowCodeModification;
         if(!authorized) {
@@ -1039,6 +1172,7 @@ export class CodeBrowserComponent {
                 }
             });
         }
+        let orgToDeploy = this.selectedOrg;
 
 
         let regExpression : any = {
@@ -1057,7 +1191,7 @@ export class CodeBrowserComponent {
 
         let dialogRef = this.dialog.open(PromptDialogComponent, {
             data : {
-                text : `Enter new ${entity.label} name for org "${this.selectedOrg}"`,
+                text : `Enter new ${entity.label} name for org "${orgToDeploy}"`,
                 placeholder : 'Name',
                 label : 'Name',
                 validationText : 'Please enter a valid name ' + (entity.value == 'LWC' ? '(LWC must start with lowercase)' : ''),
@@ -1075,13 +1209,13 @@ export class CodeBrowserComponent {
                         payload = {
                             Body : AppConstants.defaultCode[entity.value].replace(/\{componentName\}/g, name),
                             type : entity.value,
-                            orgName : this.selectedOrg,
+                            orgName : orgToDeploy,
                             name : name
                         };
                     } else {
                         payload = {
                             type : entity.value,
-                            orgName : this.selectedOrg,
+                            orgName : orgToDeploy,
                             name : name,
                             bundle : AppConstants.defaultCode[entity.value].map((x : any) => {
                                 let y : any = {};
@@ -1108,9 +1242,11 @@ export class CodeBrowserComponent {
                     if(deployResponse.isSuccess) {
                         this.errorsPaneVisibility = false;
                         let entityToLoad = '';
-                        
+                        let newCodeEntities : NormalizedCodeEntity[] = [];
+
                         if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
-                            this.entityTypeVsList[entity.value].push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null));
+                            newCodeEntities.push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null, orgToDeploy));
+                            this.entityTypeVsList[entity.value].push(newCodeEntities[0]);
                             entityToLoad = entity.value;
 
                         } else if(entity.value == CodeEntity.AuraComponent) {
@@ -1121,17 +1257,19 @@ export class CodeBrowserComponent {
                                 bundleName + '/' + bundleName + Utils.aura_suffixMap['HELPER'],
                                 bundleName + '/' + bundleName + Utils.aura_suffixMap['STYLE'],
                             ]
-                            this.entityTypeVsList[entity.value].push(...(fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null))));
+                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null, orgToDeploy));
+                            this.entityTypeVsList[entity.value].push(...(newCodeEntities));
                             entityToLoad = fileNames[0];
                         } else if(entity.value == CodeEntity.LWC) {
                             let bundleName = name;
                             let fileNames = payload.bundle.map((x : any) => x.filePath);
                             console.log('^^^^ ' + fileNames);
-                            this.entityTypeVsList[entity.value].push(...(fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null))));
+                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null, orgToDeploy));
+                            this.entityTypeVsList[entity.value].push(...(newCodeEntities));
                             entityToLoad = fileNames[0];
                         }
 
-                        this.loadEntity(name, null, entityToLoad, this.selectedOrg);
+                        this.loadEntity(name, null, entityToLoad, orgToDeploy, newCodeEntities[0]);
 
                         if(entity.value == this.selectedEntityType) {
                             this.setEntityList();
@@ -1143,7 +1281,7 @@ export class CodeBrowserComponent {
                             for(let deployDet of deployResponse.data?.DeployDetails?.allComponentMessages || []) {
                                 if(!deployDet.success) {
                                     deployErrors.push({
-                                        orgName : this.selectedOrg,
+                                        orgName : orgToDeploy,
                                         tabName : '',
                                         lineNumber : deployDet.lineNumber + ':' + (deployDet.columnNumber || ''),
                                         problem : deployDet.problem
@@ -1155,7 +1293,7 @@ export class CodeBrowserComponent {
                                 let error = deployResponse.data.errors[0];
                                 let lineNo = (error.message.match(/[0-9]+,\s*[0-9]+/g) ?? [])[0] || -1;
                                 deployErrors.push({
-                                    orgName : this.selectedOrg,
+                                    orgName : orgToDeploy,
                                     tabName : '',
                                     lineNumber : lineNo,
                                     problem : error.message
@@ -1229,7 +1367,7 @@ export class CodeBrowserComponent {
     clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
         if(bundleDetails) { 
             this.loadEntity(bundleItem.value!, null, bundleDetails.entityType, this.activeTab!.orgName,
-                new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix));
+                new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix, this.activeTab!.orgName));
         }
     }
 
@@ -1256,7 +1394,7 @@ export class CodeBrowserComponent {
 
     loadEntityFromOtherOrg() {
         let tab = this.tabForContextMenu!;
-        this.loadEntity(tab.tabValue, null, tab.entityType, this.selectedOrg, tab.codeEntity);
+        this.loadEntity(tab.tabValue, null, tab.entityType, this.selectedOrg, tab.codeEntity!);
     }
 
     copyFilename(fullName : boolean) {
@@ -1290,11 +1428,12 @@ export class CodeBrowserComponent {
 
     reloadingBundleDetails : boolean = false
     async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean) {
+        let orgName = this.selectedOrg;
         if(this.reloadingBundleDetails) return;
 
         this.reloadingBundleDetails = true;
         this._ipc.callMethod('getBundleDetails', {
-            orgName : this.selectedOrg,
+            orgName : orgName,
             bundleName : codeTab.bundleName,
             entityType : codeTab.entityType,
             ignoreCache : ignoreCache
@@ -1325,8 +1464,8 @@ export class CodeBrowserComponent {
         this.editorCmp.changeFontSize(increment);
     }
 
-    hideShowTab() {
-        let tab = this.tabForContextMenu;
+    hideShowTab(tab?: CodeTab) {
+        if(!tab) tab = this.tabForContextMenu;
         if(tab){ 
             tab.hidden = !tab.hidden;
             if(!tab.temporary && tab.hidden && tab.modelId == this.activeTab?.modelId) {
@@ -1357,6 +1496,22 @@ export class CodeBrowserComponent {
 
     openAsPopup() {
         window.open('/', '', 'popup');
+    }
+
+    quickDiffMode() {
+        this.quickDiffModeFlag = !this.quickDiffModeFlag;
+        if(!this.quickDiffModeFlag) {
+            this.selectedOrg2 = '--Org 2--';
+            this.entityTypeVsList2 = {};
+            this.entityList = [];
+            if(this.isOrgSelected && this.selectedEntityType) this.setEntityList();
+        }
+    }
+
+    sideBySideDiff : boolean = true;
+    toggleInlineDiff() {
+        this.sideBySideDiff = !this.sideBySideDiff
+        this.editorCmp.toggleInlineDiff(this.sideBySideDiff);
     }
     
     log(...str: any) {

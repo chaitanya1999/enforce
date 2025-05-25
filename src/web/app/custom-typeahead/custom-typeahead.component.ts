@@ -23,7 +23,7 @@ export class CustomTypeaheadComponent {
     }
 
     displayList: SelectOption[] = [];
-    maxListSize: number = 50;
+    maxListSize: number = 100;
 
     keyboardHoverIndex = -1;
     @ViewChildren('listOptionDiv') view_listOptions : any;

@@ -3,6 +3,11 @@
     initial-value: transparent;
     inherits: true;
 }
+@property --quickDiffBg {
+    syntax: '<color>';
+    initial-value: #1c2b3a ;
+    inherits: true;
+}
 
 div.rootRoot {
     height: 100vh;
@@ -365,6 +370,10 @@ div.topBar {
     overflow-y: hidden; */
 }
 
+div.topBar.quickDiff {
+    background-color: var(--quickDiffBg);
+}
+
 /* .topBar::-webkit-scrollbar {
     height: 6px;
 }
@@ -459,6 +468,10 @@ button.wrapActive {
     flex-direction: row;
     justify-content: start;
     -ms-overflow-style: none;
+}
+
+.tabContainer.quickDiff {
+    background-color: var(--quickDiffBg);
 }
 
 .tabContainer::-webkit-scrollbar {

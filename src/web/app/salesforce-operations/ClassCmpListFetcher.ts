@@ -82,7 +82,7 @@ export class ClassCmpListFetcher {
             let suffix = Utils.aura_suffixMap;
             let auraList = Array.from(auraRecords).filter((y:any) => y['DefType'] in suffix).map((x:any) => {
                 let name = x['AuraDefinitionBundle'].DeveloperName + '/' + x['AuraDefinitionBundle'].DeveloperName + suffix[x['DefType']];
-                return new NormalizedCodeEntity(x['Id'], name, x['AuraDefinitionBundleId'], x['AuraDefinitionBundle']['DeveloperName'], x['AuraDefinitionBundle']['ApiVersion'], x['AuraDefinitionBundle']['NamespacePrefix'])
+                return new NormalizedCodeEntity(x['Id'], name, x['AuraDefinitionBundleId'], x['AuraDefinitionBundle']['DeveloperName'], x['AuraDefinitionBundle']['ApiVersion'], x['AuraDefinitionBundle']['NamespacePrefix'], orgName)
             })
             // let auraListStr = auraList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
@@ -116,7 +116,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_apex.txt`;
-            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix']));
+            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let apexListStr = apexList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, apexListStr);
@@ -149,7 +149,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_lwc.txt`;
-            let lwcList = Array.from(lwcRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix']));
+            let lwcList = Array.from(lwcRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
             // let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, lwcListStr);
@@ -182,7 +182,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_vfpage.txt`;
-            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix']));
+            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
@@ -216,7 +216,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_vfcmp.txt`;
-            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix']));
+            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
