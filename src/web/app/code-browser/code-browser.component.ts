@@ -305,6 +305,8 @@ export class CodeBrowserComponent {
                         duration: 2000,
                         verticalPosition : 'top'
                     });
+                    if(orgProperty=='selectedOrg') this.selectedOrg = '--Org--';
+                    if(orgProperty=='selectedOrg2') this.selectedOrg = '--Org 2--';
                     return ;
                 }
                 this.selectedOrgInstanceUrl = '';
@@ -319,60 +321,71 @@ export class CodeBrowserComponent {
         }
     }
 
-    async fetchAllEntities(ignoreCache : boolean, orgProperty? : string){
-        //? orgProperty = selectedOrg1 / selectedOrg2 based on user selectoin
-        //? orgProperty = undefined === selectedOrg1
+    async fetchAllEntities(ignoreCache : boolean, orgProperty? : string, reloadBothOrgs?: boolean){
+        try {
+            //? orgProperty = selectedOrg1 / selectedOrg2 based on user selectoin
+            //? orgProperty = undefined === selectedOrg1
 
-        if(!orgProperty) orgProperty = 'selectedOrg';
-        let orgToFetchFrom = (<any>this)[orgProperty];
+            if(!orgProperty) orgProperty = 'selectedOrg';
+            let orgToFetchFrom = (<any>this)[orgProperty];
 
-        this.log('fetchAllEntities');
-        this.showSpinner = true;
-        
-        this.entityList = [];
-        let entityTypeVsList : any = {};
+            this.log('fetchAllEntities');
+            if(!reloadBothOrgs)
+                this.showSpinner = true;
+            
+            this.entityList = [];
+            let entityTypeVsList : any = {};
 
-        this.snackBar.open('Loading all classes and components list', 'Close', {
-            duration: 2000,
-            verticalPosition : 'top'
-        });
+            this.snackBar.open('Loading all classes and components list', 'Close', {
+                duration: 2000,
+                verticalPosition : 'top'
+            });
 
-        let response: EnForceResponse[] = <EnForceResponse[]>(await this._ipc.callMethod('FetchClassCmpList', {
-            orgName: orgToFetchFrom,
-            toFetchList: this.entityTypeList.map((x) => x.value),
-            ignoreCache: ignoreCache
-        }));
-        this.log('fetchAllEntities | response = ', response);
+            let response: EnForceResponse[] = <EnForceResponse[]>(await this._ipc.callMethod('FetchClassCmpList', {
+                orgName: orgToFetchFrom,
+                toFetchList: this.entityTypeList.map((x) => x.value),
+                ignoreCache: ignoreCache
+            }));
+            this.log('fetchAllEntities | response = ', response);
 
-        let success = true;
-        for (let resp of response) {
-            if(!resp.isSuccess) {
-                success = false;
-                this.snackBar.open('ERROR : ' + resp.errors[0].message, 'Close', {
-                    duration: 2000,
+            let success = true;
+            for (let resp of response) {
+                if(!resp.isSuccess) {
+                    success = false;
+                    this.snackBar.open('ERROR : ' + resp.errors[0].message, 'Close', {
+                        duration: 2000,
+                        verticalPosition : 'top'
+                    });
+                } else {
+                    entityTypeVsList[resp.data.type] = resp.data.list || [];
+                }
+            }
+
+            if(orgProperty == 'selectedOrg') {
+                this.entityTypeVsList = entityTypeVsList;
+                this.log('fetchAllEntities | this.entityTypeVsList = ', this.entityTypeVsList);
+            } else {
+                this.entityTypeVsList2 = entityTypeVsList;
+                this.log('fetchAllEntities | this.entityTypeVsList2 = ', this.entityTypeVsList2);
+            }
+
+            if(success) {
+                if(!reloadBothOrgs) this.onEntityTypeSelect(this.selectedEntityType);
+                this.snackBar.open('List loaded succesfully', 'Close', {
+                    duration: 2000, // Set the duration in milliseconds
                     verticalPosition : 'top'
                 });
-            } else {
-                entityTypeVsList[resp.data.type] = resp.data.list || [];
             }
-        }
 
-        if(orgProperty == 'selectedOrg') {
-            this.entityTypeVsList = entityTypeVsList;
-            this.log('fetchAllEntities | this.entityTypeVsList = ', this.entityTypeVsList);
-        } else {
-            this.entityTypeVsList2 = entityTypeVsList;
-            this.log('fetchAllEntities | this.entityTypeVsList2 = ', this.entityTypeVsList2);
-        }
-
-        if(success) {
-            this.onEntityTypeSelect(this.selectedEntityType);
-            this.snackBar.open('List loaded succesfully', 'Close', {
+            if(!reloadBothOrgs)
+                this.showSpinner = false;
+        } catch(err) {
+            this.log('fetchAllEntities | ERROR CAUGHT -> ' , err);
+            this.snackBar.open('Some error occurred', 'Close', {
                 duration: 2000, // Set the duration in milliseconds
                 verticalPosition : 'top'
             });
         }
-        this.showSpinner = false;
     }
 
     async onEntityTypeSelect(value: any) {
@@ -709,7 +722,18 @@ export class CodeBrowserComponent {
     }
 
     async reloadList() {
-        await this.fetchAllEntities(true);
+        if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+            this.showSpinner = true;
+            Promise.all([this.fetchAllEntities(true, 'selectedOrg', true), this.fetchAllEntities(true, 'selectedOrg2', true)])
+            .then((values : any) => {
+                this.showSpinner = false;
+            })
+        } else {
+            if(this.isOrgSelected)
+                await this.fetchAllEntities(true, 'selectedOrg');
+            else if(this.isOrg2Selected)
+                await this.fetchAllEntities(true, 'selectedOrg2');
+        }
     }
 
     clearCachedList() {

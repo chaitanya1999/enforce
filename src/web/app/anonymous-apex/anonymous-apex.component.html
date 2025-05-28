@@ -1,4 +1,4 @@
-<div class="root">
+<div class="root" (keydown)="onKeyDown($event)">
     <div class="topBar">
 
         <div class="topBarTabContainer">
@@ -23,7 +23,11 @@
         </select>
 
         <!-- Execute Apex Script button -->
-        <button class="btn btn-primary topBarItem" (click)="executeApexScript()">Execute Apex Script</button>
+        <button class="btn btn-primary topBarItem" (click)="executeApexScript()" [disabled]="!isOrgSelected">Execute Apex Script</button>
+
+            <button [class]="'btn btn-primary topBarItem connectedButton-left ' +( wordWrap ? 'wrapActive' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" matTooltip="Word Wrap" matTooltipPosition="below"><i class="bi bi-text-wrap"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="changeFontSize(true)" matTooltip="Increase Font Size" matTooltipPosition="below"><i class="bi bi-patch-plus"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-right" style="flex-shrink:0;" (click)="changeFontSize(false)" matTooltip="Decrease Font Size" matTooltipPosition="below"><i class="bi bi-patch-minus"></i></button>
 
     </div>
     <div class="codeEditor">

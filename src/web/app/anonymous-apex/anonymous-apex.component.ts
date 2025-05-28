@@ -41,6 +41,12 @@ export class AnonymousApexComponent {
     
     apexLog: string= "";
 
+    wordWrap : boolean = false;
+
+    get isOrgSelected() {
+        return this.selectedOrg && this.selectedOrg != '--Org--';
+    }
+
     constructor(private _ipc : IpcService, private snackBar : MatSnackBar, private dialog : MatDialog){
 
     }
@@ -125,6 +131,27 @@ export class AnonymousApexComponent {
             console.error(err);
         } finally {
             this.showSpinner = false;
+        }
+    }
+
+    changeFontSize(increment : boolean) {
+        this.codeEditor.changeFontSize(increment);
+    }
+
+    toggleWordWrap() {
+        this.wordWrap = !this.wordWrap;
+        this.codeEditor.wordWrap(this.wordWrap);
+    }
+
+    onKeyDown(evt : KeyboardEvent) {
+        if(evt.ctrlKey && evt.key.toLowerCase() == 'e' && evt.shiftKey) {
+            evt.stopPropagation();
+            evt.preventDefault();
+            if(!this.showSpinner) this.executeApexScript();
+        } else if(evt.altKey && evt.key.toLowerCase() == 'z') {
+            evt.stopPropagation();
+            evt.preventDefault();
+            this.toggleWordWrap();
         }
     }
     

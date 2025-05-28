@@ -438,6 +438,10 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             this.zone.run(() => {
                 this.codeEditorInstance = codeEditorInstance;
                 this.diffEditorInstance = diffEditorInstance;
+                // window.addEventListener('resize', () => {
+                //     this.codeEditorInstance?.layout();
+                //     this.diffEditorInstance?.layout();
+                // });
             })
         });
 

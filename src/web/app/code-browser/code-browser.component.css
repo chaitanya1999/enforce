@@ -433,8 +433,14 @@ button.wrapActive {
     width: 100%;
     /* height: 100%; */
     ;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: stretch;
     flex-grow: 1;
+    flex-shrink: 1;
     background-color: rgba(37, 37, 38, 255);
+    min-height: 0;
 }
 
 .spinnerDiv {
@@ -459,6 +465,7 @@ button.wrapActive {
 }
 
 .tabContainer {
+    flex-shrink: 0;
     overflow-x: overlay;
     height: 35px;
     min-width: 100%;
@@ -642,6 +649,7 @@ div.pathBar {
     display: flex;
     align-items: center;
     font-family: Consolas;
+    flex-shrink: 0;
 }
 
 div.pathBar span {
@@ -679,6 +687,7 @@ div.bottomBar {
     align-items: center;
     font-family: Consolas;
     justify-content: space-between;
+    flex-shrink: 0;;
 }
 
 div.bottomBar span {

@@ -1,10 +1,14 @@
-:root{
+:host{
     display: flex;
     flex-direction: column;
     justify-content: stretch;
     align-items: stretch;
+    flex: 1 1 auto; /* allow shrinking */
+    min-height: 0; /* critical */
+    /* height: 100%; */
+    width: 100%;
     /* height: 90%; */
-    background-color: yellow;;
+    /* background-color: yellow;; */
     /* position: relative; */
 }
 
