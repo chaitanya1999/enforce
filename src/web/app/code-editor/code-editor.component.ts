@@ -138,7 +138,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
         if(modelList[modelIndex]) {
             // this.codeEditorViewStates[oldModelIndex] = editorInstance.saveViewState();
-            old_viewStateList[oldModelIndex] = editorInstance.saveViewState();
+            if(oldModelIndex != -1) old_viewStateList[oldModelIndex] = editorInstance.saveViewState();
             // this.codeEditorInstance?.setModel(this.codeEditorModels[modelIndex]!);
             // if(this.count > 0){
                 editorInstance.setModel(<any>modelList[modelIndex]);
@@ -211,9 +211,11 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
     @Output() clearModel(modelId? : string) {
         if(!modelId) {
-            this.codeEditorInstance?.getModel()?.dispose();            
+            //? Default model closed. Need to set current modelIndex to -1 as no other model present.
+            this.codeEditorInstance?.getModel()?.dispose();
+            this.modelIndex = -1;
         } else {
-
+            //? custom model closed. Parent component must call switchModel to switch to some other model. 
             let modelIndex = this.getModelIndex(modelId);
             let modelType = this.getModelType(modelId);
 
@@ -224,6 +226,16 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             viewStateList[modelIndex] = undefined;
             // this.editorModels.splice(modelId, 1);
         }
+    }
+
+    @Output() unloadModel() {
+        if(this.editorActive == this.$codeEditor) {
+            this.codeEditorInstance?.setModel(null);
+        } else {
+            this.diffEditorInstance?.setModel(null);
+        }
+        this.modelIndex = -1;
+        // this.modelType = null;
     }
 
     @Output() clearAllModels() {

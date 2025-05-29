@@ -47,6 +47,11 @@ class CodeTab {
     loadingSpinner : boolean = false;
     hidden : boolean = false;
     pinned : boolean = false;
+
+    diffModelId : string | null = null; //! should be an array
+    tab1ForDiff : string | null = null;
+    tab2ForDiff : string | null = null;
+    
     get isAuraApplication(){
         return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
     }
@@ -170,7 +175,7 @@ export class CodeBrowserComponent {
         this._activeTabModelId = x;
         this.activeTab = this.openTabs.filter(y => y.modelId == x)[0] ?? null;
         // document.querySelector(`div.tab[data-tab-modelid=${x}]`)?.scrollIntoView({block:"nearest"});
-        this.scrollToTab(this.activeTab);
+        if(this.activeTab) this.scrollToTab(this.activeTab);
     }
     get activeTabModelId() {
         return this._activeTabModelId;
@@ -508,7 +513,7 @@ export class CodeBrowserComponent {
             if(existingTab.length && forceReloadIfExists) tabToReload = existingTab[0];
 
             if(!tabToReload && existingTab.length) {
-
+                existingTab[0].hidden = false;
                 this.activeTabModelId = existingTab[0].modelId;
                 this.editorCmp.switchModel(this.activeTabModelId);
                 return existingTab[0];
@@ -687,6 +692,21 @@ export class CodeBrowserComponent {
 
     onTabClose(tab : CodeTab) {
         this.log('onTabClose | tab modelId CLOSE = ' + tab.modelId);
+
+        // if(tab.editorType == AppConstants.CODE_EDITOR && tab.diffModelId != null) {
+        //     this.snackBar.open('Cannot close parent tab when DIFF is open', 'Close', {
+        //         duration: 1500,
+        //         verticalPosition : 'top'
+        //     });
+        // }
+
+        // if(tab.editorType == AppConstants.DIFF_EDITOR && tab.tab1ForDiff && tab.tab2ForDiff) {
+        //     let tab1Diff = this.openTabs.find(x => x.modelId == tab.tab1ForDiff);
+        //     let tab2Diff = this.openTabs.find(x => x.modelId == tab.tab2ForDiff);
+        //     if(tab1Diff) tab1Diff.diffModelId = null;
+        //     if(tab2Diff) tab2Diff.diffModelId = null;
+        // }
+
         if(!tab.temporary) this.editorCmp.clearModel(tab.modelId);
         
         if(!tab.temporary && tab.modelId == this.activeTab?.modelId) {
@@ -709,12 +729,15 @@ export class CodeBrowserComponent {
             let iTab = this.openTabs[i];
             if(!iTab.hidden) newTabIndex = i;
         }
-        if(!newTabIndex) for(let i=index+1; i<this.openTabs.length; i++) {
+        if(!newTabIndex && newTabIndex!==0) for(let i=index+1; i<this.openTabs.length; i++) {
             let iTab = this.openTabs[i];
             if(!iTab.hidden) {newTabIndex = i;break;}
         }
-        if(newTabIndex) this.selectTab(this.openTabs[newTabIndex]);
-        else this.activeTabModelId = null; 
+        if(newTabIndex || newTabIndex===0) this.selectTab(this.openTabs[newTabIndex]);
+        else {
+            this.activeTabModelId = null;
+            this.editorCmp.unloadModel();
+        }
     }
 
     open() {
@@ -944,6 +967,7 @@ export class CodeBrowserComponent {
         let diffEntityType = this.getDiffEntityType(tab1, tab2);
         let existingDiffTab = this.openTabs.filter(x => x.editorType == AppConstants.DIFF_EDITOR && x.tabValue == diffTabName && x.orgName == diffTabOrg)[0];
         if(existingDiffTab) {
+            existingDiffTab.hidden = false;
             this.activeTabModelId = existingDiffTab.modelId;
             this.editorCmp.switchModel(existingDiffTab.modelId);
             return;
@@ -951,6 +975,8 @@ export class CodeBrowserComponent {
 
         //create diff model
         let diffModelId = this.editorCmp.createDiffEditorModel(tab1.modelId!, tab2.modelId!);
+        // tab1.diffModelId = diffModelId;
+        // tab2.diffModelId = diffModelId;
 
         //create diff tab
         let icon = 'assets/log icon.png', lang = 'apex';
@@ -983,6 +1009,8 @@ export class CodeBrowserComponent {
             icon = 'assets/cssIcon_2.png';
         }
         let tab = new CodeTab(diffTabName, diffModelId, diffTabName, icon, diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
+        // tab.tab1ForDiff = tab1.modelId;
+        // tab.tab2ForDiff = tab2.modelId;
         this.openTabs.push(tab);
 
         this.selectTab(tab);

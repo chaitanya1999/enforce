@@ -8,16 +8,18 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AlertDialogComponent } from '../alert-dialog/alert-dialog.component';
 import { MatDialog } from '@angular/material/dialog';
+import {MatTooltipModule} from '@angular/material/tooltip';
+
 
 @Component({
   selector: 'app-anonymous-apex',
   standalone: true,
-  imports: [CodeEditorComponent, MatProgressSpinnerModule, FormsModule, MatSnackBarModule],
+  imports: [CodeEditorComponent, MatProgressSpinnerModule, FormsModule, MatSnackBarModule, MatTooltipModule],
   templateUrl: './anonymous-apex.component.html',
   styleUrl: './anonymous-apex.component.css'
 })
 export class AnonymousApexComponent {
-    selectedOrg: string = '';
+    selectedOrg: string = '--Org--';
     showSpinner : boolean = false;
 
     selectedTab : string = 'code'; //code , log
