@@ -1,6 +1,7 @@
 import Utils, { EnForceResponse, NormalizedCodeEntity } from '../enforce-utils';
 import * as jsforce from 'jsforce';
 import { SalesforceService } from '../salesforce.service';
+import { AppConstants } from '../AppConstants';
 const debug = Utils.debug;
 
 
@@ -27,11 +28,15 @@ export class ClassCmpListFetcher {
             ({ res, conn } = await Utils.handleLogin(conn, creds));
             debug('Authenticated\n' + JSON.stringify(res));
 
-            let apexList, auraList, lwcList, vfPageList, vfCmpList, returnData = [];
+            let apexList, apexTriggerList, auraList, lwcList, vfPageList, vfCmpList, srList, returnData = [];
 
             if(toFetch.has('ApexClass')) {
                 apexList = await this.fetchApexClassesList(orgName, conn);
                 returnData.push(apexList);
+            }
+            if(toFetch.has('ApexTrigger')) {
+                apexTriggerList = await this.fetchApexTriggerList(orgName, conn);
+                returnData.push(apexTriggerList);
             }
             if(toFetch.has('AuraComponent')) {
                 auraList = await this.fetchAuraComponentsList(orgName, conn);
@@ -48,6 +53,10 @@ export class ClassCmpListFetcher {
             if(toFetch.has('VFComponent')) {
                 vfCmpList = await this.fetchVisualforceCmpList(orgName, conn);
                 returnData.push(vfCmpList);
+            }
+            if(toFetch.has('StaticResource')) {
+                srList = await this.fetchStaticResourceList(orgName, conn);
+                returnData.push(srList);
             }
 
             return returnData;
@@ -123,6 +132,34 @@ export class ClassCmpListFetcher {
             debug('Completed');
             return EnForceResponse.success({
                 type: 'ApexClass', list : apexList
+            });
+        } catch (err) {
+            debug('Error => ' + err);
+            console.error(err);
+            return EnForceResponse.success(err);
+        }
+    }
+
+    async fetchApexTriggerList(orgName : string, conn : jsforce.Connection) {
+        try {
+            debug('Querying Apex Triggers List...');
+            let soqlQuery = `select Id, Name, NamespacePrefix, ApiVersion from ApexTrigger order by Name asc`;
+            let res : any = {done: false};
+            let apexRecords : any = [];
+
+            res = await conn.tooling.query(soqlQuery);
+            apexRecords = [...apexRecords , ...res.records];
+            while(!res?.done){
+                debug("\tqueryMore");
+                res = await conn.requestGet(res.nextRecordsUrl);
+                apexRecords = [...apexRecords , ...res.records];
+            }
+
+            debug(`Queried Succesfully. ${apexRecords.length} records.`);
+            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
+            debug('Completed');
+            return EnForceResponse.success({
+                type: 'ApexTrigger', list : apexList
             });
         } catch (err) {
             debug('Error => ' + err);
@@ -223,6 +260,35 @@ export class ClassCmpListFetcher {
             debug('Completed');
             return EnForceResponse.success({
                 type: 'VFComponent', list : vfList
+            });
+        } catch (err) {
+            debug('Error => ' + err);
+            console.error(err);
+            return EnForceResponse.success(err);
+        }
+    }
+
+    async fetchStaticResourceList(orgName : string, conn : jsforce.Connection) {
+        try {
+            debug('Querying Static Resources List...');
+            let soqlQuery = `SELECT Id, Name, Body, ContentType, NamespacePrefix FROM StaticResource WHERE ContentType IN ${Utils.arrayToInClauseRHS(AppConstants.staticResMimeTypes, true)} ORDER BY Name ASC`;
+            let res : any = {done: false};
+            let srRecords : any = [];
+
+            res = await conn.tooling.query(soqlQuery);
+            srRecords = [...srRecords , ...res.records];
+            while(!res?.done){
+                debug("\tqueryMore");
+                res = await conn.requestGet(res.nextRecordsUrl);
+                srRecords = [...srRecords , ...res.records];
+            }
+
+            debug(`Queried Succesfully. ${srRecords.length} records.`);
+            let srList = Array.from(srRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, null, x['NamespacePrefix'], orgName, x['ContentType']));
+            
+            debug('Completed');
+            return EnForceResponse.success({
+                type: 'StaticResource', list : srList
             });
         } catch (err) {
             debug('Error => ' + err);

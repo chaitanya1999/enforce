@@ -14,6 +14,7 @@ const fs = {
 }
 
 import Utils, { EnForceResponse } from '../enforce-utils';
+import { AppConstants } from '../AppConstants';
 const debug = Utils.debug;
 
 const defTypesSuffixes = {
@@ -28,6 +29,7 @@ const keysToIgnore = ['CREDENTIALS', 'OrgNames', 'getCreds'];
 
 const entityFunctionMapping : { [key: string]: string; } = {
     'ApexClass' : 'fetchApexClasses',
+    'ApexTrigger' : 'fetchApexTrigger',
     'AuraComponent' : 'fetchAuraComponents',
     'LWC' : 'fetchLWCComponents',
     'VFPage' : 'fetchVisualforcePages',
@@ -256,6 +258,62 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData[apexclass['Name']] = apexclass['Body'];
                         returnData.Id = apexclass.Id;
+                    }
+                }
+            } catch (err : any) {
+                debug('Error => ' + err);
+                console.log(err.stack);
+                console.error(err)
+            }
+            debug('Completed');
+            returnData.count = count;
+            return EnForceResponse.success(returnData);
+        } catch (err : any) {
+            debug('Error => ' + err);
+            console.log(err.stack);
+            returnData.count = count;
+            return EnForceResponse.failure(returnData);
+        }
+        return count;
+    }
+    async fetchApexTrigger(apexTriggers : any, orgName : string, conn : jsforce.Connection, entityName : string) {
+        console.log('\n');
+		debug('Apex Trigger');
+        let count = 0;
+        let returnData : any =  { count : 0 , entityName : entityName };
+        try {
+            if (apexTriggers.names.length == 0 && apexTriggers.ids?.length == 0) {
+                debug('No ApexTrigger to be fetched');
+                return EnForceResponse.success(returnData);
+            }
+            debug('To Fetch => ' + JSON.stringify(apexTriggers.names));
+            debug('Querying ApexTrigger Code...');
+            let soqlQuery = `select Id,Name,Body from ApexTrigger `;
+
+            if(apexTriggers.ids?.length) {
+                debug('ApexTrigger ID MODE');
+                soqlQuery += ` where Id IN ${Utils.arrayToInClauseRHS(apexTriggers.ids, true)} order by name `;
+            } else {
+                debug('ApexTrigger Name MODE');
+                soqlQuery += ` where Name IN ${Utils.arrayToInClauseRHS(apexTriggers.names, true)} order by name `;
+            }
+
+            debug('QUERY => ' + soqlQuery);
+            let res = await conn.tooling.query(soqlQuery);
+            debug(`Queried Succesfully. ${res.records.length} records.`);
+            let records = res.records;
+            try {
+                let path = `${this.path}/${entityName}/${orgName}/`;
+                for (let apexTrigger of records) {
+                    let className = apexTrigger['Name'] + '.cls';
+                    debug('Pushing to file => ' + className);
+                    fs.mkdirSync(path, { recursive: true });
+                    fs.writeFileSync(path + className, apexTrigger['Body'])
+                    count++;
+
+                    if(this.enForceMode) {
+                        returnData[apexTrigger['Name']] = apexTrigger['Body'];
+                        returnData.Id = apexTrigger.Id;
                     }
                 }
             } catch (err : any) {
@@ -731,21 +789,21 @@ export class CodeFetcher {
             let res = await conn.query(`SELECT Id, Name, Body, ContentType FROM StaticResource WHERE Name IN ${Utils.arrayToInClauseRHS(staticResources.names, true)}`);
 
             // let path = `./Fetched_StaticResource/${orgName}/`;
-            let path = `${this.path}/${entityName}/${orgName}/`;
+            // let path = `${this.path}/${entityName}/${orgName}/`;
             for(let staticRes of res.records) {
                 let url = staticRes['Body'];
                 let body = await conn.request({
                     url: conn.instanceUrl + url,
                     method: 'GET'
                 });
-                let extension = mime.extension(staticRes['ContentType']);
-                let fileName = staticRes['Name'] + '.' + extension;
-                debug('Pushing to file => ' + fileName);
-                fs.mkdirSync(path, { recursive: true });
-                fs.writeFileSync(path + fileName, body);
+
+                if(this.enForceMode) {
+                    returnData[staticRes['Name']] = body;
+                    returnData.Id = staticRes.Id;
+                }
+
                 count++;
             }
-            
             
             debug(`Fetched Succesfully. ${count} StaticResource.`);
             debug('Completed');

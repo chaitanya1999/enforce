@@ -100,11 +100,12 @@
             <!-- class component name list -->
             <app-custom-typeahead inputStyle="margin-left:0px; border-radius:0px;height:30px;" class="entityTypeahead" #entityTypeahead [dataset]="entityList" style="min-width: 100px; width: 40em; flex-shrink:  1;" (onSelect)="onEntitySelect($event)" (onUnfocus)="typeaheadUnfocus()" placeholder="Type a name to open (supports * wildcard) ..."></app-custom-typeahead>
             
-            <!-- Reload list button -->
-            <button class="btn btn-secondary topBarItem connectedButton-mid" (click)="reloadList()" matTooltip="Reload Class Cmp List" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
+            <!-- Reload Org Metadata button -->
+            <button class="btn btn-secondary topBarItem connectedButton-mid" (click)="reloadOrgMetadata()" matTooltip="Reload Org Metadata (Class Components list + Objects)" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
     
             <!-- Clear cache button -->
-            <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedList()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedOrgMetadata()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected" ><i class="bi bi-trash"></i></button>
+            <!-- style="display: none;" -->
     
             <!-- Save button -->
             <button class="btn btn-success topBarItem connectedButton-left" (click)="handleSave()" matTooltip="Save" matTooltipPosition="below" [disabled]="!isOrgSelected || quickDiffModeFlag"><i class="bi bi-floppy"></i></button>

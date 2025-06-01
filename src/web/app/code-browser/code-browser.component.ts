@@ -314,19 +314,19 @@ export class CodeBrowserComponent {
                     if(orgProperty=='selectedOrg2') this.selectedOrg = '--Org 2--';
                     return ;
                 }
-                this.selectedOrgInstanceUrl = '';
             }
-            else 
-                this.selectedOrgInstanceUrl = await this._ipc.callMethod('getOrgLoginUrl', value);
 
-            await this.fetchAllEntities(false, orgProperty);
+            //? Loads only for Org 1 , never for Org 2
+            if(orgProperty == 'selectedOrg') this._ipc.callMethod('loadSObjectsList',{orgName : this.selectedOrg});
+
+            await this.fetchAllEntities(false, orgProperty, false, true);
 
         } catch(err) {
             this.log('onOrgSelect ERROR => ' , (err));
         }
     }
 
-    async fetchAllEntities(ignoreCache : boolean, orgProperty? : string, reloadBothOrgs?: boolean){
+    async fetchAllEntities(ignoreCache : boolean, orgProperty? : string, reloadBothOrgs?: boolean, ignoreSpinner?: boolean){
         try {
             //? orgProperty = selectedOrg1 / selectedOrg2 based on user selectoin
             //? orgProperty = undefined === selectedOrg1
@@ -335,7 +335,7 @@ export class CodeBrowserComponent {
             let orgToFetchFrom = (<any>this)[orgProperty];
 
             this.log('fetchAllEntities');
-            if(!reloadBothOrgs)
+            if(!reloadBothOrgs || ignoreSpinner)
                 this.showSpinner = true;
             
             this.entityList = [];
@@ -382,7 +382,7 @@ export class CodeBrowserComponent {
                 });
             }
 
-            if(!reloadBothOrgs)
+            if(!reloadBothOrgs || ignoreSpinner)
                 this.showSpinner = false;
         } catch(err) {
             this.log('fetchAllEntities | ERROR CAUGHT -> ' , err);
@@ -521,8 +521,8 @@ export class CodeBrowserComponent {
             } else {
                 let bundleName = codeEntity.BundleName!;
 
-                if(entityType == CodeEntity.ApexClass) {
-                    params[CodeEntity.ApexClass] = {
+                if(entityType == CodeEntity.ApexClass || entityType == CodeEntity.ApexTrigger) {
+                    params[entityType] = {
                         names : [name]
                     }
                     lang = 'apex';
@@ -553,7 +553,12 @@ export class CodeBrowserComponent {
                         names : [name]
                     }
                     lang = 'xml';
-                } 
+                } else if(entityType == CodeEntity.StaticResource) {
+                    params[entityType] = {
+                        names : [name]
+                    }
+                    lang = AppConstants.staticResMimeVsLanguage[codeEntity.mimeType || 'text/plain'];
+                }
         
                 params['OrgNames'] = [org];
                 params['CREDENTIALS'] = {
@@ -588,11 +593,17 @@ export class CodeBrowserComponent {
                         if(entityType == CodeEntity.ApexClass) {
                             tabName += '.cls';
                         }
+                        if(entityType == CodeEntity.ApexTrigger) {
+                            tabName += '.trigger';
+                        }
                         if(entityType == CodeEntity.VFPage) {
                             tabName += '.page';
                         }
                         if(entityType == CodeEntity.VFComponent) {
                             tabName += '.component';
+                        }
+                        if(entityType == CodeEntity.StaticResource) {
+                            tabName += '.' + AppConstants.staticResExtension[codeEntity.mimeType!]
                         }
 
                         //decide icon
@@ -745,7 +756,7 @@ export class CodeBrowserComponent {
 
     }
 
-    async reloadList() {
+    async reloadOrgMetadata() {
         if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
             this.showSpinner = true;
             Promise.all([this.fetchAllEntities(true, 'selectedOrg', true), this.fetchAllEntities(true, 'selectedOrg2', true)])
@@ -760,9 +771,10 @@ export class CodeBrowserComponent {
         }
     }
 
-    clearCachedList() {
+    clearCachedOrgMetadata() {
+        //! TODO ...PENDING - to use service to clear this
         sessionStorage.setItem('fetchedClassCmpList', '{}');
-        this.snackBar.open('Cached list cleared', 'Close', {
+        this.snackBar.open('Cached org metadata cleared', 'Close', {
             duration: 1500,
             verticalPosition : 'top'
         });
@@ -981,7 +993,7 @@ export class CodeBrowserComponent {
 
         //create diff tab
         let icon = 'assets/log icon.png', lang = 'apex';
-        if(diffEntityType == CodeEntity.ApexClass) {
+        if(diffEntityType == CodeEntity.ApexClass || diffEntityType == CodeEntity.ApexTrigger) {
             lang = 'apex';
         } else if(diffEntityType == CodeEntity.AuraComponent) {
             let defType = 'COMPONENT';
@@ -1123,11 +1135,18 @@ export class CodeBrowserComponent {
         try {
             this.showSpinner = true;
             tab.deploymentInProgess = true;
+            let body = this.editorCmp.getContent(tab.modelId);
+
+            if(tab.entityType == CodeEntity.StaticResource) {
+                body = btoa(body);
+            }
+
             let deployResponse : any = await this._ipc.callMethod('DeployCode', {
                 id : tab.recordId,
-                Body : this.editorCmp.getContent(tab.modelId),
+                Body : body,
                 type : tab.entityType,
-                orgName : tab.orgName
+                orgName : tab.orgName,
+                mimeType : tab.codeEntity?.mimeType
             });
 
             let dialogRef = this.dialog.open(AlertDialogComponent, {
@@ -1146,7 +1165,7 @@ export class CodeBrowserComponent {
                 this.errorsPaneVisibility = false;
             } else {
                 this.errorsPaneVisibility = true;
-                if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(tab.entityType)) {
+                if([''+CodeEntity.ApexClass, ''+CodeEntity.ApexTrigger, ''+CodeEntity.VFComponent, ''+CodeEntity.VFPage].includes(tab.entityType)) {
                     for(let deployDet of deployResponse.data.DeployDetails.allComponentMessages) {
                         if(!deployDet.success) {
                             deployErrors.push({
@@ -1231,17 +1250,37 @@ export class CodeBrowserComponent {
 
 
         let regExpression : any = {
-            'ApexClass' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
-            'AuraComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
-            'LWC' : '^[a-z][a-zA-Z0-9\\-\\_]{0,39}$',
-            'VFPage' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
-            'VFComponent' : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$'
+            [CodeEntity.ApexClass] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            [CodeEntity.ApexTrigger] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            [CodeEntity.AuraComponent] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            [CodeEntity.LWC] : '^[a-z][a-zA-Z0-9\\-\\_]{0,39}$',
+            [CodeEntity.VFPage] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            [CodeEntity.VFComponent] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
+            [CodeEntity.StaticResource] : '^[a-zA-Z][a-zA-Z0-9\\_]{0,39}$',
         }
 
 
-        if(![CodeEntity.LWC, CodeEntity.AuraComponent, CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(<any>entity.value)) {
+        if(![CodeEntity.LWC, CodeEntity.AuraComponent, CodeEntity.ApexClass, CodeEntity.ApexTrigger, CodeEntity.VFComponent, CodeEntity.VFPage, CodeEntity.StaticResource].includes(<any>entity.value)) {
             alert('Not implemented yet');
             return;
+        }
+
+        let dropdownList = [];
+        let dropdownRequired = (entity.value == CodeEntity.ApexTrigger || entity.value == CodeEntity.StaticResource);
+        let dropdownPlaceholder = '';
+        this.log('createNewCode | dropdownRequired=' + dropdownRequired);
+        if(dropdownRequired) {
+            if(entity.value == CodeEntity.ApexTrigger) {
+                let data = await this._ipc.callMethod('loadSObjectsList' , {orgName : this.selectedOrg});
+                dropdownList = data.data || [];
+                dropdownList = dropdownList
+                                .filter((x:any) => x['IsApexTriggerable'])
+                                .map((x:any) => (<SelectOption>{label : x['QualifiedApiName'], value : x['DurableId'] }));
+                dropdownPlaceholder = 'Select SObject';
+            } else {
+                dropdownList = AppConstants.staticResMimeTypes.map((x:string) => (<SelectOption>{label : x, value: x}));
+                dropdownPlaceholder = 'Select MIME type';
+            }
         }
 
         let dialogRef = this.dialog.open(PromptDialogComponent, {
@@ -1250,22 +1289,36 @@ export class CodeBrowserComponent {
                 placeholder : 'Name',
                 label : 'Name',
                 validationText : 'Please enter a valid name ' + (entity.value == 'LWC' ? '(LWC must start with lowercase)' : ''),
-                regex : regExpression[entity.value]
+                regex : regExpression[entity.value],
+                dropdownRequired,
+                dropdownList,
+                dropdownPlaceholder
             }
         });
 
-        dialogRef.afterClosed().subscribe(async name => {
+        dialogRef.afterClosed().subscribe(async data => {
+            let name = data.input;
+            let dropdownSelection = data.dropdownSelection;
             if(name) {
                 try {
                     this.showSpinner = true;
 
                     let payload : any = {};
-                    if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
+                    if([''+CodeEntity.ApexClass, CodeEntity.ApexTrigger, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
                         payload = {
-                            Body : AppConstants.defaultCode[entity.value].replace(/\{componentName\}/g, name),
+                            Body : AppConstants.defaultCode[entity.value].replace(/\{componentName\}/g, name).replace(/\{sobjectName\}/g, dropdownSelection?.label),
                             type : entity.value,
                             orgName : orgToDeploy,
-                            name : name
+                            name : name,
+                            TableEnumOrId : dropdownSelection?.label
+                        };
+                    } else if(CodeEntity.StaticResource == entity.value) {
+                        payload = {
+                            Body : btoa(AppConstants.defaultCode[entity.value][dropdownSelection.value]),
+                            type : entity.value,
+                            orgName : orgToDeploy,
+                            name : name,
+                            mimeType : dropdownSelection.value
                         };
                     } else {
                         payload = {
@@ -1299,8 +1352,8 @@ export class CodeBrowserComponent {
                         let entityToLoad = '';
                         let newCodeEntities : NormalizedCodeEntity[] = [];
 
-                        if([''+CodeEntity.ApexClass, CodeEntity.VFComponent, CodeEntity.VFPage].includes(entity.value)) {
-                            newCodeEntities.push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null, orgToDeploy));
+                        if([''+CodeEntity.ApexClass, CodeEntity.ApexTrigger, CodeEntity.VFComponent, CodeEntity.VFPage, CodeEntity.StaticResource].includes(entity.value)) {
+                            newCodeEntities.push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null, orgToDeploy, dropdownSelection?.value));
                             this.entityTypeVsList[entity.value].push(newCodeEntities[0]);
                             entityToLoad = entity.value;
 

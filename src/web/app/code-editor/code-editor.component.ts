@@ -226,6 +226,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             viewStateList[modelIndex] = undefined;
             // this.editorModels.splice(modelId, 1);
         }
+        this.editorActive = this.$codeEditor;
     }
 
     @Output() unloadModel() {

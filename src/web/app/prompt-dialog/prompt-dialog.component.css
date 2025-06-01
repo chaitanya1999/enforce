@@ -1,0 +1,7 @@
+.mainDiv{
+    /* height: fit-content;
+    overflow: hidden; */
+}
+.mainDiv *{
+    font-size: 12px;
+}

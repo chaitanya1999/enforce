@@ -35,6 +35,11 @@ export class SalesforceService {
     loadedOrganizationDetails : any = {
         //orgname vs { organizationType, organizationName }
     }
+    MAX_ORG_COUNT_FOR_SOBJECT_LIST = 2;
+    loadedSObjectsList : any = {
+        //orgName vs array of sobjects
+    };
+    loadedSObjectsList_orgs : any = [];
 
     constructor() { }
 
@@ -306,4 +311,81 @@ export class SalesforceService {
         return this.loadedOrganizationDetails[params[0]];
     }
 
+    async loadSObjectsList(params : any) {
+        params = params[0];
+        let orgName = params.orgName;
+        let ignoreCache = params.ignoreCache;
+        debug(`loadSObjectsList | ${orgName} , ignoreCache=${ignoreCache}`);
+        
+        try {
+            if(!ignoreCache && this.loadedSObjectsList[orgName]) {
+                debug(`loadSObjectsList | Found in cache. Returning.`);
+                return EnForceResponse.success(this.loadedSObjectsList[orgName]);
+            }
+
+            let org = this.loadedOrgs[orgName];
+            let res : any = null, conn = new jsforce.Connection({
+                loginUrl: 'https://test.salesforce.com',
+                version: sfApiVersion
+            });
+            ({res, conn} = await Utils.handleLogin(conn, org));
+            debug("loadSObjectsList | Authenticated ==> " + orgName);
+            console.log(res);
+
+            res = await conn.query('select count() from EntityDefinition');
+
+            let totalSize = res.totalSize;
+            debug("loadSObjectsList | EntityDefinition : totalSize = " + totalSize);
+
+            let promiseList = []; //offsets
+            let count = 0;
+            while(count < totalSize) {
+                promiseList.push(count);
+                count += 2000;
+            }
+            // promiseList.push(count);
+            
+
+            debug("loadSObjectsList | Parallel promises = " + promiseList.length);
+
+            res = await Promise.all(promiseList.map( (offset : Number) => {
+                return conn.query(`SELECT DurableId, QualifiedApiName, IsQueryable, IsApexTriggerable, IsTriggerable, IsCustomizable, IsCustomSetting, NamespacePrefix, DeveloperName, KeyPrefix FROM EntityDefinition
+                    LIMIT 2000 OFFSET ${offset}`);
+            } ));
+
+            debug("loadSObjectsList | SObjects list fetched");
+            
+            let allRecords = res.reduce((total : any, response : any) => {
+                total.push(...response.records);
+                return total;
+            }, [])
+
+            // //? store only required data
+            // for(let sobj of res.sobjects) {
+            //     for(let key of Object.keys(sobj)) {
+            //         if(!['custom','customSetting','keyPrefix','label','labelPlural','name','queryable','triggerable','urls'].includes(key)) {
+            //             delete sobj[key];
+            //         }
+            //     }
+            // }
+            debug("loadSObjectsList | SObjects list processed");
+            
+            this.loadedSObjectsList[orgName] = allRecords;
+            this.loadedSObjectsList_orgs.push(orgName);
+            if(this.loadedSObjectsList_orgs.length > this.MAX_ORG_COUNT_FOR_SOBJECT_LIST) {
+                let orgToDelete = this.loadedSObjectsList_orgs.shift();
+                delete this.loadedSObjectsList[orgToDelete];
+                debug("loadSObjectsList | SObjects list deleted for - " + orgToDelete);
+                debug("loadSObjectsList | SObjects list cached org count - " + this.loadedSObjectsList_orgs.length);
+            }
+
+            console.log('#$#$ res ' ,res);
+
+            return EnForceResponse.success(res);
+        } catch(err){
+            debug("loadSObjectsList | Error => " + err);
+            console.error(err);
+            return EnForceResponse.failure(err);
+        }
+    }
 }

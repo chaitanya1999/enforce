@@ -40,17 +40,21 @@ export class AppConstants {
 
     static entityTypeVsName : any = {
         'ApexClass' : 'Apex Class',
+        'ApexTrigger' : 'Apex Trigger',
         'AuraComponent' : 'Aura Components',
         'LWC' : 'Lightning Web Components',
         'VFPage' : 'Visualforce Pages',
         'VFComponent' : 'Visualforce Components',
+        'StaticResource' : 'Static Resources',
     }
     static entityTypeVsName_singular  : any = {
         'ApexClass' : 'Apex Class',
+        'ApexTrigger' : 'Apex Trigger',
         'AuraComponent' : 'Aura Component',
         'LWC' : 'Lightning Web Component',
         'VFPage' : 'Visualforce Page',
         'VFComponent' : 'Visualforce Component',
+        'StaticResource' : 'Static Resource',
     }
 
     static defaultCode : any = {
@@ -61,6 +65,10 @@ public class {componentName} {
     }
     
     // Add methods and logic here
+}`,
+
+        'ApexTrigger' : `trigger {componentName} on {sobjectName} (before insert, after insert, before update, after update) {
+	System.debug('Hello Trigger !');
 }`,
 
 
@@ -113,7 +121,34 @@ public class {componentName} {
         'VFPage':`\n<apex:page>\n\t<h1>Hello, World!</h1>\n</apex:page>`,
 
 
-        'VFComponent':`<apex:component>\n\t<h1>Hello, World!</h1>\n</apex:component>`
+        'VFComponent':`<apex:component>\n\t<h1>Hello, World!</h1>\n</apex:component>`,
+
+        'StaticResource': {
+            'application/javascript' : `function helloWorld(){\n\tconsole.log\n}`,
+            'text/javascript' : `function helloWorld(){\n\tconsole.log\n}`,
+            'application/xml' : ``,
+            'text/xml' : ``,
+            'text/css' : `div {\n\tborder: 1px solid black;\n}`,
+            'text/plain' : `Hello World !`,
+        }
+    }
+
+    static staticResMimeTypes = ['application/javascript', 'text/javascript', 'application/xml', 'text/xml', 'text/css', 'text/plain'];
+    static staticResExtension : any = {
+        'application/javascript' : 'js',
+        'text/javascript' : 'js',
+        'application/xml' : 'xml',
+        'text/xml' : 'xml',
+        'text/css' : 'css',
+        'text/plain' : 'txt'
+    }
+    static staticResMimeVsLanguage : any = {
+        'application/javascript' : 'javascript',
+        'text/javascript' : 'javascript',
+        'application/xml' : 'xml',
+        'text/xml' : 'xml',
+        'text/css' : 'css',
+        'text/plain' : 'text'
     }
 
     static sleep(ms : number) : Promise<void> {
@@ -123,6 +158,7 @@ public class {componentName} {
 
 export enum CodeEntity { 
     ApexClass = 'ApexClass',
+    ApexTrigger = 'ApexTrigger',
     AuraComponent = 'AuraComponent',
     LWC = 'LWC',
     VFPage = 'VFPage',

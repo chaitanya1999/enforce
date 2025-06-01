@@ -1,6 +1,7 @@
 import { sfApiVersion } from '../salesforce.service';
 import * as jsforce from 'jsforce';
 import Utils, { EnForceResponse } from '../enforce-utils';
+import { CodeEntity } from '../AppConstants';
 const debug = Utils.debug;
 
 let codeToDeploy = {
@@ -16,6 +17,8 @@ type CodeToDeploy = {
     apiVersion? : number
     name? : string,
     bundle? : Bundle[]
+    TableEnumOrId? : string;
+    mimeType? : string;
 }
 
 type Bundle = {
@@ -52,11 +55,11 @@ type Bundle = {
 export class DeployCode {
 
     containerDeployable : {[key : string] : string} = {
-        'ApexClass' : 'ApexClassMember', 'VFPage' : 'ApexPageMember', 'VFComponent' : 'ApexComponentMember'
+        'ApexClass' : 'ApexClassMember', 'ApexTrigger' : 'ApexTriggerMember', 'VFPage' : 'ApexPageMember', 'VFComponent' : 'ApexComponentMember'
     };
     
     apexObjectNames : any = {
-        'ApexClass' : 'ApexClass', 'VFComponent' : 'ApexComponent', 'VFPage' : 'ApexPage'
+        'ApexClass' : 'ApexClass', 'ApexTrigger' : 'ApexTrigger', 'VFComponent' : 'ApexComponent', 'VFPage' : 'ApexPage'
     }
 
     bundleObjectNames : any = {
@@ -64,7 +67,7 @@ export class DeployCode {
         'LWC' : 'LightningComponentBundle'
     }
 
-    nonContainerDeployable : {[key : string] : string}  = {'AuraComponent' : 'AuraDefinition', 'LWC' : 'LightningComponentResource'};
+    nonContainerDeployable : {[key : string] : string}  = {'AuraComponent' : 'AuraDefinition', 'LWC' : 'LightningComponentResource', 'StaticResource' : 'StaticResource'};
 
     async main(orgName : string, codeToDeploy : CodeToDeploy) {
         try {
@@ -110,9 +113,24 @@ export class DeployCode {
                     payload['Body'] = codeToDeploy.Body;
                 }
 
-
-                response = await conn.tooling.sobject(objName).create(payload);
+                if(objName == 'ApexTrigger') {
+                    payload['TableEnumOrId'] = codeToDeploy.TableEnumOrId;
+                    response = await conn.sobject(objName).create(payload); //https://salesforce.stackexchange.com/questions/9603/how-do-i-use-the-tooling-api-to-create-a-new-apex-trigger
+                } else {
+                    response = await conn.tooling.sobject(objName).create(payload);
+                }
+                
                 return EnForceResponse.success(response);
+                
+            } else if(codeToDeploy.type == CodeEntity.StaticResource){
+                
+                response = await conn.tooling.sobject(codeToDeploy.type).create({
+                   'Body' : codeToDeploy.Body,
+                   'ContentType' : codeToDeploy.mimeType,
+                   'Name' : codeToDeploy.name 
+                });
+                return EnForceResponse.success(response);
+
             } else {
                 
                 let bundleName = codeToDeploy.name;
@@ -186,6 +204,7 @@ export class DeployCode {
         try {
 
             if(codeToDeploy.type in this.containerDeployable) {
+                Utils.debug('Container Deployment');
                 //1. Create MetadataContainer
                 let containerName = 'EnforceDeployment' + Date.now();
                 // let containerName = 'EnforceDeployment';
@@ -204,6 +223,7 @@ export class DeployCode {
                 }
 
             } else {
+                Utils.debug('Non Container Deployment');
                 let response = await this.nonContainerDeployment(conn, codeToDeploy);
                 debug('Response => ');
                 console.log(response);
@@ -222,14 +242,16 @@ export class DeployCode {
         try {
             if(codeToDeploy.id) {
                 debug('UPDATE')
-                resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update({
-                    Id : codeToDeploy.id, Source : codeToDeploy.Body
-                });
-            } else {
-                debug('INSERT')
-                resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update({
-                    Id : codeToDeploy.id, Source : codeToDeploy.Body
-                });
+                let payload : any = {
+                    Id : codeToDeploy.id
+                }
+                if(codeToDeploy.type == CodeEntity.StaticResource) {
+                    payload['Body'] = codeToDeploy.Body;
+                    payload['ContentType'] = codeToDeploy.mimeType;
+                } else {
+                    payload['Source'] = codeToDeploy.Body;
+                }
+                resp = await conn.tooling.sobject(this.nonContainerDeployable[codeToDeploy.type]).update(payload);
             }
             return EnForceResponse.success(resp);
         } catch(err : any) {

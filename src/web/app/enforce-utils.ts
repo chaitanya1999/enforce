@@ -202,11 +202,12 @@ export class NormalizedCodeEntity {
     Name: string;
     BundleId: string | null;
     BundleName: string | null;
-    ApiVersion: string;
+    ApiVersion: string | null;
     NamespacePrefix: string | null;
     OrgName : string;
+    mimeType? : string;
 
-    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string,NamespacePrefix: string | null, OrgName : string) {
+    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string) {
         this.Id = Id;
         this.Name = Name;
         this.BundleId = BundleId;
@@ -214,6 +215,7 @@ export class NormalizedCodeEntity {
         this.ApiVersion = ApiVersion;
         this.NamespacePrefix = NamespacePrefix;
         this.OrgName = OrgName;
+        this.mimeType = mimeType;
     }
 }
 

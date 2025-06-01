@@ -14,21 +14,37 @@ export class CustomTypeaheadComponent {
     searchQuery: string = '';
     displayTypeahead: boolean = false;
     _dataset: SelectOption[] = [];
+    datasetChangeInitFlag : boolean = false;
+    cmpInitFlag : boolean = false;
     @Input() set dataset(value: SelectOption[]) {
         this._dataset = value;
-        this.onDatasetChange();
+        if(!this.cmpInitFlag) this.datasetChangeInitFlag = true
+        else this.onDatasetChange();
     }
     get dataset() {
         return this._dataset;
     }
 
     displayList: SelectOption[] = [];
-    maxListSize: number = 100;
+    _maxListSize? : number;
+    @Input() set maxListSize(val : number) {
+        this._maxListSize = val;
+    }
+    get maxListSize() {
+        return this._maxListSize || 100;
+    }
 
     keyboardHoverIndex = -1;
     @ViewChildren('listOptionDiv') view_listOptions : any;
 
-    maxSelectSize: number = 10;
+    _maxSelectSize?: number;
+    @Input() set maxSelectSize(val : number) {
+        this._maxSelectSize = val;
+    }
+    get maxSelectSize() {
+        return this._maxSelectSize || 10;
+    }    
+
     @ViewChild('typeaheadSelect') typeaheadSelect!: any;
     @ViewChild('typeaheadInput') typeaheadInput!: any;
     isSomeOptionFocused: boolean = false;
@@ -39,6 +55,7 @@ export class CustomTypeaheadComponent {
     @Output() onUnfocus = new EventEmitter();
 
     @Input() inputStyle : string = '';
+    @Input() rootStyle : string = '';
 
     get displayListSize(): number {
         return Math.max(2, Math.min(this.maxSelectSize, this.displayList.length));
@@ -56,6 +73,13 @@ export class CustomTypeaheadComponent {
             // { label : 'banana', value : 'Value 8' },
             // { label : 'chiku', value : 'Value 9' }
         ];
+    }
+
+    ngOnInit() {
+        this.cmpInitFlag = true;
+        if(this.datasetChangeInitFlag) {
+            this.onDatasetChange();
+        }
     }
 
     onFocus(evt: any) {
@@ -82,7 +106,7 @@ export class CustomTypeaheadComponent {
         this.displayList = [
                 // ...this.dataset.filter((x: any) => this.matchRuleExpl(x.label.toLowerCase() , this.searchQuery.toLowerCase())),
                 ...this.dataset.filter((x: any) => this.matchRuleExpl(x.label.toLowerCase() , this.searchQuery.toLowerCase()))]
-            .filter((x: any, index: number) => index < this.maxListSize);
+            .filter((x: any, index: number) => index < this.maxListSize!);
         
         
         // .filter((x: any) => x.label.toLowerCase().includes(this.searchQuery.toLowerCase()))

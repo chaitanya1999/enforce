@@ -1,5 +1,12 @@
-<div style="padding: 20px;">
+<div style="padding: 20px;" class="mainDiv">
     <p style="font-size: 1em; font-weight: bold;">{{text}}</p><br/>
+    @if(dropdownRequired) {
+        <div #typeaheadParent style="width: 100%">
+            <app-custom-typeahead [rootStyle]="typeaheadRootStyle" style="height: 100%;" [dataset]="dropdownList" (onSelect)="dropdownOnSelect($event)" [placeholder]="dropdownPlaceholder" 
+            [maxListSize]="maxListSize" [maxSelectSize]="5"></app-custom-typeahead>
+        </div>
+        <br/>
+    }
     <div class="form-floating mb-3">
         <input #formInput type="input" class="form-control" id="promptInput" [placeholder]="placeholder" [(ngModel)]="inputValue" required="true" (keydown)="onKeyDown($event)">
         <label for="promptInput">{{label}}</label>
@@ -8,7 +15,7 @@
         </div>
     </div>
     <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
-        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()">Yes</button>
+        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()" [disabled]="!dropdownSelection">Yes</button>
         <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">No</button>
     </div>
 </div>
