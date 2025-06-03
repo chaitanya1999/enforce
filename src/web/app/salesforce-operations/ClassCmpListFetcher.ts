@@ -28,36 +28,32 @@ export class ClassCmpListFetcher {
             ({ res, conn } = await Utils.handleLogin(conn, creds));
             debug('Authenticated\n' + JSON.stringify(res));
 
-            let apexList, apexTriggerList, auraList, lwcList, vfPageList, vfCmpList, srList, returnData = [];
+            // let apexList, apexTriggerList, auraList, lwcList, vfPageList, vfCmpList, srList, returnData : any = [];
+            let returnData : any = [] , promises : any = [];
 
             if(toFetch.has('ApexClass')) {
-                apexList = await this.fetchApexClassesList(orgName, conn);
-                returnData.push(apexList);
+                promises.push(this.fetchApexClassesList(orgName, conn));
             }
             if(toFetch.has('ApexTrigger')) {
-                apexTriggerList = await this.fetchApexTriggerList(orgName, conn);
-                returnData.push(apexTriggerList);
+                promises.push(this.fetchApexTriggerList(orgName, conn));
             }
             if(toFetch.has('AuraComponent')) {
-                auraList = await this.fetchAuraComponentsList(orgName, conn);
-                returnData.push(auraList);
+                promises.push(this.fetchAuraComponentsList(orgName, conn));
             }
             if(toFetch.has('LWC')) {
-                lwcList = await this.fetchLightningWebComponentList(orgName, conn);
-                returnData.push(lwcList);
+                promises.push(this.fetchLightningWebComponentList(orgName, conn));
             }
             if(toFetch.has('VFPage')) {
-                vfPageList = await this.fetchVisualforcePageList(orgName, conn);
-                returnData.push(vfPageList);
+                promises.push(this.fetchVisualforcePageList(orgName, conn));
             }
             if(toFetch.has('VFComponent')) {
-                vfCmpList = await this.fetchVisualforceCmpList(orgName, conn);
-                returnData.push(vfCmpList);
+                promises.push(this.fetchVisualforceCmpList(orgName, conn));
             }
             if(toFetch.has('StaticResource')) {
-                srList = await this.fetchStaticResourceList(orgName, conn);
-                returnData.push(srList);
+                promises.push(this.fetchStaticResourceList(orgName, conn));
             }
+
+            returnData = await Promise.all(promises);
 
             return returnData;
 
