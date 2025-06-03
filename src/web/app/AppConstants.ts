@@ -1,3 +1,18 @@
+export enum CodeEntity { 
+    ApexClass = 'ApexClass',
+    ApexTrigger = 'ApexTrigger',
+    AuraComponent = 'AuraComponent',
+    LWC = 'LWC',
+    VFPage = 'VFPage',
+    VFComponent = 'VFComponent',
+    CustomLabels = 'CustomLabels',
+    Objects = 'Objects',
+    ObjectRecords = 'ObjectRecords',
+    FieldSets = 'FieldSets',
+    StaticResource = 'StaticResource',
+    EmailTemplate = 'EmailTemplate'
+}
+
 export class AppConstants {
     static CODE_EDITOR : string = 'code-editor';
     static DIFF_EDITOR : string = 'diff-editor';
@@ -37,6 +52,32 @@ export class AppConstants {
         'DESIGN' : 'html',
         'SVG' : 'svg'
     };
+    static aura_suffixVsLanguage : any = {
+        '.cmp' : 'html',
+        '.app' : 'html',
+        'Controller.js' : 'javascript',
+        'Helper.js' : 'javascript',
+        '.css' : 'css',
+        'Renderer.js' : 'javascript',
+        '.evt' : 'html',
+        '.auradoc' : 'html',
+        '.design' : 'html',
+        '.svg' : 'svg'
+    }
+
+    static lwcSuffixVsLanguage : any = {
+        'js' : 'javascript',
+        'html' : 'html',
+        'css' : 'css',
+        'xml' : 'xml'
+    }
+
+    static entityTypeVsSuffix : any = {
+        [CodeEntity.ApexClass] : '.cls',
+        [CodeEntity.ApexTrigger] : '.trigger',
+        [CodeEntity.VFPage] : '.page',
+        [CodeEntity.VFComponent] : '.component',
+    }
 
     static entityTypeVsName : any = {
         'ApexClass' : 'Apex Class',
@@ -150,23 +191,18 @@ public class {componentName} {
         'text/css' : 'css',
         'text/plain' : 'text'
     }
+    
+    static languageVsIcon : any = {
+        'javascript' : 'assets/js.png',
+        'apex' : 'assets/cloudIcon.png',
+        'html' : 'assets/html_icon.png',
+        'visualforce' : 'assets/html_icon.png',
+        'xml' : 'assets/html_icon.png',
+        'css' : 'assets/cssIcon_2.png',
+        'text' : 'assets/log icon.png'
+    }
 
     static sleep(ms : number) : Promise<void> {
         return new Promise((res) => setTimeout(res, ms));
     }
-}
-
-export enum CodeEntity { 
-    ApexClass = 'ApexClass',
-    ApexTrigger = 'ApexTrigger',
-    AuraComponent = 'AuraComponent',
-    LWC = 'LWC',
-    VFPage = 'VFPage',
-    VFComponent = 'VFComponent',
-    CustomLabels = 'CustomLabels',
-    Objects = 'Objects',
-    ObjectRecords = 'ObjectRecords',
-    FieldSets = 'FieldSets',
-    StaticResource = 'StaticResource',
-    EmailTemplate = 'EmailTemplate'
 }

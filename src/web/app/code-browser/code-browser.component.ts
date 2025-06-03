@@ -9,7 +9,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { IpcService } from '../../ipc.service';
 import { OrgCredential } from '../OrgCredential';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarConfig, MatSnackBarModule, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { CustomTypeaheadComponent } from '../custom-typeahead/custom-typeahead.component';
@@ -48,9 +48,10 @@ class CodeTab {
     hidden : boolean = false;
     pinned : boolean = false;
 
-    diffModels : Set<String> = new Set<String>(); //! should be an array
-    tab1ForDiff : string | null = null;
-    tab2ForDiff : string | null = null;
+    diffTabModelIds : Set<String> = new Set<String>(); // Used by code editor tab. stores which all DIFF tabs are using model of this tab.
+    model1ForDiff : string | null = null; // Used by DIFF tab.
+    model2ForDiff : string | null = null; // Used by DIFF tab.
+    unloadModel1 : boolean = false; // Used by DIFF tab. When comparing local code with org, this will be used to unload the model for which tab is not created
     
     get isAuraApplication(){
         return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
@@ -306,10 +307,7 @@ export class CodeBrowserComponent {
             
             if(this.quickDiffModeFlag) {
                 if(this.selectedOrg == this.selectedOrg2 && this.isOrgSelected && this.isOrg2Selected) {
-                    this.snackBar.open('Both orgs cannot be same in Quick Diff Mode', 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
+                    this.showSnackBar('Both orgs cannot be same in Quick Diff Mode');
                     if(orgProperty=='selectedOrg') this.selectedOrg = '--Org--';
                     if(orgProperty=='selectedOrg2') this.selectedOrg = '--Org 2--';
                     return ;
@@ -341,10 +339,7 @@ export class CodeBrowserComponent {
             this.entityList = [];
             let entityTypeVsList : any = {};
 
-            this.snackBar.open('Loading all classes and components list', 'Close', {
-                duration: 2000,
-                verticalPosition : 'top'
-            });
+            this.showSnackBar('Loading all classes and components list');
 
             let response: EnForceResponse[] = <EnForceResponse[]>(await this._ipc.callMethod('FetchClassCmpList', {
                 orgName: orgToFetchFrom,
@@ -357,10 +352,7 @@ export class CodeBrowserComponent {
             for (let resp of response) {
                 if(!resp.isSuccess) {
                     success = false;
-                    this.snackBar.open('ERROR : ' + resp.errors[0].message, 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
+                    this.showSnackBar('ERROR : ' + resp.errors[0].message);
                 } else {
                     entityTypeVsList[resp.data.type] = resp.data.list || [];
                 }
@@ -376,20 +368,14 @@ export class CodeBrowserComponent {
 
             if(success) {
                 if(!reloadBothOrgs) this.onEntityTypeSelect(this.selectedEntityType);
-                this.snackBar.open('List loaded succesfully', 'Close', {
-                    duration: 2000, // Set the duration in milliseconds
-                    verticalPosition : 'top'
-                });
+                this.showSnackBar('List loaded succesfully');
             }
 
             if(!reloadBothOrgs || ignoreSpinner)
                 this.showSpinner = false;
         } catch(err) {
             this.log('fetchAllEntities | ERROR CAUGHT -> ' , err);
-            this.snackBar.open('Some error occurred', 'Close', {
-                duration: 2000, // Set the duration in milliseconds
-                verticalPosition : 'top'
-            });
+            this.showSnackBar('Some error occurred');
         }
     }
 
@@ -477,16 +463,10 @@ export class CodeBrowserComponent {
                 });
             } else {
                 if(!codeEntity) {
-                    this.snackBar.open(`Not Found on Org : ${org} ` + selectOption.label, 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
+                    this.showSnackBar(`Not Found on Org : ${org} ` + selectOption.label);
                 }
                 if(!codeEntity2) {
-                    this.snackBar.open(`Not Found on Org : ${org2} ` + selectOption.label, 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
+                    this.showSnackBar(`Not Found on Org : ${org2} ` + selectOption.label);
                 }
                 this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity);
             }
@@ -502,7 +482,6 @@ export class CodeBrowserComponent {
 
         try {
              // this.code = '';
-            let params : any = {};
             let name = codeEntity.Name;
             let lang = 'java';
             let icon = 'assets/log icon.png';
@@ -517,137 +496,63 @@ export class CodeBrowserComponent {
                 this.activeTabModelId = existingTab[0].modelId;
                 this.editorCmp.switchModel(this.activeTabModelId);
                 return existingTab[0];
+            } 
+            
+            //Proceed to fetching
+            let bundleName = codeEntity.BundleName!;
+            let response = await this.fetchCode(codeEntity, name, entityType, org);
+            lang = this.getEntityLanguage(name, entityType, codeEntity.mimeType);
+    
+            //validate response
+            if(!response.isSuccess) {
+                this.showSnackBar('ERROR : ' + response.errors[0].message);
+                return;
+            } else if(!response.data['count']) {
+                this.showSnackBar('Not Found : ' + name);
+                return;
+            } 
 
-            } else {
-                let bundleName = codeEntity.BundleName!;
+            //success response. proceed to create tabs
+            code = response.data[name];
+            let recordId = response.data.Id;
 
-                if(entityType == CodeEntity.ApexClass || entityType == CodeEntity.ApexTrigger) {
-                    params[entityType] = {
-                        names : [name]
-                    }
-                    lang = 'apex';
-                } else if(entityType == CodeEntity.AuraComponent) {
-                    let componentName = name , defType = 'COMPONENT';
-                    for(let suffix in AppConstants.aura_suffixVsDefTypes) {
-                        if(name.endsWith(suffix)) {
-                            defType = AppConstants.aura_suffixVsDefTypes[suffix];
-                            componentName = name.substring(0 , name.lastIndexOf(suffix));
-                        }
-                    }
-                    params[CodeEntity.AuraComponent] = {
-                        names : [bundleName],
-                        defTypes : [defType]
-                    }
-                    lang = AppConstants.defTypeVsLanguage[defType];
-                } else if(entityType == CodeEntity.LWC) {
-                    params[CodeEntity.LWC] = {
-                        fileNames : [name]
-                    }
-                    if(name.endsWith('js')) lang = 'javascript';
-                    else if(name.endsWith('html')) lang = 'html';
-                    else if(name.endsWith('css')) lang = 'css';
-                    else if(name.endsWith('xml')) lang = 'xml';
-
-                } else if(entityType == CodeEntity.VFPage || entityType == CodeEntity.VFComponent) {
-                    params[entityType] = {
-                        names : [name]
-                    }
-                    lang = 'xml';
-                } else if(entityType == CodeEntity.StaticResource) {
-                    params[entityType] = {
-                        names : [name]
-                    }
-                    lang = AppConstants.staticResMimeVsLanguage[codeEntity.mimeType || 'text/plain'];
-                }
-        
-                params['OrgNames'] = [org];
-                params['CREDENTIALS'] = {
-                    [org] : this.orgCredsMap.get(org)
-                }
-                
-                let response = <EnForceResponse>(await this._ipc.callMethod('FetchCode', params));
-        
-                if(!response.isSuccess) {
-                    this.snackBar.open('ERROR : ' + response.errors[0].message, 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
-                } else if(!response.data['count']) {
-                    this.snackBar.open('Not Found : ' + name, 'Close', {
-                        duration: 2000,
-                        verticalPosition : 'top'
-                    });
-                } else {
-                    code = response.data[name];
-                    let recordId = response.data.Id;
-        
-                    if(!tabToReload) {
-                        let modelId = this.editorCmp.createCodeEditorModel(code, lang);
-
-                        //decide tab name
-                        let tabName = name , isBundle = false;
-                        if(entityType == CodeEntity.LWC || entityType == CodeEntity.AuraComponent) {
-                            tabName = tabName.substring(tabName.lastIndexOf('/') + 1);
-                            isBundle = true;
-                        }
-                        if(entityType == CodeEntity.ApexClass) {
-                            tabName += '.cls';
-                        }
-                        if(entityType == CodeEntity.ApexTrigger) {
-                            tabName += '.trigger';
-                        }
-                        if(entityType == CodeEntity.VFPage) {
-                            tabName += '.page';
-                        }
-                        if(entityType == CodeEntity.VFComponent) {
-                            tabName += '.component';
-                        }
-                        if(entityType == CodeEntity.StaticResource) {
-                            tabName += '.' + AppConstants.staticResExtension[codeEntity.mimeType!]
-                        }
-
-                        //decide icon
-                        if(lang == 'javascript') {
-                            icon = 'assets/js.png';
-                        } else if(lang == 'apex') {
-                            icon = 'assets/cloudIcon.png';
-                        } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
-                            icon = 'assets/html_icon.png';
-                        } else if(lang == 'css') {
-                            icon = 'assets/cssIcon_2.png';
-                        }
-
-                        //create tab
-                        let codeTab = new CodeTab(tabName , modelId , name , icon , org, AppConstants.CODE_EDITOR, entityType, recordId);
-                        codeTab.bundleName = bundleName;
-                        codeTab.codeEntity = codeEntity;
-                        codeTab.hidden = !!openHidden;
-                        this.openTabs.push(codeTab);
-                        this.changeDetectorRef.detectChanges();
-                        // this.activeTabModelId = modelId;
-                        // this.editorCmp.switchModel(modelId);
-                        // this.editorCmp.focus();
-                        if(!openInBackground) this.selectTab(codeTab);
-
-                        this.log('loadEntity | loadBundleDetails ');
-                        if(isBundle) this.loadBundleDetails(codeTab, false);
-                        
-                        this.selectedLanguage = this.editorCmp.getModelLanguage();
-                        this.languageSelector.setSearchQuery(this.selectedLanguage);
-
-                        return codeTab;
-
-                    } else {
-                        this.editorCmp.setContent(code, tabToReload.modelId);
-                        this.snackBar.open('Reloaded ' + tabToReload.tabName, 'Close', {
-                            duration: 2000,
-                            verticalPosition : 'top'
-                        });
-                        return tabToReload;
-                    }
-                }
-                return null;
+            //check if tab was reloaded
+            if(tabToReload) {
+                this.editorCmp.setContent(code, tabToReload.modelId);
+                this.showSnackBar('Reloaded ' + tabToReload.tabName);
+                return tabToReload;
             }
+
+            //?proceed to creating new tab
+
+            //create model
+            let modelId = this.editorCmp.createCodeEditorModel(code, lang);
+
+            //decide tab name
+            let tabName = this.getTabName(name, entityType, codeEntity);            
+
+            //decide icon
+            icon = AppConstants.languageVsIcon[lang];
+
+            //create tab
+            let codeTab = new CodeTab(tabName , modelId , name , icon , org, AppConstants.CODE_EDITOR, entityType, recordId);
+            codeTab.bundleName = bundleName;
+            codeTab.codeEntity = codeEntity;
+            codeTab.hidden = !!openHidden;
+            this.openTabs.push(codeTab);
+            this.changeDetectorRef.detectChanges();
+            if(!openInBackground)
+                this.selectTab(codeTab);
+
+            this.log('loadEntity | loadBundleDetails ');
+            if(this.isBundle(entityType))
+                this.loadBundleDetails(codeTab, false);
+            
+            this.selectedLanguage = this.editorCmp.getModelLanguage();
+            this.languageSelector.setSearchQuery(this.selectedLanguage);
+
+            return codeTab;
+                        
         } catch(err) {
             this.log(' loadEntity ERROR => ', err);
             return null;
@@ -655,6 +560,59 @@ export class CodeBrowserComponent {
             if(!ignoreSpinner) this.showSpinner = false;
         }
 
+    }
+
+    async fetchCode(codeEntity : NormalizedCodeEntity, name : string, entityType : string, org : string) : Promise<EnForceResponse> {
+        let bundleName = codeEntity.BundleName!;
+        let params : any = {
+            [entityType] : { names : [name] },
+            'OrgNames' : [org],
+            'CREDENTIALS' : { [org] : this.orgCredsMap.get(org) } 
+        }
+
+        //set up params and language
+        if(entityType == CodeEntity.AuraComponent) {
+            let defType = <string>Object.entries(AppConstants.aura_suffixVsDefTypes).find( ([suffix, defType]) => name.endsWith(suffix) )![1] || 'COMPONENT';
+            params[CodeEntity.AuraComponent] = { names : [bundleName], defTypes : [defType] }
+        } else if(entityType == CodeEntity.LWC) {
+            params[CodeEntity.LWC] = { fileNames : [name] }
+        }
+        
+        //fetch code from org
+        let response : EnForceResponse = <EnForceResponse>(await this._ipc.callMethod('FetchCode', params));
+        return response;
+    }
+
+    getEntityLanguage(name : string, entityType : string, mimeType? : string) : string {
+        let lang = 'java';
+        if(entityType == CodeEntity.ApexClass || entityType == CodeEntity.ApexTrigger) {
+            lang = 'apex';
+        } else if(entityType == CodeEntity.AuraComponent) {
+            lang = <string>Object.entries(AppConstants.aura_suffixVsLanguage).find( ([suffix, language]) => name.endsWith(suffix) )![1] || 'javascript';
+        } else if(entityType == CodeEntity.LWC) {
+            lang = <string>Object.entries(AppConstants.lwcSuffixVsLanguage).find(([suffix, lang]) => name.endsWith(suffix))![1] || 'javascript';
+        } else if(entityType == CodeEntity.VFPage || entityType == CodeEntity.VFComponent) {
+            lang = 'xml';
+        } else if(entityType == CodeEntity.StaticResource) {
+            lang = AppConstants.staticResMimeVsLanguage[mimeType || 'text/plain'] || 'text';
+        }
+        return lang;
+    }
+
+    getTabName(name: string, entityType : string, codeEntity : NormalizedCodeEntity) {
+        let tabName = name;
+        if(this.isBundle(entityType)) {
+            tabName = tabName.substring(tabName.lastIndexOf('/') + 1);
+        } else if(entityType == CodeEntity.StaticResource) {
+            tabName += '.' + AppConstants.staticResExtension[codeEntity.mimeType!]
+        } else {
+            tabName += AppConstants.entityTypeVsSuffix[entityType];
+        }
+        return tabName;
+    }
+
+    isBundle(entityType : string) {
+        return entityType == CodeEntity.LWC || entityType == CodeEntity.AuraComponent;
     }
     
     onTabMouseUp(tab : CodeTab, event: any) {
@@ -704,22 +662,33 @@ export class CodeBrowserComponent {
     onTabClose(tab : CodeTab) {
         this.log('onTabClose | tab modelId CLOSE = ' + tab.modelId);
 
-        if(tab.editorType == AppConstants.CODE_EDITOR && tab.diffModels.size) {
-            this.snackBar.open('Cannot close parent tab when DIFF is open', 'Close', {
-                duration: 1500,
-                verticalPosition : 'top'
-            });
+        if(tab.editorType == AppConstants.CODE_EDITOR && tab.diffTabModelIds.size) {
+            this.showSnackBar('Cannot close parent tab when DIFF is open',null, 1500);
             return;
         }
+        if(tab.editorType == AppConstants.CODE_EDITOR && tab.contentChanged) {
+            let dialogRef = this.dialog.open(ConfirmDialogComponent, { data : { text : `You may have some unsaved changes.<br/>Are you sure to close the tab without saving ?` } });
+            dialogRef.afterClosed().subscribe(result => {
+                if(result) {
+                    this.proceedForClosingTab(tab);
+                }
+            });
+        } else {
+            this.proceedForClosingTab(tab);
+        }
 
-        if(tab.editorType == AppConstants.DIFF_EDITOR && tab.tab1ForDiff && tab.tab2ForDiff) {
-            let tab1Diff = this.openTabs.find(x => x.modelId == tab.tab1ForDiff);
-            let tab2Diff = this.openTabs.find(x => x.modelId == tab.tab2ForDiff);
-            if(tab1Diff) tab1Diff.diffModels.delete(tab.modelId);
-            if(tab2Diff) tab2Diff.diffModels.delete(tab.modelId);
+    }
+
+    proceedForClosingTab(tab : CodeTab) {
+        if(tab.editorType == AppConstants.DIFF_EDITOR && tab.model1ForDiff && tab.model2ForDiff) {
+            let tab1Diff = this.openTabs.find(x => x.modelId == tab.model1ForDiff);
+            let tab2Diff = this.openTabs.find(x => x.modelId == tab.model2ForDiff);
+            if(tab1Diff) tab1Diff.diffTabModelIds.delete(tab.modelId);
+            if(tab2Diff) tab2Diff.diffTabModelIds.delete(tab.modelId);
         }
 
         if(!tab.temporary) this.editorCmp.clearModel(tab.modelId);
+        if(tab.unloadModel1) this.editorCmp.clearModel(tab.model1ForDiff!);
         
         if(!tab.temporary && tab.modelId == this.activeTab?.modelId) {
             this.switchTabAfterClosingHiding(tab);
@@ -774,10 +743,7 @@ export class CodeBrowserComponent {
     clearCachedOrgMetadata() {
         //! TODO ...PENDING - to use service to clear this
         sessionStorage.setItem('fetchedClassCmpList', '{}');
-        this.snackBar.open('Cached org metadata cleared', 'Close', {
-            duration: 1500,
-            verticalPosition : 'top'
-        });
+        this.showSnackBar('Cached org metadata cleared', null, 1500);
     }
 
     onCodeChanged(evt : any) { 
@@ -973,12 +939,14 @@ export class CodeBrowserComponent {
         this.compareTab = this.tabForContextMenu;
     }
 
-    createDiffTab(tab1 : CodeTab , tab2 : CodeTab) {
+    createDiffTab(tab1 : CodeTab | null , tab2 : CodeTab, modelId1? : string) {
         //check for existing tab
-        let diffTabName = this.getDiffTabValueString(tab1,tab2);
-        let diffTabOrg = this.getDiffOrgNameString(tab1,tab2);
-        let diffEntityType = this.getDiffEntityType(tab1, tab2);
-        let existingDiffTab = this.openTabs.filter(x => x.editorType == AppConstants.DIFF_EDITOR && x.tabValue == diffTabName && x.orgName == diffTabOrg)[0];
+        let diffTabName = this.getDiffTabValueString(tab1 || tab2 , tab2);
+        let diffTabOrg = this.getDiffOrgNameString(tab1 , tab2);
+        let diffEntityType = this.getDiffEntityType(tab1 || tab2 , tab2);
+        let diffMimeType = this.getDiffMimeType(tab1 || tab2 , tab2);
+
+        let existingDiffTab = this.openTabs.filter(x => x.editorType == AppConstants.DIFF_EDITOR && x.tabValue == diffTabName && x.orgName == diffTabOrg && x.entityType == diffEntityType)[0];
         if(existingDiffTab) {
             existingDiffTab.hidden = false;
             this.activeTabModelId = existingDiffTab.modelId;
@@ -987,53 +955,24 @@ export class CodeBrowserComponent {
         }
 
         //create diff model
-        let diffModelId = this.editorCmp.createDiffEditorModel(tab1.modelId!, tab2.modelId!);
+        let diffModelId = this.editorCmp.createDiffEditorModel((tab1?.modelId || modelId1!), tab2.modelId!);
         // tab1.diffModelId = diffModelId;
         // tab2.diffModelId = diffModelId;
 
         //create diff tab
-        let icon = 'assets/log icon.png', lang = 'apex';
-        if(diffEntityType == CodeEntity.ApexClass || diffEntityType == CodeEntity.ApexTrigger) {
-            lang = 'apex';
-        } else if(diffEntityType == CodeEntity.AuraComponent) {
-            let defType = 'COMPONENT';
-            for(let suffix in AppConstants.aura_suffixVsDefTypes) {
-                if(diffTabName.endsWith(suffix)) {
-                    defType = AppConstants.aura_suffixVsDefTypes[suffix];
-                }
-            }
-            lang = AppConstants.defTypeVsLanguage[defType];
-        } else if(diffEntityType == CodeEntity.LWC) {
-            if(diffTabName.endsWith('js')) lang = 'javascript';
-            else if(diffTabName.endsWith('html')) lang = 'html';
-            else if(diffTabName.endsWith('css')) lang = 'css';
-            else if(diffTabName.endsWith('xml')) lang = 'xml';
-
-        } else if(diffEntityType == CodeEntity.VFPage || diffEntityType == CodeEntity.VFComponent) {
-            lang = 'xml';
-        }
-        if(lang == 'javascript') {
-            icon = 'assets/js.png';
-        } else if(lang == 'apex') {
-            icon = 'assets/cloudIcon.png';
-        } else if(lang == 'html' || lang == 'visualforce' || lang == 'xml') {
-            icon = 'assets/html_icon.png';
-        } else if(lang == 'css') {
-            icon = 'assets/cssIcon_2.png';
-        }
+        let lang = this.getEntityLanguage(diffTabName, diffEntityType, diffMimeType);
+        let icon = AppConstants.languageVsIcon[lang];
+        
         let tab = new CodeTab(diffTabName, diffModelId, diffTabName, icon, diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
-        tab.tab1ForDiff = tab1.modelId;
-        tab.tab2ForDiff = tab2.modelId;
-        tab1.diffModels.add(diffModelId);
-        tab2.diffModels.add(diffModelId);
+        tab.model1ForDiff = tab1?.modelId || modelId1!;
+        tab.model2ForDiff = tab2.modelId;
+        tab.unloadModel1 = !tab1 && !!modelId1;
+
+        if(tab1) tab1.diffTabModelIds.add(diffModelId);
+        tab2.diffTabModelIds.add(diffModelId);
         this.openTabs.push(tab);
 
         this.selectTab(tab);
-        //set diff model
-        // this.editorCmp.switchModel(diffModelId);
-
-        //set diff tab
-        // this.activeTabModelId = diffModelId;
     }
     compareWithSelected() {
         let tab1 = this.compareTab!;
@@ -1047,7 +986,8 @@ export class CodeBrowserComponent {
         return `Diff : ${tab1?.tabName} <> ${tab2?.tabName}`;
     }
 
-    getDiffOrgNameString(tab1 : CodeTab, tab2 : CodeTab) {
+    getDiffOrgNameString(tab1 : CodeTab | null, tab2 : CodeTab) {
+        if(tab1 == null) return `local <> ${tab2.orgName}`;
         if(tab1.orgName == tab2.orgName) return `${tab1.orgName}`;
         return `${tab1.orgName} <> ${tab2.orgName}`;
     }
@@ -1055,6 +995,11 @@ export class CodeBrowserComponent {
     getDiffEntityType(tab1 : CodeTab, tab2 : CodeTab) {
         if(tab1.entityType == tab2.entityType) return `${tab1.entityType}`;
         return `${tab1.entityType} <> ${tab2.entityType}`;
+    }
+
+    getDiffMimeType(tab1 : CodeTab, tab2 : CodeTab) {
+        if(tab1.codeEntity?.mimeType == tab2.codeEntity?.mimeType) return `${tab1.codeEntity?.mimeType}`;
+        return `${tab1.codeEntity?.mimeType} <> ${tab2.codeEntity?.mimeType}`;
     }
 
     reloadEntity() {
@@ -1104,21 +1049,23 @@ export class CodeBrowserComponent {
     }
 
     handleSave() {
-        if(this.activeTab?.editorType == AppConstants.CODE_EDITOR && !this.activeTab.temporary && !this.activeTab.deploymentInProgess && !this.quickDiffModeFlag) {
-            let authorized = !!this.orgCredsMap.get(this.activeTab.orgName)?.allowCodeModification;
+        let tab : CodeTab | null = this.activeTab;
+        if(!tab) return;
+        if(tab?.editorType == AppConstants.CODE_EDITOR && !tab.temporary && !tab.deploymentInProgess && !this.quickDiffModeFlag) {
+            let authorized = !!this.orgCredsMap.get(tab.orgName)?.allowCodeModification;
 
             if(authorized) {
                 let dialogRef = this.dialog.open(ConfirmDialogComponent, {
                     // height: '400px',
                     // width: '600px',
                     data : {
-                        text : `Are you sure to save "${AppConstants.entityTypeVsName_singular[this.activeTab.entityType]}" : "${this.activeTab.tabName}" to the org "${this.activeTab.orgName}" ?`
+                        text : `Are you sure to save "${AppConstants.entityTypeVsName_singular[tab.entityType]}" : "${tab.tabName}" to the org "${tab.orgName}" ?`
                     }
                 });
 
                 dialogRef.afterClosed().subscribe(result => {
                     if(result) {
-                        this.saveCode(this.activeTab!);
+                        this.saveCode(tab!);
                     }
                 });
             } else {
@@ -1510,10 +1457,7 @@ export class CodeBrowserComponent {
             let name : string = this.tabForContextMenu?.tabName || '';
             let text = (fullName ? name : name.substring(0, name.lastIndexOf('.'))) || '';
             navigator.clipboard.writeText(text);
-            this.snackBar.open('Copied !', 'Close', {
-                duration: 500,
-                verticalPosition : 'top'
-            });
+            this.showSnackBar('Copied !',null, 500);
         } 
     }
 
@@ -1552,19 +1496,13 @@ export class CodeBrowserComponent {
                 codeTab.bundleDetails = x.data;
             } else {
                 this.log('loadEntity | getBundleDetails | ERROR = ' , x);
-                this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
-                    duration: 2000,
-                    verticalPosition : 'top'
-                });
+                this.showSnackBar('ERROR occuring while fetching bundle details ');
             }
 
         }).catch( (x:any) => {
             this.reloadingBundleDetails = false;
             this.log('loadEntity | getBundleDetails | ERROR = ' , x);
-            this.snackBar.open('ERROR occuring while fetching bundle details ', 'Close', {
-                duration: 2000,
-                verticalPosition : 'top'
-            });
+            this.showSnackBar('ERROR occuring while fetching bundle details ');
         });
     }
 
@@ -1621,12 +1559,56 @@ export class CodeBrowserComponent {
         this.sideBySideDiff = !this.sideBySideDiff
         this.editorCmp.toggleInlineDiff(this.sideBySideDiff);
     }
+
+    async diffWithOrg() {
+        try {
+            this.showSpinner = true;
+            if(!this.tabForContextMenu) return;
+            let tab : CodeTab = this.tabForContextMenu;
+            
+            //fetch code from org
+            let name = tab.codeEntity!.Name;
+            let response = await this.fetchCode(tab.codeEntity!, name, tab.entityType, tab.orgName);
+            let lang = this.getEntityLanguage(name, tab.entityType, tab.codeEntity!.mimeType);
+    
+            //validate response
+            if(!response.isSuccess) {
+                this.showSnackBar('ERROR : ' + response.errors[0].message);
+                return;
+            } else if(!response.data['count']) {
+                this.showSnackBar('Not Found : ' + name);
+                return;
+            } 
+
+            //success response. proceed to create tabs
+            let code = response.data[name];
+            let recordId = response.data.Id;
+
+            //create model
+            let modelId = this.editorCmp.createCodeEditorModel(code, lang);
+
+            this.createDiffTab(null, tab, modelId);
+
+        } catch(err) {
+            console.error(err);
+        } finally {
+            this.showSpinner = false;
+        }
+
+    }
     
     log(...str: any) {
         if(!str) str = [];
         str.unshift('code-browser.component |');
         // console.log('#$#$ ' , str);
         console.log(...str);
+    }
+
+    showSnackBar(message : string, action? : string | null, duration? : number, verticalPosition? : MatSnackBarVerticalPosition) {
+        this.snackBar.open(message, action || 'Close', {
+            duration: duration || 2000,
+            verticalPosition : verticalPosition || 'top'
+        });
     }
 
     setCode(){
