@@ -1192,6 +1192,7 @@ export class CodeBrowserComponent {
                     content : "Code Modification not allowed. Enable it from org manager."
                 }
             });
+            return;
         }
         let orgToDeploy = this.selectedOrg;
 

@@ -255,10 +255,10 @@
                 <li class="dropdown-item" (click)="compareWithSelected()" [hidden]="compareTab == null || compareTab.modelId == tabForContextMenu?.modelId">Compare with Selected</li>
                 <li class="dropdown-item" (click)="reloadEntity()">Reload</li>
                 <li class="dropdown-item" (click)="loadEntityFromOtherOrg()">Load from current org</li>
-                <li class="dropdown-item" (click)="copyFilename(false)">Copy Name</li>
-                <li class="dropdown-item" (click)="copyFilename(true)">Copy Full Name</li>
                 <li class="dropdown-item" (click)="diffWithOrg()">Diff local with org</li>
             }
+            <li class="dropdown-item" (click)="copyFilename(false)">Copy Name</li>
+            <li class="dropdown-item" (click)="copyFilename(true)">Copy Full Name</li>
             <li class="dropdown-item" (click)="hideShowTab()">
                 @if(tabForContextMenu?.hidden){Unhide Tab}
                 @else {Hide Tab}
