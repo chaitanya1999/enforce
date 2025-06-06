@@ -193,7 +193,7 @@ div.auraAppPreview:hover {
 
     border-bottom: 1px solid rgb(63, 63, 63);
     border-top: none;
-    /* min-height: min-content; */
+    min-height: 100px;
     padding-top: 10px;
     padding-bottom: 10px;
     /* flex-shrink: 1; */
@@ -267,8 +267,8 @@ div.editorTab.tabHidden{
     box-sizing: border-box;
 }
 div.editorTab-name{
-    /* display: flex;
-    align-items: center; */
+    display: flex;
+    align-items: center;
     /* line-height: 1; */
     height: 100%;
     align-self: center;
@@ -282,8 +282,9 @@ div.editorTab-orgName{
     max-width: 30%;
     text-overflow: ellipsis;
     align-self: center;
-    /* display: flex;
-    align-items: center; */
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     justify-self:flex-end;
     /* line-height: 1; */
     overflow: hidden;

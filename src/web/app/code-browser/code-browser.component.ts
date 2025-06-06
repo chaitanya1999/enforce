@@ -26,6 +26,7 @@ import { PromptDialogComponent } from '../prompt-dialog/prompt-dialog.component'
 import { sfApiVersion } from '../salesforce.service';
 import { ResizableModule } from 'angular-resizable-element';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import { CodeGlobalSearchComponent } from '../code-global-search/code-global-search.component';
 
 
 class CodeTab {
@@ -309,7 +310,7 @@ export class CodeBrowserComponent {
                 if(this.selectedOrg == this.selectedOrg2 && this.isOrgSelected && this.isOrg2Selected) {
                     this.showSnackBar('Both orgs cannot be same in Quick Diff Mode');
                     if(orgProperty=='selectedOrg') this.selectedOrg = '--Org--';
-                    if(orgProperty=='selectedOrg2') this.selectedOrg = '--Org 2--';
+                    if(orgProperty=='selectedOrg2') this.selectedOrg2 = '--Org 2--';
                     return ;
                 }
             }
@@ -688,6 +689,7 @@ export class CodeBrowserComponent {
         }
 
         if(!tab.temporary) this.editorCmp.clearModel(tab.modelId);
+        else this.editorCmp.clearModel();
         if(tab.unloadModel1) this.editorCmp.clearModel(tab.model1ForDiff!);
         
         if(!tab.temporary && tab.modelId == this.activeTab?.modelId) {
@@ -868,6 +870,10 @@ export class CodeBrowserComponent {
             evt.stopPropagation();
             evt.preventDefault();
             this.toggleWordWrap();
+        } else if(evt.ctrlKey && evt.shiftKey && evt.key.toLowerCase() == 'h') {
+            evt.stopPropagation();
+            evt.preventDefault();
+            this.globalSearch();
         }
     }
 
@@ -1170,12 +1176,9 @@ export class CodeBrowserComponent {
     }
 
     async openOrg() {
-        if(this.selectedOrg == '--Org--' || !this.selectedOrg) 
-            return;
-
+        if(!this.activeTab?.orgName) return;
         try {
-            // let url = await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg);
-            let url = this.selectedOrgInstanceUrl || (await this._ipc.callMethod('getOrgLoginUrl', this.selectedOrg));
+            let url = (await this._ipc.callMethod('getOrgLoginUrl', this.activeTab?.orgName));
             window.open(url);
         } catch(err) {
             console.log(err);
@@ -1395,16 +1398,21 @@ export class CodeBrowserComponent {
         this.panelSizing();
     }
 
-    dummyButton() {
-        let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        let id = entity1.value;
-        let codeEntity = this.entityIdVsObjectMap[id];
-        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+    async dummyButton() {
+        // let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        // let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        // let id = entity1.value;
+        // let codeEntity = this.entityIdVsObjectMap[id];
+        // this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
         
-        id = entity2.value;
-        codeEntity = this.entityIdVsObjectMap[id];
-        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+        // id = entity2.value;
+        // codeEntity = this.entityIdVsObjectMap[id];
+        // this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+
+        let res = await this._ipc.callMethod('codeGlobalSearch', {
+            orgName : this.selectedOrg, searchText : 'asdf'
+        });
+        console.log('dummyButton | codeGlobalSearch | res = ' , res);
 
         // this.openTabs = [
         //     new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
@@ -1596,6 +1604,31 @@ export class CodeBrowserComponent {
             this.showSpinner = false;
         }
 
+    }
+
+    globalSearch() {
+        if(!this.isOrgSelected) {
+            this.showSnackBar('Please select an org first');
+            return;
+        }
+        let dialogRef = this.dialog.open(CodeGlobalSearchComponent, {
+            data : {
+                orgName : this.selectedOrg
+            }
+        });
+
+        // Listen for double-click row event
+        const sub = dialogRef.componentInstance.rowDoubleClicked.subscribe((row: any) => {
+            if(row && row.NormalizedCodeEntity) {
+                this.loadEntity(row.Name, null, row.Type, this.selectedOrg, row.NormalizedCodeEntity);
+                dialogRef.close();
+            }
+        });
+
+        dialogRef.afterClosed().subscribe((result: any) => {
+            sub.unsubscribe();
+            // Optionally handle after close
+        });
     }
     
     log(...str: any) {

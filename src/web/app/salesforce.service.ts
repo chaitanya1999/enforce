@@ -117,7 +117,7 @@ export class SalesforceService {
             // let cached = /*sessionStorage.getItem('fetchedClassCmpList') ||*/ '{}';
             // let cachedData = JSON.parse(cached);
             let cachedDataStr = sessionStorage.getItem('cachedClassCmpList');
-            cachedDataStr = cachedDataStr ? LZString.decompressFromUTF16(cachedDataStr) : '{}';
+            cachedDataStr = <string>(cachedDataStr ? LZString.decompressFromUTF16(cachedDataStr) : '{}');
             let cachedData = JSON.parse(cachedDataStr);
 
             let loadedComponentsOrgs = JSON.parse(sessionStorage.getItem('cachedClassCmpOrgs') || '[]');
@@ -384,6 +384,85 @@ export class SalesforceService {
             return EnForceResponse.success(res);
         } catch(err){
             debug("loadSObjectsList | Error => " + err);
+            console.error(err);
+            return EnForceResponse.failure(err);
+        }
+    }
+
+    async codeGlobalSearch(params : any) {
+        log('SalesforceService - codeGlobalSearch | ' + JSON.stringify(params));
+        let orgName = params[0].orgName;
+        let searchText = params[0].searchText;
+
+        try {
+            let org = this.loadedOrgs[orgName];
+            let res : any = null, conn = new jsforce.Connection({
+                loginUrl: 'https://test.salesforce.com',
+                version: sfApiVersion
+            });
+            ({res, conn} = await Utils.handleLogin(conn, org));
+            log('SalesforceService - codeGlobalSearch | Authenticated');
+
+            let soslQuery = `FIND {${searchText}} IN ALL FIELDS RETURNING ApexClass(id, name, namespaceprefix, body), ApexTrigger(id, name, namespaceprefix, body), ApexPage(id, name, namespaceprefix, markup), ApexComponent(id, name, namespaceprefix, markup)`;
+            let searchResult = await conn.search(soslQuery);
+
+            if (!searchResult || !searchResult.searchRecords) {
+                log('SalesforceService - codeGlobalSearch | SOSL returned no records or failed');
+                return EnForceResponse.failure('SOSL returned no records or failed');
+            }
+
+            let resultsTable: any[] = [];
+            const searchLower = searchText.toLowerCase();
+
+            function processRecords(records: any[], type: string, bodyField: string) {
+                if (!records) return;
+                for (const rec of records) {
+                    const body = rec[bodyField];
+                    if (!body) continue;
+                    const lines = body.split(/\r?\n/);
+                    lines.forEach((line: string, idx: number) => {
+                        const trimmedLine = line.trim();
+                        if (trimmedLine.toLowerCase().includes(searchLower)) {
+                            // Build NormalizedCodeEntity (minimal, similar to ClassCmpListFetcher)
+                            let codeEntity = {
+                                Id: rec['Id'],
+                                Name: rec['Name'],
+                                BundleName: null,
+                                BundleId: null,
+                                ApiVersion: rec['ApiVersion'] || null,
+                                NamespacePrefix: rec['NamespacePrefix'] || '',
+                                OrgName: orgName,
+                                SObjectType: null,
+                                entityType: type
+                            };
+                            resultsTable.push({
+                                Namespace: rec['NamespacePrefix'] || '',
+                                Name: rec['Name'] || '',
+                                Type: type,
+                                LineNo: idx + 1,
+                                Text: trimmedLine,
+                                NormalizedCodeEntity: codeEntity
+                            });
+                        }
+                    });
+                }
+            }
+
+            const records = searchResult.searchRecords || [];
+            const apexClassRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexClass');
+            const apexTriggerRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexTrigger');
+            const apexPageRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexPage');
+            const apexComponentRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexComponent');
+
+            processRecords(apexClassRecords, CodeEntity.ApexClass, 'Body');
+            processRecords(apexTriggerRecords, CodeEntity.ApexTrigger, 'Body');
+            processRecords(apexPageRecords, CodeEntity.VFPage, 'Markup');
+            processRecords(apexComponentRecords, CodeEntity.VFComponent, 'Markup');
+
+            log('SalesforceService - codeGlobalSearch | SOSL executed and parsed');
+            return EnForceResponse.success(resultsTable);
+        } catch(err) {
+            debug("codeGlobalSearch | Error => " + err);
             console.error(err);
             return EnForceResponse.failure(err);
         }

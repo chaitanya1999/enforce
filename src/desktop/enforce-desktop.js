@@ -48,6 +48,7 @@ class EnForce {
             width: 800,
             height: 600,
             frame:false,
+            icon: '../web/favicon.png',
             webPreferences: {
                 preload: path.join(app.getAppPath(), 'preload.js'),
                 // nodeIntegration: true,

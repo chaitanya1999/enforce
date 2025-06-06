@@ -1,0 +1,11 @@
+/* Highlight selected row in the global search table */
+.selected-row {
+    background: #ffd96633 !important;
+    color: #fff !important;
+    transition: background 0.2s;
+}
+
+.table tr.selected-row td {
+    background: #ffd96633 !important;
+    color: #fff !important;
+}

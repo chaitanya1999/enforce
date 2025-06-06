@@ -43,13 +43,15 @@
                             <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
                             (click)="onTabClick(tab)" 
                             (contextmenu)="onTabContextMenu(tab, $event)">
+                                
+                                <img [src]="tab.icon" width="16px" height="16px" style="margin-left: -4px; margin-right: 4px;"  />
+                                <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
+                                <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
                                 @if(tab.pinned) {
                                     <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
                                 } @else {
                                     <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
                                 }
-                                <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
-                                <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
                             </div>
                         <!-- } -->
                     }
@@ -147,6 +149,7 @@
             <!-- Quick Diff Mode -->
             <button [class]="'btn btn-primary topBarItem ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
             
+            <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="globalSearch()" matTooltipPosition="below" matTooltip="Global Search in Code" [disabled]="!isOrgSelected"><i class="bi bi-search"></i></button>
             <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
     
         </div>
@@ -156,7 +159,7 @@
                     <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
                         [attr.data-modified]="tab.contentChanged"
                         (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
-                        <img [src]="tab.icon" width="16px" height="16px"  />
+                        <img [src]="tab.icon" width="16px" height="16px" style="margin-left: -4px; margin-right: 4px;"  />
                         <div class="tabHeading">
                             <span>{{tab.tabName}}</span>
                             <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
