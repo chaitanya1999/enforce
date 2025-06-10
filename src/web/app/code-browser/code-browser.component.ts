@@ -27,6 +27,7 @@ import { sfApiVersion } from '../salesforce.service';
 import { ResizableModule } from 'angular-resizable-element';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import { CodeGlobalSearchComponent } from '../code-global-search/code-global-search.component';
+import { CommandPaletteComponent } from '../command-palette/command-palette.component';
 
 
 class CodeTab {
@@ -79,7 +80,7 @@ class CodeTab {
 @Component({
     selector: 'app-code-browser',
     standalone: true,
-    imports: [CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule, MatTooltipModule],
+    imports: [CommandPaletteComponent, CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule, MatTooltipModule],
     templateUrl: './code-browser.component.html',
     styleUrl: './code-browser.component.css',
     // schemas: [CUSTOM_ELEMENTS_SCHEMA]
@@ -189,7 +190,56 @@ export class CodeBrowserComponent {
     pressedKeys : Set<String> = new Set<String>();
 
     //drag drop
-    draggedTab : HTMLElement | undefined;
+    draggedTab: HTMLElement | undefined;
+
+    // Drag start: store the dragged tab element
+    // tabDragStart(event: DragEvent) {
+    //     this.draggedTab = event.target as HTMLElement;
+    //     event.dataTransfer?.setData('text/plain', this.draggedTab.dataset['tabModelid'] || '');
+    //     event.dataTransfer!.effectAllowed = 'move';
+    // }
+
+    // // Drag end: clear the dragged tab
+    // tabDragEnd(event: DragEvent) {
+    //     this.draggedTab = undefined;
+    // }
+
+    // // Drag enter: add visual feedback
+    // tabDragEnter(event: DragEvent) {
+    //     event.preventDefault();
+    //     if (event.target instanceof HTMLElement && event.target.classList.contains('tab')) {
+    //         event.target.classList.add('tab-drag-over');
+    //     }
+    // }
+
+    // // Drag leave: remove visual feedback
+    // tabDragLeave(event: DragEvent) {
+    //     if (event.target instanceof HTMLElement && event.target.classList.contains('tab')) {
+    //         event.target.classList.remove('tab-drag-over');
+    //     }
+    // }
+
+    // // Drop: reorder the tabs in openTabs array
+    // tabDrop(event: DragEvent) {
+    //     event.preventDefault();
+    //     if (!this.draggedTab) return;
+    //     const sourceModelId = this.draggedTab.dataset['tabModelid'];
+    //     const target = event.target instanceof HTMLElement && event.target.classList.contains('tab')
+    //         ? event.target
+    //         : (event.target as HTMLElement).closest('.tab');
+    //     if (!target) return;
+    //     const destModelId = (target as HTMLElement).dataset['tabModelid'];
+    //     if (!sourceModelId || !destModelId || sourceModelId === destModelId) return;
+    //     const sourceIdx = this.openTabs.findIndex(x => x.modelId === sourceModelId);
+    //     const destIdx = this.openTabs.findIndex(x => x.modelId === destModelId);
+    //     if (sourceIdx === -1 || destIdx === -1) return;
+    //     // Remove and re-insert tab
+    //     const [movedTab] = this.openTabs.splice(sourceIdx, 1);
+    //     this.openTabs.splice(destIdx, 0, movedTab);
+    //     this.changeDetectorRef.detectChanges();
+    //     // Remove drag-over class
+    //     target.classList.remove('tab-drag-over');
+    // }
 
     //tab right click
     showTabRightClickMenu : boolean = false;
@@ -202,7 +252,7 @@ export class CodeBrowserComponent {
     ignoreUnfocus: boolean = false;
 
     //LANGUAGE SELECTOR
-    @ViewChild('languageSelector') languageSelector! : CustomTypeaheadComponent;
+    // @ViewChild('languageSelector') languageSelector! : CustomTypeaheadComponent;
     languageList : SelectOption[] = [
         this.createOption('java'),
         this.createOption('apex'),
@@ -550,7 +600,7 @@ export class CodeBrowserComponent {
                 this.loadBundleDetails(codeTab, false);
             
             this.selectedLanguage = this.editorCmp.getModelLanguage();
-            this.languageSelector.setSearchQuery(this.selectedLanguage);
+            // this.languageSelector.setSearchQuery(this.selectedLanguage);
 
             return codeTab;
                         
@@ -620,6 +670,7 @@ export class CodeBrowserComponent {
         // this.log('onTabClick - ' + tab);
         // this.selectTab(tab);
         if(event.button == 1) {
+            event.preventDefault();
             this.onTabClose(tab);
         }
     }
@@ -637,7 +688,7 @@ export class CodeBrowserComponent {
         // console.log(Date.now() + ' #$#$ FOCUS DEBUG 0 ' , document.activeElement);
         this.editorCmp.focus();
         this.selectedLanguage = this.editorCmp.getModelLanguage();
-        this.languageSelector.setSearchQuery(this.selectedLanguage);
+        // this.languageSelector.setSearchQuery(this.selectedLanguage);
         // console.log(Date.now() + ' #$#$ FOCUS DEBUG ' , document.activeElement);
         this.ignoreUnfocus = false;
         
@@ -739,6 +790,8 @@ export class CodeBrowserComponent {
                 await this.fetchAllEntities(true, 'selectedOrg');
             else if(this.isOrg2Selected)
                 await this.fetchAllEntities(true, 'selectedOrg2');
+            else 
+                this.showSnackBar('No org selected');
         }
     }
 
@@ -772,6 +825,58 @@ export class CodeBrowserComponent {
         // if(!this.ignoreUnfocus && !this.editorContainer.nativeElement.matches(':focus-within')) {
         //     this.pressedKeys = new Set<string>();
         // }
+    }
+
+    // Command Palette integration
+    private commandPaletteCommands = [
+        { name: 'Global Search', action: () => this.globalSearch(), keybinding: 'Ctrl+Shift+H' },
+        { name: 'Toggle Quick Diff Mode', action: () => this.quickDiffMode(), keybinding: '' },
+        { name: 'Refresh org metadata', action: () => this.reloadOrgMetadata(), keybinding: '' },
+        { name: 'Deploy current file', action: () => this.handleSave(), keybinding: 'Ctrl+S' },
+        { name: 'Reload current file', action: () => this.reloadEntity(true), keybinding: '' },
+        { name: 'Compare current file with org', action: () => this.diffWithOrg(true), keybinding: '' },
+        { name: 'Editor : Toggle word wrap', action: () => this.toggleWordWrap(), keybinding: 'Alt+Z' },
+        { name: 'Editor : Increase font size', action: () => this.changeFontSize(true), keybinding: '' },
+        { name: 'Editor : Decrease font size', action: () => this.changeFontSize(false), keybinding: '' },
+        { name: 'Open in separate window (popup)', action: () => this.openAsPopup(), keybinding: '' },
+        {
+            name: 'Select language mode',
+            action: () => {
+                this.selectLanguageMode();
+            },
+            keybinding: ''
+        }
+    ];
+
+    selectLanguageMode() {
+        this.openCommandPalette({
+            commands: this.languageList.map(lang => ({
+                name: lang.label,
+                action: () => this.onLanguageSelect(lang)
+            })),
+            placeholder: 'Select a language mode...'
+        });
+    }
+
+    openCommandPalette(options?: { commands?: any[], placeholder?: string }) {
+        const dialogRef = this.dialog.open(CommandPaletteComponent, {
+            data: { commands: options?.commands || this.commandPaletteCommands, placeholder: options?.placeholder },
+            panelClass: 'command-palette-container',
+            autoFocus: false
+        });
+        dialogRef.afterClosed().subscribe((cmd) => {
+            if (cmd && cmd.action) {
+                cmd.action();
+            }
+        });
+    }
+
+    @HostListener('window:keydown', ['$event'])
+    onGlobalKeyDown(event: KeyboardEvent) {
+        if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            this.openCommandPalette();
+        }
     }
 
     handleKeyboardShortcuts(evt : KeyboardEvent) {
@@ -844,33 +949,33 @@ export class CodeBrowserComponent {
             }
             this.scrollToTab(this.activeTab!);
         }
-        else if(evt.ctrlKey && evt.key.toLowerCase() == 'o') {
+        else if(evt.ctrlKey && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() == 'o') {
             this.orgSelect.nativeElement.click();
             evt.preventDefault();
         }
-        else if(evt.ctrlKey && evt.key.toLowerCase() == 'p') {
+        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'p') {
             evt.preventDefault();
             this.typeahead.focus();
         }
-        else if(evt.ctrlKey && evt.key.toLowerCase() == 'w') {
+        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'w') {
             evt.preventDefault();
             if(this.activeTab != null)
                 this.onTabClose(this.activeTab);
         }
-        else if(evt.ctrlKey && evt.key.toLowerCase() == 's') {
+        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 's') {
             evt.preventDefault();
             this.handleSave();
         }
-        else if(evt.ctrlKey && evt.key.toLowerCase() == 'b') {
+        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'b') {
             evt.stopPropagation();
             evt.preventDefault();
             this.toggleSidePanel(null);
         }
-        else if(evt.altKey && evt.key.toLowerCase() == 'z') {
+        else if(evt.altKey && !evt.shiftKey && !evt.ctrlKey && evt.key.toLowerCase() == 'z') {
             evt.stopPropagation();
             evt.preventDefault();
             this.toggleWordWrap();
-        } else if(evt.ctrlKey && evt.shiftKey && evt.key.toLowerCase() == 'h') {
+        } else if(evt.ctrlKey && evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'h') {
             evt.stopPropagation();
             evt.preventDefault();
             this.globalSearch();
@@ -888,33 +993,40 @@ export class CodeBrowserComponent {
 
     //#region Drag Drop
     tabDragStart(evt : any) {
-            this.draggedTab = evt.target;
+        this.draggedTab = evt.target;
     }
     tabDragEnd(evt: any){
         this.draggedTab = undefined;
     }
-    tabDragEnter(evt : any) { 
-        if(evt.target != this.draggedTab)
-            evt.target.setAttribute('data-drop-active', true);
+    tabDragEnter(evt : any) {
+        if(!this.draggedTab) return;
         evt.preventDefault();
+        let tabElem = evt.target.closest('.tab');
+        if(tabElem && tabElem != this.draggedTab)
+            evt.target.setAttribute('data-drop-active', true);
     }
     tabDragLeave(evt : any) {
-        if(evt.target != this.draggedTab)
+        evt.preventDefault();
+        let tabElem = evt.target.closest('.tab');
+        if(tabElem && tabElem != this.draggedTab)
             evt.target.setAttribute('data-drop-active', false);
         evt.preventDefault();
     }
-    tabDrop(evt : any) {
+    tabDrop(evt: any) {
         if(evt.target != this.draggedTab) {
-            let sourceTabModelId = <string>(this.draggedTab!.dataset['tabModelId'] ?? -1);
-            let destTabModelId = evt.target.dataset['tabModelId'];
+            let sourceTabModelId = <string>(this.draggedTab!.dataset['tabModelid'] ?? -1);
+            let destTabModelId = evt.target.dataset['tabModelid'];
             let sourceTabIdx = this.openTabs.findIndex(x => x.modelId == sourceTabModelId);
             let destTabIdx = this.openTabs.findIndex(x => x.modelId == destTabModelId);
 
             let temp = this.openTabs[destTabIdx];
             this.openTabs[destTabIdx] = this.openTabs[sourceTabIdx];
             this.openTabs[sourceTabIdx] = temp;
-
+            evt.target.setAttribute('data-drop-active', false);
         }
+    }
+    tabDragOver(evt: any) {
+        evt.preventDefault(); // This is required for drop to fire!
     }
     //#endregion
 
@@ -1008,8 +1120,14 @@ export class CodeBrowserComponent {
         return `${tab1.codeEntity?.mimeType} <> ${tab2.codeEntity?.mimeType}`;
     }
 
-    reloadEntity() {
-        let tab = this.tabForContextMenu!;
+    reloadEntity(useActiveTab? : boolean){
+        let tab : CodeTab | null | undefined = this.tabForContextMenu;
+        if(useActiveTab) tab = this.activeTab;
+        if(!tab || tab.temporary) {
+            if(useActiveTab)
+                this.showSnackBar('No valid tab active to reload');
+            return;
+        }
         this.loadEntity(tab.tabValue, tab, tab.entityType, tab.orgName, tab.codeEntity!);
     }
 
@@ -1055,8 +1173,11 @@ export class CodeBrowserComponent {
     }
 
     handleSave() {
-        let tab : CodeTab | null = this.activeTab;
-        if(!tab) return;
+        let tab : CodeTab | null | undefined = this.activeTab;
+        if(!tab || tab.temporary) {
+            this.showSnackBar('No valid tab selected');
+            return;
+        }
         if(tab?.editorType == AppConstants.CODE_EDITOR && !tab.temporary && !tab.deploymentInProgess && !this.quickDiffModeFlag) {
             let authorized = !!this.orgCredsMap.get(tab.orgName)?.allowCodeModification;
 
@@ -1382,6 +1503,37 @@ export class CodeBrowserComponent {
         this.sidePanelDisplay = !this.sidePanelDisplay;
         this.panelSizing();
     }
+
+    panelResizingFlag = false;
+    panelWidth = 'max(15%, 200px)';
+    panelMinWidth = 'max(15%, 200px)';
+    panelMaxWidth = '50%';
+    panelResizing(evt : MouseEvent) {
+        document.body.style.cursor = 'ew-resize';
+        this.panelResizingFlag = true;
+        evt.preventDefault();
+    }
+
+    @HostListener('document:mousemove', ['$event'])
+    onMouseMove(event: MouseEvent) {
+        if(!this.sidePanelDisplay) this.sidePanelDisplay = true;
+        if(this.panelResizingFlag) {
+            let posX = event.clientX - this.sidePanelElement!.nativeElement.getBoundingClientRect().left;
+            posX -= 6; //6px for the resize handle width
+            this.panelWidth = `max(15%, min(${posX}px , ${this.panelMaxWidth}))`;
+            this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
+            this.rootElement!.nativeElement.style.width = `calc(100% - ${this.panelWidth} - 12px)`;
+            console.log('## RESIZED ' + this.panelWidth);
+        }  
+    }
+
+    @HostListener('document:mouseup')
+    onMouseUp() {
+        if(this.panelResizingFlag) {
+            this.panelResizingFlag = false;
+            document.body.style.cursor = '';
+        }
+    }
     
     panelSizing() {
         if(this.sidePanelDisplay) {
@@ -1399,20 +1551,25 @@ export class CodeBrowserComponent {
     }
 
     async dummyButton() {
-        // let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        // let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        // let id = entity1.value;
-        // let codeEntity = this.entityIdVsObjectMap[id];
-        // this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+        if(this.selectedOrg != this.orgCredsList.at(-1)?.orgName) {
+            await this.onOrgSelect(this.orgCredsList.at(-1)?.orgName, 'selectedOrg');
+            await this.onEntityTypeSelect(this.entityTypeList[1].value);
+        }
+        let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
+        let id = entity1.value;
+        console.log('%% ' , this.entityIdVsObjectMap);
+        let codeEntity = this.entityIdVsObjectMap[this.selectedOrg + ':' + id];
+        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
         
-        // id = entity2.value;
-        // codeEntity = this.entityIdVsObjectMap[id];
-        // this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+        id = entity2.value;
+        codeEntity = this.entityIdVsObjectMap[this.selectedOrg + ':' + id];
+        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
 
-        let res = await this._ipc.callMethod('codeGlobalSearch', {
-            orgName : this.selectedOrg, searchText : 'asdf'
-        });
-        console.log('dummyButton | codeGlobalSearch | res = ' , res);
+        // let res = await this._ipc.callMethod('codeGlobalSearch', {
+        //     orgName : this.selectedOrg, searchText : 'asdf'
+        // });
+        // console.log('dummyButton | codeGlobalSearch | res = ' , res);
 
         // this.openTabs = [
         //     new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
@@ -1569,11 +1726,18 @@ export class CodeBrowserComponent {
         this.editorCmp.toggleInlineDiff(this.sideBySideDiff);
     }
 
-    async diffWithOrg() {
+    async diffWithOrg(useActiveTab? : boolean) {
         try {
             this.showSpinner = true;
-            if(!this.tabForContextMenu) return;
-            let tab : CodeTab = this.tabForContextMenu;
+            // if(!this.tabForContextMenu) return;
+            let tab : CodeTab | null | undefined = this.tabForContextMenu;
+            if(useActiveTab) tab = this.activeTab;
+            if(!tab || tab.temporary) {
+                if(useActiveTab) {
+                    this.showSnackBar('No valid tab selected');
+                }
+                return;
+            }
             
             //fetch code from org
             let name = tab.codeEntity!.Name;

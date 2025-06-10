@@ -1,0 +1,20 @@
+<div class="command-palette-container" tabindex="0" (keydown)="onKeyDown($event)">
+  <input #inputEl class="command-palette-input" [(ngModel)]="search" (input)="onInput()" [placeholder]="placeholder" />
+  <ul class="command-palette-list">
+    @for (cmd of filtered; track cmd) {
+      <li #cmdListItem class="command-palette-list-item" 
+          [class.active]="$index === activeIndex" 
+          (click)="select(cmd)"
+          [attr.aria-selected]="$index === activeIndex"
+      >
+        <span>{{cmd.name}}</span>
+        @if(cmd.keybinding) {
+          <span class="keybinding-badge">{{cmd.keybinding}}</span>
+        }
+      </li>
+    }
+    @if(filtered.length === 0) {
+      <li class="command-palette-list-item disabled"><span>No commands found</span></li>
+    }
+  </ul>
+</div>

@@ -414,7 +414,7 @@ export class SalesforceService {
             let resultsTable: any[] = [];
             const searchLower = searchText.toLowerCase();
 
-            function processRecords(records: any[], type: string, bodyField: string) {
+            function processRecords(records: any[], type: string, displayType : string, bodyField: string) {
                 if (!records) return;
                 for (const rec of records) {
                     const body = rec[bodyField];
@@ -438,9 +438,9 @@ export class SalesforceService {
                             resultsTable.push({
                                 Namespace: rec['NamespacePrefix'] || '',
                                 Name: rec['Name'] || '',
-                                Type: type,
+                                Type: displayType,
                                 LineNo: idx + 1,
-                                Text: trimmedLine,
+                                Text: trimmedLine.length > 500 ? trimmedLine.substring(0,500)+'...' : trimmedLine, // Limit to 1000 chars
                                 NormalizedCodeEntity: codeEntity
                             });
                         }
@@ -454,10 +454,10 @@ export class SalesforceService {
             const apexPageRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexPage');
             const apexComponentRecords = records.filter((r: any) => r.attributes && r.attributes.type === 'ApexComponent');
 
-            processRecords(apexClassRecords, CodeEntity.ApexClass, 'Body');
-            processRecords(apexTriggerRecords, CodeEntity.ApexTrigger, 'Body');
-            processRecords(apexPageRecords, CodeEntity.VFPage, 'Markup');
-            processRecords(apexComponentRecords, CodeEntity.VFComponent, 'Markup');
+            processRecords(apexClassRecords, CodeEntity.ApexClass, 'ApexClass', 'Body');
+            processRecords(apexTriggerRecords, CodeEntity.ApexTrigger, 'ApexTrigger', 'Body');
+            processRecords(apexPageRecords, CodeEntity.VFPage, 'ApexPage', 'Markup');
+            processRecords(apexComponentRecords, CodeEntity.VFComponent, 'ApexComponent', 'Markup');
 
             log('SalesforceService - codeGlobalSearch | SOSL executed and parsed');
             return EnForceResponse.success(resultsTable);

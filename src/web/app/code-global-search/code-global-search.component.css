@@ -1,5 +1,5 @@
 /* Highlight selected row in the global search table */
-.selected-row {
+/* .selected-row {
     background: #ffd96633 !important;
     color: #fff !important;
     transition: background 0.2s;
@@ -8,4 +8,77 @@
 .table tr.selected-row td {
     background: #ffd96633 !important;
     color: #fff !important;
+} */
+
+.code-global-search-modal {
+    background: rgba(20, 20, 20, 0.85) !important;
+    font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+    font-size: 0.97em;
+    z-index: 2000;
 }
+
+.code-global-search-modal .form-control:focus {
+    background: #23272b;
+    color: #ffd966;
+    border-color: #ffd966;
+    box-shadow: 0 0 0 0.1rem #ffd96644;
+}
+
+.code-global-search-modal .btn-warning:focus {
+    box-shadow: 0 0 0 0.1rem #ffd96644;
+}
+
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #ffd96622 #23272b;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #ffd96622;
+    border-radius: 8px;
+    border: 2px solid #23272b;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* --- Place this block at the END of your CSS file for highest specificity --- */
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row,
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row:hover,
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row > td,
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row:hover > td,
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row > th,
+div.table-responsive table.table.table-hover.table-dark.table-sm > tbody > tr.selected-row:hover > th {
+    background: #ffd96633 !important;
+    color: #fff !important;
+    transition: background 0.2s;
+}
+
+/* --- Force selected-row highlight even with .table-hover --- */
+.table-dark > tbody > tr.selected-row,
+.table-dark > tbody > tr.selected-row:hover,
+.table-dark > tbody > tr.selected-row > td,
+.table-dark > tbody > tr.selected-row:hover > td {
+    background: #ffd96633 !important;
+    color: #fff !important;
+    transition: background 0.2s;
+    position: relative;
+    z-index: 1;
+}
+
+.table-dark > tbody > tr.selected-row > td::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #ffd96633;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* Remove any other conflicting .selected-row rules above this block */

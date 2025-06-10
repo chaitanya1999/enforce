@@ -19,7 +19,8 @@ div.rootRoot {
 }
 
 div.rootRoot div.sidePanelToggle:hover {
-    cursor: pointer;
+    /* cursor: pointer; */
+    cursor: ew-resize;
 }
 
 div.rootRoot div.sidePanel {
@@ -193,7 +194,7 @@ div.auraAppPreview:hover {
 
     border-bottom: 1px solid rgb(63, 63, 63);
     border-top: none;
-    min-height: 100px;
+    /* min-height: 100px; */
     padding-top: 10px;
     padding-bottom: 10px;
     /* flex-shrink: 1; */

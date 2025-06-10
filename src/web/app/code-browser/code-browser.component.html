@@ -6,7 +6,7 @@
                 <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body1"  data-toggle-collapsed="false" style="margin-top: 10px;">
                     Bundle Details
                 </div>
-                <div class="customAccordion-body" data-toggle-id="body1">
+                <div class="customAccordion-body" data-toggle-id="body1" style="min-height: 100px;">
                     @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
                         <div class="bundleTitle" style="position: relative;">
                             <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
@@ -44,7 +44,7 @@
                             (click)="onTabClick(tab)" 
                             (contextmenu)="onTabContextMenu(tab, $event)">
                                 
-                                <img [src]="tab.icon" width="16px" height="16px" style="margin-left: -4px; margin-right: 4px;"  />
+                                <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
                                 <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
                                 <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
                                 @if(tab.pinned) {
@@ -59,7 +59,8 @@
             <!-- </div> -->
         <!-- </div> -->
     </div>
-    <div class="sidePanelToggle" (click)="toggleSidePanel($event)" draggable="false">
+    <!-- (click)="toggleSidePanel($event)" -->
+    <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizing($event)">
         <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
     </div>
     <div class="root" #rootElement>
@@ -114,7 +115,7 @@
     
             <!-- Create new button -->
             <div class="btn-group">
-                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-right" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected || quickDiffModeFlag"  matTooltip="Create New" matTooltipPosition="below" >
+                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-mid" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected || quickDiffModeFlag"  matTooltip="Create New" matTooltipPosition="below" >
                     <i class="bi bi-plus-circle"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
@@ -123,9 +124,12 @@
                     }
                 </ul>
             </div>
+
+            <!-- Global search button -->
+            <button class="btn btn-light topBarItem connectedButton-right" style="flex-shrink:0;" (click)="globalSearch()" matTooltipPosition="below" matTooltip="Global Search in Code" [disabled]="!isOrgSelected"><i class="bi bi-search"></i></button>
     
-            <!-- language -->
-            <app-custom-typeahead #languageSelector [dataset]="languageList" style="width: 7em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onLanguageSelect($event)" placeholder="Language..."></app-custom-typeahead>
+            <!-- language , now moved to command palette -->
+            <!-- <app-custom-typeahead #languageSelector [dataset]="languageList" style="width: 7em; flex-shrink:  1; margin-left: 5px;" (onSelect)="onLanguageSelect($event)" placeholder="Language..."></app-custom-typeahead> -->
             
     
             <!-- DIFF buttons -->
@@ -141,24 +145,34 @@
              <!-- word wrap -->
             <button [class]="'btn btn-primary topBarItem connectedButton-left ' +( wordWrap ? 'wrapActive' : '')" style="flex-shrink:0;" (click)="toggleWordWrap()" matTooltip="Word Wrap" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-text-wrap"></i></button>
             <button class="btn btn-secondary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="changeFontSize(true)" matTooltip="Increase Font Size" matTooltipPosition="below"><i class="bi bi-patch-plus"></i></button>
-            <button class="btn btn-secondary topBarItem connectedButton-right" style="flex-shrink:0;" (click)="changeFontSize(false)" matTooltip="Decrease Font Size" matTooltipPosition="below"><i class="bi bi-patch-minus"></i></button>
+            <button class="btn btn-secondary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="changeFontSize(false)" matTooltip="Decrease Font Size" matTooltipPosition="below"><i class="bi bi-patch-minus"></i></button>
             
             <!-- Open in popup window -->
-            <button class="btn btn-primary topBarItem" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Open in popup window"><i class="bi bi-window-stack"></i></button>
+            <button class="btn btn-primary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Open in popup window"><i class="bi bi-window-stack"></i></button>
             
             <!-- Quick Diff Mode -->
-            <button [class]="'btn btn-primary topBarItem ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
+            <button [class]="'btn btn-primary topBarItem connectedButton-right ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
             
-            <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="globalSearch()" matTooltipPosition="below" matTooltip="Global Search in Code" [disabled]="!isOrgSelected"><i class="bi bi-search"></i></button>
-            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Toggle Whitespace Diff"><i class="bi bi-distribute-horizontal"></i></button> -->
+            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Dummy DEBUG button"><i class="bi bi-bug"></i></button> -->
     
         </div>
         <div [class]="'tabContainer ' + (quickDiffModeFlag ? 'quickDiff' : '') " (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
             @for(tab of openTabs; track tab) {
                 @if(!tab.hidden) {
-                    <div class="tab" (contextmenu)="onTabContextMenu(tab, $event)" [attr.data-active]="activeTabModelId == tab.modelId" (click)="onTabClick(tab)" (mouseup)="onTabMouseUp(tab, $event)" draggable="true" (dragstart)="tabDragStart($event)" (dragend)="tabDragEnd($event)"
-                        [attr.data-modified]="tab.contentChanged"
-                        (drop)="tabDrop($event)" (dragenter)="tabDragEnter($event)" (dragleave)="tabDragLeave($event)" [attr.data-tab-modelid]="tab.modelId">
+                    <!-- draggable="true"
+                        (dragstart)="tabDragStart($event)"
+                        (dragend)="tabDragEnd($event)"
+                        (dragenter)="tabDragEnter($event)"
+                        (dragleave)="tabDragLeave($event)"
+                        (drop)="tabDrop($event)"
+                        (dragover)="tabDragOver($event)" -->
+                    <div class="tab" 
+                        (contextmenu)="onTabContextMenu(tab, $event)"
+                        [attr.data-active]="activeTabModelId == tab.modelId"
+                        (click)="onTabClick(tab)"
+                        (mouseup)="onTabMouseUp(tab, $event)"
+                        [attr.data-tab-modelid]="tab.modelId"
+                        [attr.data-modified]="tab.contentChanged">
                         <img [src]="tab.icon" width="16px" height="16px" style="margin-left: -4px; margin-right: 4px;"  />
                         <div class="tabHeading">
                             <span>{{tab.tabName}}</span>
@@ -237,6 +251,7 @@
             </div>
             <div class="bottomBar-right">
                 @if(activeTab?.isCodeEditor) {
+                    <span class="open-org" style="text-transform: capitalize;" (click)="selectLanguageMode()">{{selectedLanguage}}</span>
                     <span class="cursor-position">Ln {{cursorPosition.lineNumber}}, Col {{cursorPosition.column}}</span>
                 }
                 <span (click)="reportAnIssue()" class="report-issue">Report Issue</span>
@@ -274,4 +289,9 @@
             <li class="dropdown-item"><a class="dropdown-item" tabindex="-1" href="#">Separated link</a></li> -->
         </ul>
     </div>
+
+    <!-- Command Palette Dialog is opened programmatically, no button needed here. -->
+    <!-- <div class="command-palette-container">
+        <app-command-palette></app-command-palette>
+    </div> -->
 </div>

@@ -448,40 +448,38 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 }
             );
 
-            this.zone.run(() => {
+            this.zone.run(async () => {
                 this.codeEditorInstance = codeEditorInstance;
                 this.diffEditorInstance = diffEditorInstance;
-                // window.addEventListener('resize', () => {
-                //     this.codeEditorInstance?.layout();
-                //     this.diffEditorInstance?.layout();
-                // });
+                // To support two-way binding of the code
+                this.codeEditorInstance!.getModel()!.onDidChangeContent(e => {
+                    this.codeChange.emit({
+                        modelId : this.modelId,
+                        canUndo : (<any>this.codeEditorInstance!.getModel()).canUndo()
+                        // value : this.codeEditorInstance!.getValue()
+                    });
+                });
+
+                this.codeEditorInstance!.onDidChangeCursorPosition(e => {
+                    this.cursorPosition = e.position;
+                    this.onCursorPositionChange.emit(e.position);
+                })
+
+                this.codeEditorModels.push(this.codeEditorInstance!.getModel()!);
+
+                this.setModelLanguage(this.defaultLanguage);
+
+                // await monaco.languages.typescript.getTypeScriptWorker();
+                await AppConstants.sleep(500);
+                shikiToMonaco(highlighter, monaco)
+                theme = 'dark-plus';
+                monaco.editor.setTheme(theme);
+
             })
         });
 
 
-        // To support two-way binding of the code
-        this.codeEditorInstance!.getModel()!.onDidChangeContent(e => {
-            this.codeChange.emit({
-                modelId : this.modelId,
-                canUndo : (<any>this.codeEditorInstance!.getModel()).canUndo()
-                // value : this.codeEditorInstance!.getValue()
-            });
-        });
-
-        this.codeEditorInstance!.onDidChangeCursorPosition(e => {
-            this.cursorPosition = e.position;
-            this.onCursorPositionChange.emit(e.position);
-        })
-
-        this.codeEditorModels.push(this.codeEditorInstance!.getModel()!);
-
-        this.setModelLanguage(this.defaultLanguage);
-
-        // await monaco.languages.typescript.getTypeScriptWorker();
-        await AppConstants.sleep(500);
-        shikiToMonaco(highlighter, monaco)
-        theme = 'dark-plus';
-        monaco.editor.setTheme(theme);
+        
 
         // await AppConstants.sleep(2000);
         // await wireTmGrammars(<any>monaco, registry, grammars, <any>this.codeEditorInstance);
@@ -555,7 +553,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         }
     }
 
-    fontSize = 12;
+    fontSize = 13;
     @Output() changeFontSize(increment : boolean) {
         if(increment) this.fontSize ++;
         else this.fontSize --;
