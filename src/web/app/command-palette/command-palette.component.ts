@@ -16,13 +16,19 @@ export class CommandPaletteComponent implements AfterViewInit {
 	@ViewChild('inputEl') inputEl!: ElementRef<HTMLInputElement>;
 	@ViewChildren('cmdListItem') cmdListItems!: QueryList<ElementRef<HTMLLIElement>>;
 	placeholder: string = 'Type a command...';
+	emptyMessage: string = 'No commands found';
+	commandFlag: boolean = false;
 
 	constructor(
 		public dialogRef: MatDialogRef<CommandPaletteComponent>,
-		@Inject(MAT_DIALOG_DATA) public data: { commands: any[], placeholder?: string }
+		@Inject(MAT_DIALOG_DATA) public data: {
+			emptyMessage: string; commands: any[], placeholder?: string, commandFlag?: boolean 
+		}
 	) {
 		this.filtered = data.commands;
 		if (data.placeholder) this.placeholder = data.placeholder;
+		if (typeof data.commandFlag === 'boolean') this.commandFlag = data.commandFlag;
+		this.emptyMessage = data.emptyMessage || 'No commands found';
 	}
 
 	ngAfterViewInit() {

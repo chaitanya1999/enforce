@@ -1,4 +1,7 @@
 /* Command Palette - Modern IDE Style */
+.command-palette-input-wrapper{
+  position: relative
+}
 .command-palette-container {
   position: fixed;
   top: 8vh;
@@ -17,6 +20,7 @@
   outline: none;
 }
 .command-palette-input {
+  position:relative;
   width: 96%;
   margin: 0 2% 6px 2%;
   padding: 5px 10px;
@@ -32,6 +36,25 @@
 }
 .command-palette-input:focus {
   box-shadow: 0 0 0 2px #3a8bfd;
+}
+.command-palette-input-wrapper.with-arrow::before {
+  content: '';
+  position: absolute;
+  /* top: 0;
+  left: 0; */
+  z-index: 99;
+  margin: 0 2% 6px 2%;
+  padding: 4px;
+  transform: translateY(100%) translateX(50%) rotate(-45deg);
+  border-right: 2px solid #888;
+  border-bottom: 2px solid #888;
+  border-radius: 0;
+  pointer-events: none;
+  background: none;
+  display: block;
+}
+.command-palette-input-wrapper.with-arrow .command-palette-input{
+  padding-left: 25px;
 }
 .command-palette-list {
   max-height: 200px;
@@ -82,7 +105,7 @@
   cursor: not-allowed;
   background: none;
 }
-.keybinding-badge {
+.command-badge {
   margin-left: auto;
   background: #23272e;
   color: #bdbdbd;

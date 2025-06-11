@@ -77,6 +77,20 @@ class CodeTab {
     }
 }
 
+class Command {
+    name: string;
+    uniqueId: string;
+    action: () => void;
+    badge?: string;
+
+    constructor(name: string, uniqueId: string, action: () => void, badge?: string) {
+        this.name = name;
+        this.uniqueId = uniqueId;
+        this.action = action;
+        this.badge = badge;
+    }
+}
+
 @Component({
     selector: 'app-code-browser',
     standalone: true,
@@ -613,6 +627,7 @@ export class CodeBrowserComponent {
 
     }
 
+
     async fetchCode(codeEntity : NormalizedCodeEntity, name : string, entityType : string, org : string) : Promise<EnForceResponse> {
         let bundleName = codeEntity.BundleName!;
         let params : any = {
@@ -828,46 +843,55 @@ export class CodeBrowserComponent {
     }
 
     // Command Palette integration
-    private commandPaletteCommands = [
-        { name: 'Global Search', action: () => this.globalSearch(), keybinding: 'Ctrl+Shift+H' },
-        { name: 'Toggle Quick Diff Mode', action: () => this.quickDiffMode(), keybinding: '' },
-        { name: 'Refresh org metadata', action: () => this.reloadOrgMetadata(), keybinding: '' },
-        { name: 'Deploy current file', action: () => this.handleSave(), keybinding: 'Ctrl+S' },
-        { name: 'Reload current file', action: () => this.reloadEntity(true), keybinding: '' },
-        { name: 'Compare current file with org', action: () => this.diffWithOrg(true), keybinding: '' },
-        { name: 'Editor : Toggle word wrap', action: () => this.toggleWordWrap(), keybinding: 'Alt+Z' },
-        { name: 'Editor : Increase font size', action: () => this.changeFontSize(true), keybinding: '' },
-        { name: 'Editor : Decrease font size', action: () => this.changeFontSize(false), keybinding: '' },
-        { name: 'Open in separate window (popup)', action: () => this.openAsPopup(), keybinding: '' },
-        {
-            name: 'Select language mode',
-            action: () => {
-                this.selectLanguageMode();
-            },
-            keybinding: ''
-        }
+    private commandPaletteCommands : Command[] = [
+        new Command('Global Search', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
+        new Command('Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
+        new Command('Refresh org metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata()),
+        new Command('Deploy current file', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S'),
+        new Command('Reload current file', 'reload-current-file', () => this.reloadEntity(true)),
+        new Command('Compare current file with org', 'compare-current-file-with-org', () => this.diffWithOrg(true)),
+        new Command('Editor : Toggle word wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z'),
+        new Command('Editor : Increase font size', 'increase-font-size', () => this.changeFontSize(true)),
+        new Command('Editor : Decrease font size', 'decrease-font-size', () => this.changeFontSize(false)),
+        new Command('Open in separate window (popup)', 'open-in-popup', () => this.openAsPopup()),
+        new Command('Select language mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
+        new Command('Toggle errors pane', 'toggle-errors-pane', () => this.showErrorsPane()),
     ];
 
     selectLanguageMode() {
-        this.openCommandPalette({
+        this.openCommandPalette('selectLanguageMode',{
             commands: this.languageList.map(lang => ({
                 name: lang.label,
                 action: () => this.onLanguageSelect(lang)
             })),
-            placeholder: 'Select a language mode...'
-        });
+            placeholder: 'Select a language mode...',
+            emptyMessage: 'No languages available',
+        }, true);
     }
-
-    openCommandPalette(options?: { commands?: any[], placeholder?: string }) {
+    commandPaletteOpen : number = 0; 
+    openCommandPalette(paletteName: string, options?: { commands?: any[], placeholder?: string, commandFlag?: boolean, emptyMessage?: string }, nested?: boolean) {
+        if(this.commandPaletteOpen > 0 && !nested) return; //prevent multiple open
+        this.commandPaletteOpen++;
         const dialogRef = this.dialog.open(CommandPaletteComponent, {
-            data: { commands: options?.commands || this.commandPaletteCommands, placeholder: options?.placeholder },
+            data: { commands: options?.commands || this.commandPaletteCommands, placeholder: options?.placeholder, commandFlag: !!options?.commandFlag, emptyMessage: options?.emptyMessage },
             panelClass: 'command-palette-container',
             autoFocus: false
         });
         dialogRef.afterClosed().subscribe((cmd) => {
+            if(paletteName == 'editorCommands') {
+                if (cmd && cmd.uniqueId) {
+                    const idx = this.commandPaletteCommands.findIndex(c => c.uniqueId === cmd.uniqueId);
+                    if (idx > 0) {
+                        const [found] = this.commandPaletteCommands.splice(idx, 1);
+                        this.commandPaletteCommands.unshift(found);
+                    }
+                }
+            }
+
             if (cmd && cmd.action) {
                 cmd.action();
             }
+            this.commandPaletteOpen--;
         });
     }
 
@@ -875,7 +899,25 @@ export class CodeBrowserComponent {
     onGlobalKeyDown(event: KeyboardEvent) {
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
-            this.openCommandPalette();
+            this.openCommandPalette('editorCommands',{
+                commandFlag : true
+            });
+        }
+        else if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
+            event.preventDefault();
+            this.openCommandPalette('editorFiles',{
+                commands: this.openTabs.map(tab => ({
+                    name: tab.tabName,
+                    tab : tab,
+                    badg: tab.orgName,
+                    action: () => {
+                        this.selectTab(tab);
+                        this.editorCmp.focus();
+                    }
+                })),
+                placeholder: 'Select a file...',
+                emptyMessage: 'No files open'
+            });
         }
     }
 
@@ -950,13 +992,14 @@ export class CodeBrowserComponent {
             this.scrollToTab(this.activeTab!);
         }
         else if(evt.ctrlKey && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() == 'o') {
-            this.orgSelect.nativeElement.click();
-            evt.preventDefault();
-        }
-        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'p') {
-            evt.preventDefault();
+            // this.orgSelect.nativeElement.click();
             this.typeahead.focus();
+            evt.preventDefault();
         }
+        // else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'p') {
+        //     evt.preventDefault();
+        //     this.typeahead.focus();
+        // }
         else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'w') {
             evt.preventDefault();
             if(this.activeTab != null)
@@ -1551,6 +1594,8 @@ export class CodeBrowserComponent {
     }
 
     async dummyButton() {
+        this.showSnackBar('adsf');
+        this.showSnackBar('zxcv');
         if(this.selectedOrg != this.orgCredsList.at(-1)?.orgName) {
             await this.onOrgSelect(this.orgCredsList.at(-1)?.orgName, 'selectedOrg');
             await this.onEntityTypeSelect(this.entityTypeList[1].value);
@@ -1640,6 +1685,7 @@ export class CodeBrowserComponent {
             toggleContent.style.display = 'none';
         }
         collapsed = !collapsed;
+
         target.dataset['toggleCollapsed'] = '' + collapsed;
         // toggleContent.dataset['toggleCollapsed'] = '' + collapsed;
     }

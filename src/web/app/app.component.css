@@ -229,13 +229,13 @@ mat-tab-group#tab-group {
 }
 
 div.logo {
-    border-bottom: 1px solid #313131;
+    /* border-bottom: 1px solid #313131; */
     /* height: 100%; */
     width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #0d6efd;
+    /* background-color: #0d6efd; */
     /* padding: 4px; */
 }
 
