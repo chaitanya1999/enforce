@@ -180,7 +180,7 @@
             <!-- Quick Diff Mode -->
             <button [class]="'btn btn-primary topBarItem connectedButton-right ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
             
-            <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Dummy DEBUG button"><i class="bi bi-bug"></i></button>
+            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Dummy DEBUG button"><i class="bi bi-bug"></i></button> -->
     
         </div>
         <div [class]="'tabContainer ' + (quickDiffModeFlag ? 'quickDiff' : '') " (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">
