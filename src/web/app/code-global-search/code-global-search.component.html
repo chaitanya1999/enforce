@@ -11,9 +11,9 @@
             </div>
             <div class="modal-body" style="background: #181a1b;">
                 <div class="input-group mb-3" style="font-size:0.95em;">
-                    <input type="text" class="form-control bg-dark text-light border-secondary"
+                    <input #searchInput type="text" class="form-control bg-dark text-light border-secondary"
                         style="font-size:0.95em; border-radius: 6px 0 0 6px;" placeholder="Enter search text..."
-                        [(ngModel)]="searchText" (keydown)="onKeyDown($event)" autofocus>
+                        [(ngModel)]="searchText" (keydown)="onKeyDown($event)">
                     <button class="btn btn-warning text-dark fw-bold" type="button" (click)="onSearch()"
                         [disabled]="loading || !searchText" style="border-radius: 0 6px 6px 0;">Search</button>
                 </div>

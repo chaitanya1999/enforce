@@ -1,7 +1,7 @@
 import Utils, { EnForceResponse, NormalizedCodeEntity } from '../enforce-utils';
 import * as jsforce from 'jsforce';
 import { SalesforceService } from '../salesforce.service';
-import { AppConstants } from '../AppConstants';
+import { AppConstants, CodeEntity } from '../AppConstants';
 const debug = Utils.debug;
 
 
@@ -87,7 +87,7 @@ export class ClassCmpListFetcher {
             let suffix = Utils.aura_suffixMap;
             let auraList = Array.from(auraRecords).filter((y:any) => y['DefType'] in suffix).map((x:any) => {
                 let name = x['AuraDefinitionBundle'].DeveloperName + '/' + x['AuraDefinitionBundle'].DeveloperName + suffix[x['DefType']];
-                return new NormalizedCodeEntity(x['Id'], name, x['AuraDefinitionBundleId'], x['AuraDefinitionBundle']['DeveloperName'], x['AuraDefinitionBundle']['ApiVersion'], x['AuraDefinitionBundle']['NamespacePrefix'], orgName)
+                return new NormalizedCodeEntity(x['Id'], name, CodeEntity.AuraComponent, x['AuraDefinitionBundleId'], x['AuraDefinitionBundle']['DeveloperName'], x['AuraDefinitionBundle']['ApiVersion'], x['AuraDefinitionBundle']['NamespacePrefix'], orgName)
             })
             // let auraListStr = auraList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
@@ -121,7 +121,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_apex.txt`;
-            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
+            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], CodeEntity.ApexClass, null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let apexListStr = apexList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, apexListStr);
@@ -152,7 +152,7 @@ export class ClassCmpListFetcher {
             }
 
             debug(`Queried Succesfully. ${apexRecords.length} records.`);
-            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
+            let apexList = Array.from(apexRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], CodeEntity.ApexTrigger, null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             debug('Completed');
             return EnForceResponse.success({
                 type: 'ApexTrigger', list : apexList
@@ -182,7 +182,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_lwc.txt`;
-            let lwcList = Array.from(lwcRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
+            let lwcList = Array.from(lwcRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], CodeEntity.LWC, x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
             // let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, lwcListStr);
@@ -215,7 +215,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_vfpage.txt`;
-            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
+            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], CodeEntity.VFPage, null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
@@ -249,7 +249,7 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_vfcmp.txt`;
-            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
+            let vfList = Array.from(vfRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], CodeEntity.VFComponent, null, null, x['ApiVersion'], x['NamespacePrefix'], orgName));
             // let vfListStr = vfList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, vfListStr);
@@ -280,7 +280,7 @@ export class ClassCmpListFetcher {
             }
 
             debug(`Queried Succesfully. ${srRecords.length} records.`);
-            let srList = Array.from(srRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], null, null, null, x['NamespacePrefix'], orgName, x['ContentType']));
+            let srList = Array.from(srRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['Name'], CodeEntity.StaticResource, null, null, null, x['NamespacePrefix'], orgName, x['ContentType']));
             
             debug('Completed');
             return EnForceResponse.success({

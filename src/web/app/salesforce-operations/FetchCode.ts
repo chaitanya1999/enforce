@@ -89,7 +89,7 @@ export class CodeFetcher {
         let enForceResponseData : any = [];
         for (let orgName of ORG_NAMES) {
             try {
-                enForceResponseData[orgName] = [];
+                enForceResponseData[orgName] = {};
 
                 let creds = this.getCreds(codeToFetchParam, orgName);
                 console.log('#$#$ ' + JSON.stringify(creds));
@@ -111,7 +111,7 @@ export class CodeFetcher {
                     if(keysToIgnore.includes(entity)) continue;
                     let output = await (<any>this)[entityFunctionMapping[entity]](codeToFetchParam[entity], orgName, conn, entity);
                     orgFetchReport[orgName][entity] = output.data.count;
-                    enForceResponseData[orgName].push(output);
+                    enForceResponseData[orgName][entity] = output;
                 }
 
             } catch (err : any) {
@@ -151,7 +151,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('Aura Components');
         let count = 0;
-        let returnData : any = { count : 0 , entityName : entityName };
+        // let returnData : any = { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             //ids indicate individual aura definition
             //names indicate bundle names, defTypes indicate which aura definition to fetch from the bundle
@@ -197,8 +198,12 @@ export class CodeFetcher {
                     fs.writeFileSync(fullPath, auraRec['Source']);
 
                     if(this.enForceMode) {
-                        returnData[bundleName+'/'+fileName] = auraRec['Source'];
-                        returnData.Id = auraRec.Id;
+                        returnData.contents.push({
+                            [bundleName+'/'+fileName] : auraRec['Source'],
+                            Id : auraRec.Id
+                        });
+                        // returnData[bundleName+'/'+fileName] = auraRec['Source'];
+                        // returnData.Id = auraRec.Id;
                     }
                     count++;
                 } catch (err : any) {
@@ -223,7 +228,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('Apex Classes');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (apexClasses.names.length == 0 && apexClasses.ids?.length == 0) {
                 debug('No ApexClass to be fetched');
@@ -256,8 +262,12 @@ export class CodeFetcher {
                     count++;
 
                     if(this.enForceMode) {
-                        returnData[apexclass['Name']] = apexclass['Body'];
-                        returnData.Id = apexclass.Id;
+                        returnData.contents.push({
+                            [apexclass['Name']] : apexclass['Body'],
+                            Id : apexclass.Id
+                        });
+                        // returnData[apexclass['Name']] = apexclass['Body'];
+                        // returnData.Id = apexclass.Id;
                     }
                 }
             } catch (err : any) {
@@ -280,7 +290,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('Apex Trigger');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (apexTriggers.names.length == 0 && apexTriggers.ids?.length == 0) {
                 debug('No ApexTrigger to be fetched');
@@ -312,8 +323,12 @@ export class CodeFetcher {
                     count++;
 
                     if(this.enForceMode) {
-                        returnData[apexTrigger['Name']] = apexTrigger['Body'];
-                        returnData.Id = apexTrigger.Id;
+                        returnData.contents.push({
+                            [apexTrigger['Name']] : apexTrigger['Body'],
+                            Id : apexTrigger.Id
+                        });
+                        // returnData[apexTrigger['Name']] = apexTrigger['Body'];
+                        // returnData.Id = apexTrigger.Id;
                     }
                 }
             } catch (err : any) {
@@ -337,7 +352,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('LWC Components');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (lwcComponents.names?.length == 0 && lwcComponents.fileNames?.length == 0 && lwcComponents.ids?.length == 0) {
                 debug('No LWC Components to be fetched');
@@ -387,8 +403,12 @@ export class CodeFetcher {
                     count++;
 
                     if(this.enForceMode) {
-                        returnData[lwcRec['FilePath']] = lwcRec['Source'];
-                        returnData.Id = lwcRec.Id;
+                        returnData.contents.push({
+                            [lwcRec['FilePath']] : lwcRec['Source'],
+                            Id : lwcRec.Id
+                        });
+                        // returnData[lwcRec['FilePath']] = lwcRec['Source'];
+                        // returnData.Id = lwcRec.Id;
                     }
                 } catch (err : any) {
                     debug('Error => ' + err);
@@ -412,7 +432,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('Visualforce Pages');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (vfPages.names.length == 0 && vfPages.ids?.length == 0) {
                 debug('No VF Page to be fetched');
@@ -445,8 +466,12 @@ export class CodeFetcher {
                     count++;
 
                     if(this.enForceMode) {
-                        returnData[vfPage['Name']] = vfPage['Markup'];
-                        returnData.Id = vfPage.Id;
+                        returnData.contents.push({
+                            [vfPage['Name']] : vfPage['Markup'],
+                            Id : vfPage.Id
+                        });
+                        // returnData[vfPage['Name']] = vfPage['Markup'];
+                        // returnData.Id = vfPage.Id;
                     }
                 }
             } catch (err : any) {
@@ -470,7 +495,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('Visualforce Components');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (vfComponents.names.length == 0 && vfComponents.ids?.length == 0) {
                 debug('No VF Page to be fetched');
@@ -503,8 +529,12 @@ export class CodeFetcher {
                     count++;
 
                     if(this.enForceMode) {
-                        returnData[vfCmp['Name']] = vfCmp['Markup'];
-                        returnData.Id = vfCmp.Id;
+                        returnData.contents.push({
+                            [vfCmp['Name']] : vfCmp['Markup'],
+                            Id : vfCmp.Id
+                        });
+                        // returnData[vfCmp['Name']] = vfCmp['Markup'];
+                        // returnData.Id = vfCmp.Id;
                     }
                 }
             } catch (err : any) {
@@ -777,7 +807,8 @@ export class CodeFetcher {
         console.log('\n');
 		debug('StaticResource');
         let count = 0;
-        let returnData : any =  { count : 0 , entityName : entityName };
+        // let returnData : any =  { count : 0 , entityName : entityName };
+        let returnData : any = { count : 0 , contents : []};
         try {
             if (staticResources.names.length == 0) {
                 debug('No StaticResource to be fetched');
@@ -798,8 +829,12 @@ export class CodeFetcher {
                 });
 
                 if(this.enForceMode) {
-                    returnData[staticRes['Name']] = body;
-                    returnData.Id = staticRes.Id;
+                    returnData.contents.push({
+                        [staticRes['Name']] : body,
+                        Id : staticRes.Id
+                    });
+                    // returnData[staticRes['Name']] = body;
+                    // returnData.Id = staticRes.Id;
                 }
 
                 count++;

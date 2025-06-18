@@ -200,6 +200,7 @@ export class EnForceResponse {
 export class NormalizedCodeEntity {
     Id: string;
     Name: string;
+    entityType : string;
     BundleId: string | null;
     BundleName: string | null;
     ApiVersion: string | null;
@@ -207,9 +208,10 @@ export class NormalizedCodeEntity {
     OrgName : string;
     mimeType? : string;
 
-    constructor(Id: string,Name: string,BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string) {
+    constructor(Id: string,Name: string, entityType: string, BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string) {
         this.Id = Id;
         this.Name = Name;
+        this.entityType = entityType;
         this.BundleId = BundleId;
         this.BundleName = BundleName;
         this.ApiVersion = ApiVersion;

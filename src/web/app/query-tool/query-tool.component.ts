@@ -17,6 +17,8 @@ import { EnForceResponse } from '../enforce-utils';
   styleUrl: './query-tool.component.css'
 })
 export class QueryToolComponent {
+    @Input() isComponentActive : boolean = false;
+    
     selectedOrg: string = '';
     selectedEntityType: string = '';
     showSpinner : boolean = false;

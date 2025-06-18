@@ -1,0 +1,84 @@
+.tree-root {
+	color: #eee;
+	font-size: 0.97em;
+	padding: 0;
+	background: none;
+	overflow-x: hidden;
+}
+.tree-list {
+	list-style: none;
+	padding-left: 0.5em;
+	margin: 0;
+}
+/* .tree-lines > li {
+	position: relative;
+	padding-left: 1.1em;
+}
+.tree-lines > li:before {
+	content: '';
+	position: absolute;
+	left: 0.4em;
+	top: 0;
+	bottom: 0.5em;
+	width: 1px;
+	background: #444;
+	z-index: 0;
+}
+.tree-lines > li:last-child:before {
+	bottom: 1.2em;
+} */
+.tree-node, .tree-leaf {
+	cursor: pointer;
+	user-select: none;
+	padding: 0.15em 0.2em;
+	border-radius: 4px;
+	transition: background 0.15s, color 0.15s;
+	display: flex;
+	align-items: center;
+	position: relative;
+	z-index: 1;
+}
+.tree-leaf.tab-leaf:hover {
+	background: #23272b;
+	color: #fff;
+}
+.tree-leaf.tab-leaf.active-leaf {
+	background: #23272b;
+	color: #fff;
+	font-weight: bold;
+}
+.tree-leaf.tab-leaf {
+	color: #fff;
+	padding-left: 2.2em; /* Indent leaf nodes to align under parent folders */
+}
+.tree-leaf.tab-leaf.tab-pinned .pin-icon {
+	margin-left: 0.3em;
+	color: #ffd966;
+}
+.tree-leaf.tab-leaf.tab-hidden {
+	opacity: 0.5;
+	font-style: italic;
+}
+.tree-label {
+	margin-left: 0.4em;
+	color: inherit;
+	font-weight: 500;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+}
+.close-icon {
+	margin-left: 0.5em;
+	color: #aaa;
+	font-size: 1.1em;
+	cursor: pointer;
+	transition: color 0.15s;
+}
+.close-icon:hover {
+	color: #ff6666;
+}
+.pin-icon {
+	margin-left: 0.3em;
+	font-size: 1.1em;
+	vertical-align: middle;
+}

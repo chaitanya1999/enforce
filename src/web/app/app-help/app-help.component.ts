@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Input } from '@angular/core';
 
 @Component({
   selector: 'app-help',
@@ -8,5 +8,6 @@ import { Component } from '@angular/core';
   styleUrl: './app-help.component.css'
 })
 export class AppHelpComponent {
-
+  @Input() isComponentActive : boolean = false;
+  
 }

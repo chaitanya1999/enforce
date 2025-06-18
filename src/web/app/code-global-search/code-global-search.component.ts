@@ -1,4 +1,4 @@
-import { Component, Inject, Output, EventEmitter } from '@angular/core';
+import { Component, Inject, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { IpcService } from '../../ipc.service';
 import { CommonModule } from '@angular/common';
@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
     templateUrl: './code-global-search.component.html',
     styleUrl: './code-global-search.component.css'
 })
-export class CodeGlobalSearchComponent {
+export class CodeGlobalSearchComponent implements AfterViewInit {
     searchText: string = '';
     orgName: string = '';
     loading: boolean = false;
@@ -20,6 +20,7 @@ export class CodeGlobalSearchComponent {
     submitted: boolean = false;
     selectedRowIndex: number | null = null;
     @Output() rowDoubleClicked = new EventEmitter<any>();
+    @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
 
     constructor(
         private ipc: IpcService,
@@ -73,5 +74,13 @@ export class CodeGlobalSearchComponent {
         this.rowDoubleClicked.emit(row);
         // Optionally close dialog here if you want:
         // this.close();
+    }
+
+    ngAfterViewInit() {
+        setTimeout(() => {
+            if (this.searchInputRef && this.searchInputRef.nativeElement) {
+                this.searchInputRef.nativeElement.focus();
+            }
+        }, 150);
     }
 }

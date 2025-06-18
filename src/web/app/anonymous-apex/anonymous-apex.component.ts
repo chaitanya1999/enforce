@@ -19,6 +19,8 @@ import {MatTooltipModule} from '@angular/material/tooltip';
   styleUrl: './anonymous-apex.component.css'
 })
 export class AnonymousApexComponent {
+    @Input() isComponentActive : boolean = false;
+    
     selectedOrg: string = '--Org--';
     showSpinner : boolean = false;
 

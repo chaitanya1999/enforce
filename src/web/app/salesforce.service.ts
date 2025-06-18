@@ -153,10 +153,10 @@ export class SalesforceService {
         let params = x[0];
         let enforceResp = await new CodeFetcher().main(params, false, true, false);
         log('SalesforceService - FetchCode | fetched')
-        let response = enforceResp[params.OrgNames[0]][0];
+        // let response = enforceResp[params.OrgNames[0]][0];
         log('SalesforceService - FetchCode | sending response back');
         // console.log('#$#$ ' + JSON.stringify(response));
-        return response;
+        return enforceResp;
     }
 
     async DeployCode(x : any) {
@@ -466,5 +466,18 @@ export class SalesforceService {
             console.error(err);
             return EnForceResponse.failure(err);
         }
+    }
+
+    async storePackageXml(params : any) {
+        log('SalesforceService - storePackageXml | ' + JSON.stringify(params));
+        const packageXml = params[0];
+        localStorage.setItem('lastPackageXml', packageXml || '');
+        return EnForceResponse.success(true);
+    }
+
+    async getLastPackageXml() {
+        log('SalesforceService - getLastPackageXml');
+        const packageXml = localStorage.getItem('lastPackageXml') || '';
+        return EnForceResponse.success(packageXml);
     }
 }

@@ -26,30 +26,76 @@ export class PromptDialogComponent {
     dropdownSelection? : string;
     typeaheadRootStyle: string = '';
     maxListSize : number = 10000;
+    isTextAreaRequired: boolean;
+    isTextFieldRequired: boolean;
+    textAreaValue?: string;
+    @ViewChild('formTextArea') textAreaField: any;
 
     @ViewChild('typeaheadParent') typeaheadParent : any;
     @ViewChild('typeahead') typeahead : any;
+
+    textFieldRegex?: string;
+    textAreaRegex?: string;
 
     constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: any) {
         this.text = data.text || 'Please enter some input';
         this.placeholder = data.placeholder || 'Input';
         this.label = data.label || 'Input';
-        this.regex = data.regex;
+        this.regex = data.regex; // legacy, fallback
+        this.textFieldRegex = data.textFieldRegex || this.regex;
+        this.textAreaRegex = data.textAreaRegex || this.regex;
         this.validationText = data.validationText || 'Please enter a valid input';
         this.dropdownRequired = data.dropdownRequired;
         this.dropdownList = data.dropdownList;
         this.dropdownPlaceholder = data.dropdownPlaceholder;
+        this.isTextAreaRequired = !!data.isTextAreaRequired;
+        this.isTextFieldRequired = data.isTextFieldRequired !== false; // default true
+        this.textAreaValue = data.textAreaValue || '';
+        this.inputValue = data.inputValue || '';
+    }
+
+    isTextFieldValid(): boolean {
+        if (!this.isTextFieldRequired) return true;
+        return !!this.inputValue && (!this.textFieldRegex || !!this.inputValue.match(this.textFieldRegex));
+    }
+    isTextAreaValid(): boolean {
+        if (!this.isTextAreaRequired) return true;
+        return !!this.textAreaValue && (!this.textAreaRegex || !!this.textAreaValue.match(this.textAreaRegex));
+    }
+    isInputValid(): boolean {
+        return this.isTextFieldValid() && this.isTextAreaValid();
     }
 
     confirm() {
-        let valid = this.regex ? this.inputValue?.match(this.regex)?.length : true;
-        if (this.inputField.nativeElement.checkValidity() && valid) {
-            this.inputField.nativeElement.classList.remove("is-invalid");
-            this.inputField.nativeElement.classList.add("is-valid");
-            this.dialogRef.close({input : this.inputValue, dropdownSelection : this.dropdownSelection});
-        } else {
-            this.inputField.nativeElement.classList.remove("is-valid");
-            this.inputField.nativeElement.classList.add("is-invalid");
+        const inputValid = this.isTextFieldValid();
+        const textAreaValid = this.isTextAreaValid();
+        const valid = inputValid && textAreaValid;
+        // Set classes for input field
+        if (this.inputField) {
+            if (inputValid) {
+                this.inputField.nativeElement.classList.remove("is-invalid");
+                this.inputField.nativeElement.classList.add("is-valid");
+            } else {
+                this.inputField.nativeElement.classList.remove("is-valid");
+                this.inputField.nativeElement.classList.add("is-invalid");
+            }
+        }
+        // Set classes for textarea field
+        if (this.textAreaField) {
+            if (textAreaValid) {
+                this.textAreaField.nativeElement.classList.remove("is-invalid");
+                this.textAreaField.nativeElement.classList.add("is-valid");
+            } else {
+                this.textAreaField.nativeElement.classList.remove("is-valid");
+                this.textAreaField.nativeElement.classList.add("is-invalid");
+            }
+        }
+        if (valid) {
+            this.dialogRef.close({
+                input: this.inputValue,
+                textArea: this.textAreaValue,
+                dropdownSelection: this.dropdownSelection
+            });
         }
     }
 
@@ -60,6 +106,14 @@ export class PromptDialogComponent {
     onKeyDown(evt : any) {
         if(evt.key == 'Enter') {
             this.confirm();
+        }
+    }
+
+    onTextAreaKeyDown(evt: KeyboardEvent) {
+        if (evt.key === 'Enter' && (evt.ctrlKey || evt.metaKey)) {
+            if (this.isInputValid() && !(this.dropdownRequired && !this.dropdownSelection)) {
+                this.confirm();
+            }
         }
     }
 

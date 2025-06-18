@@ -12,7 +12,7 @@
                             <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
                             <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
                             <div class="reload-bundle">
-                                <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true)"></i>
+                                <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true, this.selectedOrg)"></i>
                             </div>
                         </div>
                         @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
@@ -34,33 +34,57 @@
                 </div>
             <!-- </div> -->
             <!-- <div class="customAccordion"> -->
-                <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false">
-                    Open Editors
+                <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false" style="position: relative;">
+                    <span>Open Editors</span>
+                    <button type="button"
+                        class="accordion-header-btn"
+                        (click)="toggleTreeViewMode($event); $event.stopPropagation();"
+                        matTooltip="Toggle Tree View Mode"
+                        style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+                        <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
+                        <span class="visually-hidden">Toggle Tree View</span>
+                    </button>
                 </div>
                 <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
-                    @for(tab of openTabs; track tab) {
-                        <!-- @if(!tab.temporary) { -->
-                            <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
-                            (click)="onTabClick(tab)" 
-                            (contextmenu)="onTabContextMenu(tab, $event)">
-                                
-                                <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
-                                <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
-                                <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
-                                @if(tab.pinned) {
-                                    <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
-                                } @else {
-                                    <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
-                                }
-                            </div>
-                        <!-- } -->
+                    @if(treeViewMode) {
+                        <div class="treeViewContainer">
+                            <app-tree-view [treeData]="openTabs" 
+                                [activeTabModelId]="activeTabModelId" 
+                                (onNodeClick)="onTabClick($event)" 
+                                (onNodeContextMenu)="onTabContextMenu($event.node, $event.event)"
+                                (onNodeMouseUp)="onTabMouseUp($event.node, $event.event)"
+                                (closeTab)="onTabClose($event)"
+                                [showHiddenNodes]="true"
+                                [showPinnedNodes]="true"
+                                [showTemporaryNodes]="false"
+                                [showOrgName]="true"></app-tree-view>
+                        </div>
+                    }
+                    @else {
+                        @for(tab of openTabs; track tab) {
+                            <!-- @if(!tab.temporary) { -->
+                                <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
+                                (click)="onTabClick(tab)" 
+                                (contextmenu)="onTabContextMenu(tab, $event)">
+                                    
+                                    <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
+                                    <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
+                                    <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
+                                    @if(tab.pinned) {
+                                        <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
+                                    } @else {
+                                        <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
+                                    }
+                                </div>
+                            <!-- } -->
+                        }
                     }
                 </div>
             <!-- </div> -->
         <!-- </div> -->
     </div>
     <!-- (click)="toggleSidePanel($event)" -->
-    <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizing($event)">
+    <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizingStart($event)">
         <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
     </div>
     <div class="root" #rootElement>
@@ -106,8 +130,11 @@
             <!-- Reload Org Metadata button -->
             <button class="btn btn-secondary topBarItem connectedButton-mid" (click)="reloadOrgMetadata()" matTooltip="Reload Org Metadata (Class Components list + Objects)" matTooltipPosition="below" [disabled]="!isOrgSelected"><i class="bi bi-arrow-clockwise"></i></button>
     
+            <!-- Open with package xml -->
+            <button class="btn btn-primary topBarItem connectedButton-right" (click)="openFromPackageXml()" matTooltip="Open in bulk from package xml" matTooltipPosition="below" [disabled]="!isOrgSelected" ><i class="bi bi-filetype-xml"></i></button>
+
             <!-- Clear cache button -->
-            <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedOrgMetadata()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected" ><i class="bi bi-trash"></i></button>
+            <!-- <button class="btn btn-danger topBarItem connectedButton-right" (click)="clearCachedOrgMetadata()" matTooltip="Clear Cached List" matTooltipPosition="below" [disabled]="!isOrgSelected" ><i class="bi bi-trash"></i></button> -->
             <!-- style="display: none;" -->
     
             <!-- Save button -->
@@ -153,7 +180,7 @@
             <!-- Quick Diff Mode -->
             <button [class]="'btn btn-primary topBarItem connectedButton-right ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
             
-            <!-- <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Dummy DEBUG button"><i class="bi bi-bug"></i></button> -->
+            <button class="btn btn-light topBarItem" style="flex-shrink:0;" (click)="dummyButton()" matTooltipPosition="below" matTooltip="Dummy DEBUG button"><i class="bi bi-bug"></i></button>
     
         </div>
         <div [class]="'tabContainer ' + (quickDiffModeFlag ? 'quickDiff' : '') " (mousewheel)="tabContainerScroll($event)" #tabContainer (click)="clickEmptySpace($event)" data-emptyspace="true">

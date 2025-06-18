@@ -28,7 +28,14 @@ import { ResizableModule } from 'angular-resizable-element';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import { CodeGlobalSearchComponent } from '../code-global-search/code-global-search.component';
 import { CommandPaletteComponent } from '../command-palette/command-palette.component';
+import { AppTreeViewComponent } from '../app-tree-view/app-tree-view.component';
+import { text } from 'express';
 
+// Type for the data inside EnForceResponse for bulk fetch
+type BulkFetchCodeData = {
+    count: number;
+    contents: Array<{ id: string; [key:string] : string; }>;
+};
 
 class CodeTab {
     tabName : string;
@@ -94,12 +101,14 @@ class Command {
 @Component({
     selector: 'app-code-browser',
     standalone: true,
-    imports: [CommandPaletteComponent, CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule, MatTooltipModule],
+    imports: [AppTreeViewComponent, CommandPaletteComponent, CodeEditorComponent, FormsModule, MatInputModule, MatSelectModule, MatFormFieldModule, MatAutocompleteModule, MatTabsModule, MatCardModule, MatButtonModule, MatSnackBarModule, CustomTypeaheadComponent, MatProgressSpinnerModule, MatDialogModule, ResizableModule, MatTooltipModule],
     templateUrl: './code-browser.component.html',
     styleUrl: './code-browser.component.css',
     // schemas: [CUSTOM_ELEMENTS_SCHEMA]
 })
 export class CodeBrowserComponent {
+
+    @Input() isComponentActive : boolean = false;
 
     get $codeEditor() : string {
         return AppConstants.CODE_EDITOR;
@@ -349,6 +358,12 @@ export class CodeBrowserComponent {
         });
     }
 
+    addTab(codeTab : CodeTab) {
+        this.openTabs.push(codeTab);
+        this.openTabs = [...this.openTabs]; // trigger change detection
+        this.changeDetectorRef.detectChanges();
+    }
+
     async authenticate() {
         console.log('code-browser.component | authorize')
         this.showSpinner = true;
@@ -565,8 +580,10 @@ export class CodeBrowserComponent {
             
             //Proceed to fetching
             let bundleName = codeEntity.BundleName!;
-            let response = await this.fetchCode(codeEntity, name, entityType, org);
+            let response : any = await this.fetchCode([codeEntity], [org]);
             lang = this.getEntityLanguage(name, entityType, codeEntity.mimeType);
+
+            response = <EnForceResponse>(response[org][entityType]);
     
             //validate response
             if(!response.isSuccess) {
@@ -578,7 +595,7 @@ export class CodeBrowserComponent {
             } 
 
             //success response. proceed to create tabs
-            code = response.data[name];
+            code = response.data.contents[0][name];
             let recordId = response.data.Id;
 
             //check if tab was reloaded
@@ -604,14 +621,14 @@ export class CodeBrowserComponent {
             codeTab.bundleName = bundleName;
             codeTab.codeEntity = codeEntity;
             codeTab.hidden = !!openHidden;
-            this.openTabs.push(codeTab);
-            this.changeDetectorRef.detectChanges();
+            this.addTab(codeTab);
+            // this.changeDetectorRef.detectChanges();
             if(!openInBackground)
                 this.selectTab(codeTab);
 
             this.log('loadEntity | loadBundleDetails ');
             if(this.isBundle(entityType))
-                this.loadBundleDetails(codeTab, false);
+                this.loadBundleDetails(codeTab, false, org);
             
             this.selectedLanguage = this.editorCmp.getModelLanguage();
             // this.languageSelector.setSearchQuery(this.selectedLanguage);
@@ -627,21 +644,303 @@ export class CodeBrowserComponent {
 
     }
 
+    async loadEntityBulk(
+        codeEntities: NormalizedCodeEntity[],
+        org: string,
+        openInBackground?: boolean,
+        openHidden?: boolean,
+        ignoreSpinner?: boolean
+    ) {
+        if (!ignoreSpinner) this.showSpinner = true;
+        try {
+            // Find already loaded entities
+            const alreadyLoadedTabs: CodeTab[] = [];
+            const toFetchEntities: NormalizedCodeEntity[] = [];
+            for (const codeEntity of codeEntities) {
+                const existingTab = this.openTabs.find(
+                    x => x.tabValue === codeEntity.Name && x.orgName === org && x.entityType === codeEntity.entityType
+                );
+                if (existingTab) {
+                    alreadyLoadedTabs.push(existingTab);
+                } else {
+                    toFetchEntities.push(codeEntity);
+                }
+            }
 
-    async fetchCode(codeEntity : NormalizedCodeEntity, name : string, entityType : string, org : string) : Promise<EnForceResponse> {
-        let bundleName = codeEntity.BundleName!;
-        let params : any = {
-            [entityType] : { names : [name] },
-            'OrgNames' : [org],
-            'CREDENTIALS' : { [org] : this.orgCredsMap.get(org) } 
+            // We'll want to select the tab corresponding to the last entity in codeEntities
+            const lastEntity = codeEntities[codeEntities.length - 1];
+            let lastTab: CodeTab | undefined;
+
+            // Collect messages for bulk snackbar
+            const alreadyLoadedNames: string[] = [];
+            const loadedNames: string[] = [];
+            const notFoundNames: string[] = [];
+            const errorMessages: string[] = [];
+
+            if (alreadyLoadedTabs.length) {
+                alreadyLoadedNames.push(...alreadyLoadedTabs.map(tab => tab.tabName));
+            }
+
+            // Group toFetchEntities by entityType for batch fetch
+            const entityTypeGroups: { [entityType: string]: NormalizedCodeEntity[] } = {};
+            for (const codeEntity of toFetchEntities) {
+                if (!entityTypeGroups[codeEntity.entityType]) {
+                    entityTypeGroups[codeEntity.entityType] = [];
+                }
+                entityTypeGroups[codeEntity.entityType].push(codeEntity);
+            }
+
+            let createdTabs: CodeTab[] = [];
+            // Fetch code for each entityType group
+            for (const entityType of Object.keys(entityTypeGroups)) {
+                const entities = entityTypeGroups[entityType];
+                const response: EnForceResponse = await this.fetchCode(entities, [org]);
+                const entityTypeResponse = (response as any)[org]?.[entityType];
+
+                // entityTypeResponse is an EnForceResponse object with data as BulkFetchCodeData
+                const data = entityTypeResponse?.data as BulkFetchCodeData | undefined;
+
+                if (!entityTypeResponse || !entityTypeResponse.isSuccess || !data || !Array.isArray(data.contents)) {
+                    errorMessages.push(`ERROR: No valid response for ${entityType}`);
+                    continue;
+                }
+
+                // Each entity in entities should correspond to a content in contents by order
+                for (let i = 0; i < entities.length; i++) {
+                    const codeEntity = entities[i];
+                    const name = codeEntity.Name;
+                    const lang = this.getEntityLanguage(name, codeEntity.entityType, codeEntity.mimeType);
+
+                    // Try to find the content for this entity by name
+                    const contentObj = data.contents[i];
+                    if (!contentObj || !contentObj[name]) {
+                        notFoundNames.push(name);
+                        continue;
+                    }
+
+                    const code = contentObj[name];
+                    const recordId = contentObj.id || '';
+
+                    const modelId = this.editorCmp.createCodeEditorModel(code, lang);
+                    const tabName = this.getTabName(name, codeEntity.entityType, codeEntity);
+                    const icon = AppConstants.languageVsIcon[lang];
+                    const codeTab = new CodeTab(tabName, modelId, name, icon, org, AppConstants.CODE_EDITOR, codeEntity.entityType, recordId);
+                    codeTab.bundleName = codeEntity.BundleName!;
+                    codeTab.codeEntity = codeEntity;
+                    codeTab.hidden = !!openHidden;
+                    this.addTab(codeTab);
+                    // this.changeDetectorRef.detectChanges();
+                    createdTabs.push(codeTab);
+                    loadedNames.push(tabName);
+
+                    if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, org);
+                }
+            }
+
+            // Collate all messages and show a single snackbar
+            let messages: string[] = [];
+            if (alreadyLoadedNames.length) {
+                messages.push(`Already loaded: ${alreadyLoadedNames.join(', ')}`);
+            }
+            if (loadedNames.length) {
+                messages.push(`Loaded: ${loadedNames.join(', ')}`);
+            }
+            if (notFoundNames.length) {
+                messages.push(`Not Found: ${notFoundNames.join(', ')}`);
+            }
+            if (errorMessages.length) {
+                messages.push(errorMessages.join('\n'));
+            }
+            if (messages.length) {
+                let finalMsg = messages.join('\n');
+                this.showSnackBar(finalMsg);
+                this.log('loadEntityBulk | Messages => ', finalMsg);
+            }
+
+            // Find the tab (either already loaded or just created) for the last entity
+            lastTab = [...alreadyLoadedTabs, ...createdTabs].find(
+                tab => tab.tabValue === lastEntity.Name && tab.orgName === org && tab.entityType === lastEntity.entityType
+            );
+
+            if (lastTab && !openInBackground) {
+                this.selectTab(lastTab);
+            }
+
+            return [...alreadyLoadedTabs, ...createdTabs];
+        } catch (err) {
+            this.log('loadEntityBulk ERROR =>', err);
+            this.showSnackBar('Some error occurred');
+            return null;
+        } finally {
+            if (!ignoreSpinner) this.showSpinner = false;
+        }
+    }
+
+    /**
+     * Loads all entities from a Salesforce package.xml string.
+     * @param packageXml The package.xml content as a string.
+     */
+    async loadEntitiesFromPackageXml(packageXml: string) {
+        this.log('loadEntitiesFromPackageXml | packageXml = ', packageXml);
+        // Parse the XML string
+        let parser = new DOMParser();
+        let xmlDoc = parser.parseFromString(packageXml, "application/xml");
+        let types = Array.from(xmlDoc.getElementsByTagName("types"));
+        let entitiesToLoad: NormalizedCodeEntity[] = [];
+
+        // Helper to get text content of a tag
+        const getText = (el: Element, tag: string) =>
+            Array.from(el.getElementsByTagName(tag)).map(e => e.textContent?.trim() || '');
+
+        for (let typeEl of types) {
+            let members = getText(typeEl, "members");
+            let nameArr = getText(typeEl, "name");
+            if (!nameArr.length) continue;
+            let entityType = nameArr[0];
+            if(!Object.values(AppConstants.packageXmlEntityTypeToEnforceType).includes(entityType))
+                continue; // Skip unsupported types
+
+            // Map package.xml type to AppConstants entityType if needed
+            // (e.g., ApexClass, AuraComponent, LWC, etc.)
+            let normalizedEntityType = AppConstants.packageXmlEntityTypeToEnforceType[entityType];
+
+            // Get all code entities for this type from the selected org
+            let codeEntities = this.entityTypeVsList[normalizedEntityType] || [];
+
+            if (normalizedEntityType === this.$entityTypeAura || normalizedEntityType === this.$entityTypeLWC) {
+                // For Aura/LWC, match by bundleName
+                for (let bundleName of members) {
+                    let matched = codeEntities.filter(e => e.BundleName === bundleName);
+                    entitiesToLoad.push(...matched);
+                }
+            } else {
+                // For others, match by Name
+                for (let name of members) {
+                    let matched = codeEntities.find(e => e.Name === name);
+                    if (matched) entitiesToLoad.push(matched);
+                }
+            }
         }
 
-        //set up params and language
-        if(entityType == CodeEntity.AuraComponent) {
-            let defType = <string>Object.entries(AppConstants.aura_suffixVsDefTypes).find( ([suffix, defType]) => name.endsWith(suffix) )![1] || 'COMPONENT';
-            params[CodeEntity.AuraComponent] = { names : [bundleName], defTypes : [defType] }
-        } else if(entityType == CodeEntity.LWC) {
-            params[CodeEntity.LWC] = { fileNames : [name] }
+        // Remove duplicates
+        const seen = new Set();
+        entitiesToLoad = entitiesToLoad.filter(e => {
+            const key = `${e.entityType}:${e.Name}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        this.log('loadEntitiesFromPackageXml | entitiesToLoad = ', entitiesToLoad);
+
+        if (entitiesToLoad.length === 0) {
+            this.showSnackBar('No matching entities found in org for package.xml');
+            return;
+        }
+
+        // let orgs = [this.selectedOrg];
+        // if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+        //     orgs.push(this.selectedOrg2);
+        // }
+        await this.loadEntityBulk(entitiesToLoad, this.selectedOrg);
+    }
+
+    async openFromPackageXml() {
+        this.log('openFromPackageXml | Opening package.xml dialog');
+
+        // Call IPC method to fetch last package.xml contents (async/await version)
+        const res: EnForceResponse = await this._ipc.callMethod('getLastPackageXml');
+        let lastPackageXml : string = res.data || '';
+
+        // Open a prompt dialog to get package.xml string from user
+        const dialogRef = this.dialog.open(PromptDialogComponent, {
+            data: {
+                text: 'Paste your Salesforce package.xml here',
+                placeholder: 'package.xml',
+                label: 'package.xml',
+                isTextAreaRequired: true,
+                isTextFieldRequired : false,
+                validationText: 'Please enter a valid Salesforce package.xml',
+                textAreaValue: lastPackageXml,
+            }
+        });
+
+        dialogRef.afterClosed().subscribe(async (data: any) => {
+            if(!data) return; // User cancelled
+            const xml = data.textArea?.trim();
+            if (!xml) {
+                this.showSnackBar('Invalid Salesforce package.xml');
+                this.log('openFromPackageXml | No input provided');
+                return;
+            }
+
+            // Basic validation: check for <Package> and <types> tags and no parsererror
+            let isValid = false;
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xml, "application/xml");
+                const hasParserError = xmlDoc.getElementsByTagName("parsererror").length > 0;
+                const hasPackage = xmlDoc.getElementsByTagName("Package").length > 0;
+                const hasTypes = xmlDoc.getElementsByTagName("types").length > 0;
+                isValid = !hasParserError && hasPackage && hasTypes;
+            } catch {
+                isValid = false;
+            }
+
+            if (!isValid) {
+                this.showSnackBar('Invalid Salesforce package.xml');
+                return;
+            }
+
+            this._ipc.callMethod('storePackageXml', xml);
+            await this.loadEntitiesFromPackageXml(xml);
+        });
+    }
+
+    async fetchCode(codeEntities : NormalizedCodeEntity[], orgs : string[]) : Promise<EnForceResponse> {
+        
+        let params : any = {
+            'OrgNames' : orgs,
+            'CREDENTIALS' : {}
+        };
+
+        orgs.forEach(org => {
+            params['CREDENTIALS'][org] = this.orgCredsMap.get(org);//! should be added by salesforce service , creds should not exist anywhere in this component, only in the service
+        });
+
+        // Group entities by type for bulkification
+        const auraNames: string[] = [];
+        const auraDefTypes: string[] = [];
+        const lwcFileNames: string[] = [];
+        const entityTypeVsNames: { [key: string]: string[] } = {};
+
+        for (let codeEntity of codeEntities) {
+            const name = codeEntity.Name;
+            const entityType = codeEntity.entityType;
+            const bundleName = codeEntity.BundleName!;
+
+            if (entityType == CodeEntity.AuraComponent) {
+                // Find the defType for the aura file
+                const found = Object.entries(AppConstants.aura_suffixVsDefTypes).find(([suffix, _]) => name.endsWith(suffix));
+                const defType = found ? found[1] as string : 'COMPONENT';
+                auraNames.push(bundleName);
+                auraDefTypes.push(defType);
+            } else if (entityType == CodeEntity.LWC) {
+                lwcFileNames.push(name);
+            } else {
+                if (!entityTypeVsNames[entityType]) entityTypeVsNames[entityType] = [];
+                entityTypeVsNames[entityType].push(name);
+            }
+        }
+
+        if (auraNames.length) {
+            params[CodeEntity.AuraComponent] = { names: auraNames, defTypes: auraDefTypes };
+        }
+        if (lwcFileNames.length) {
+            params[CodeEntity.LWC] = { fileNames: lwcFileNames };
+        }
+        for (const [entityType, names] of Object.entries(entityTypeVsNames)) {
+            params[entityType] = { names };
         }
         
         //fetch code from org
@@ -856,6 +1155,7 @@ export class CodeBrowserComponent {
         new Command('Open in separate window (popup)', 'open-in-popup', () => this.openAsPopup()),
         new Command('Select language mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
         new Command('Toggle errors pane', 'toggle-errors-pane', () => this.showErrorsPane()),
+        new Command('Open in bulk from package xml', 'toggle-errors-pane', () => this.openFromPackageXml()),
     ];
 
     selectLanguageMode() {
@@ -897,6 +1197,8 @@ export class CodeBrowserComponent {
 
     @HostListener('window:keydown', ['$event'])
     onGlobalKeyDown(event: KeyboardEvent) {
+        if(!this.isComponentActive) return; //ignore if component is not active
+        
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
             this.openCommandPalette('editorCommands',{
@@ -918,6 +1220,10 @@ export class CodeBrowserComponent {
                 placeholder: 'Select a file...',
                 emptyMessage: 'No files open'
             });
+         }else if(event.ctrlKey && !event.shiftKey &&  !event.altKey && event.key.toLowerCase() == 'b') {
+            event.stopPropagation();
+            event.preventDefault();
+            this.toggleSidePanel(null);
         }
     }
 
@@ -1008,11 +1314,6 @@ export class CodeBrowserComponent {
         else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 's') {
             evt.preventDefault();
             this.handleSave();
-        }
-        else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'b') {
-            evt.stopPropagation();
-            evt.preventDefault();
-            this.toggleSidePanel(null);
         }
         else if(evt.altKey && !evt.shiftKey && !evt.ctrlKey && evt.key.toLowerCase() == 'z') {
             evt.stopPropagation();
@@ -1131,7 +1432,8 @@ export class CodeBrowserComponent {
 
         if(tab1) tab1.diffTabModelIds.add(diffModelId);
         tab2.diffTabModelIds.add(diffModelId);
-        this.openTabs.push(tab);
+        this.addTab(tab);
+        // this.changeDetectorRef.detectChanges();
 
         this.selectTab(tab);
     }
@@ -1468,7 +1770,7 @@ export class CodeBrowserComponent {
                         let newCodeEntities : NormalizedCodeEntity[] = [];
 
                         if([''+CodeEntity.ApexClass, CodeEntity.ApexTrigger, CodeEntity.VFComponent, CodeEntity.VFPage, CodeEntity.StaticResource].includes(entity.value)) {
-                            newCodeEntities.push(new NormalizedCodeEntity(deployResponse.data?.id, name, null, null, sfApiVersion, null, orgToDeploy, dropdownSelection?.value));
+                            newCodeEntities.push(new NormalizedCodeEntity(deployResponse.data?.id, name, entity.value, null, null, sfApiVersion, null, orgToDeploy, dropdownSelection?.value));
                             this.entityTypeVsList[entity.value].push(newCodeEntities[0]);
                             entityToLoad = entity.value;
 
@@ -1480,14 +1782,14 @@ export class CodeBrowserComponent {
                                 bundleName + '/' + bundleName + Utils.aura_suffixMap['HELPER'],
                                 bundleName + '/' + bundleName + Utils.aura_suffixMap['STYLE'],
                             ]
-                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null, orgToDeploy));
+                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, entity.value, null, bundleName, sfApiVersion, null, orgToDeploy));
                             this.entityTypeVsList[entity.value].push(...(newCodeEntities));
                             entityToLoad = fileNames[0];
                         } else if(entity.value == CodeEntity.LWC) {
                             let bundleName = name;
                             let fileNames = payload.bundle.map((x : any) => x.filePath);
                             console.log('^^^^ ' + fileNames);
-                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, null, bundleName, sfApiVersion, null, orgToDeploy));
+                            newCodeEntities = fileNames.map((x: any) => new NormalizedCodeEntity('', x, entity.value, null, bundleName, sfApiVersion, null, orgToDeploy));
                             this.entityTypeVsList[entity.value].push(...(newCodeEntities));
                             entityToLoad = fileNames[0];
                         }
@@ -1544,14 +1846,25 @@ export class CodeBrowserComponent {
     @ViewChild('rootElement') rootElement : ElementRef | undefined;
     toggleSidePanel(evt : any) {
         this.sidePanelDisplay = !this.sidePanelDisplay;
-        this.panelSizing();
+        this.changeDetectorRef.detectChanges();
+        this.panelSizeRecompute();
+    }
+
+    panelSizeRecompute() {
+        if(this.sidePanelDisplay) {
+            this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
+            this.rootElement!.nativeElement.style.width = this.widthExcludingPanel;
+        } else {
+            this.rootElement!.nativeElement.style.width = 'calc(100% - 0px - 12px)';
+            this.sidePanelElement!.nativeElement.style.width = '0px';
+        }
     }
 
     panelResizingFlag = false;
     panelWidth = 'max(15%, 200px)';
-    panelMinWidth = 'max(15%, 200px)';
-    panelMaxWidth = '50%';
-    panelResizing(evt : MouseEvent) {
+    widthExcludingPanel = `calc(100% - ${this.panelWidth} - 12px)`;
+
+    panelResizingStart(evt : MouseEvent) {
         document.body.style.cursor = 'ew-resize';
         this.panelResizingFlag = true;
         evt.preventDefault();
@@ -1559,14 +1872,8 @@ export class CodeBrowserComponent {
 
     @HostListener('document:mousemove', ['$event'])
     onMouseMove(event: MouseEvent) {
-        if(!this.sidePanelDisplay) this.sidePanelDisplay = true;
         if(this.panelResizingFlag) {
-            let posX = event.clientX - this.sidePanelElement!.nativeElement.getBoundingClientRect().left;
-            posX -= 6; //6px for the resize handle width
-            this.panelWidth = `max(15%, min(${posX}px , ${this.panelMaxWidth}))`;
-            this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
-            this.rootElement!.nativeElement.style.width = `calc(100% - ${this.panelWidth} - 12px)`;
-            console.log('## RESIZED ' + this.panelWidth);
+            this.panelSizing(event);
         }  
     }
 
@@ -1578,19 +1885,30 @@ export class CodeBrowserComponent {
         }
     }
     
-    panelSizing() {
-        if(this.sidePanelDisplay) {
-            this.sidePanelElement!.nativeElement.style.width = 'max(15%, 200px)';
-            this.rootElement!.nativeElement.style.width = 'calc(100% - max(15%, 200px) - 12px)';
-        } else {
-            this.rootElement!.nativeElement.style.width = 'calc(100% - 0px - 12px)';
-            this.sidePanelElement!.nativeElement.style.width = '0px';
-        }
+    panelSizing(event: MouseEvent) {
+        // if(this.sidePanelDisplay) {
+        //     this.sidePanelElement!.nativeElement.style.width = 'max(15%, 200px)';
+        //     this.rootElement!.nativeElement.style.width = 'calc(100% - max(15%, 200px) - 12px)';
+        // } else {
+        //     this.rootElement!.nativeElement.style.width = 'calc(100% - 0px - 12px)';
+        //     this.sidePanelElement!.nativeElement.style.width = '0px';
+        // }
+        if(!this.sidePanelDisplay) this.sidePanelDisplay = true;
+        this.changeDetectorRef.detectChanges();
+        
+        let posX = event.clientX - this.sidePanelElement!.nativeElement.getBoundingClientRect().left;
+        posX -= 6; //6px for the resize handle width
+        this.panelWidth = `max(15%, min(${posX}px , 50%))`;
+        this.widthExcludingPanel = `calc(100% - ${this.panelWidth} - 12px)`
+
+        this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
+        this.rootElement!.nativeElement.style.width = this.widthExcludingPanel;
+        console.log('## RESIZED ' + this.panelWidth);
     }
 
     @HostListener('window:resize', ['$event'])
     onResize(event : any) {
-        this.panelSizing();
+        // this.panelSizeRecompute();
     }
 
     async dummyButton() {
@@ -1600,16 +1918,25 @@ export class CodeBrowserComponent {
             await this.onOrgSelect(this.orgCredsList.at(-1)?.orgName, 'selectedOrg');
             await this.onEntityTypeSelect(this.entityTypeList[1].value);
         }
-        let entity1 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        let entity2 = this.entityList[Math.floor(Math.random()*this.entityList.length)];
-        let id = entity1.value;
-        console.log('%% ' , this.entityIdVsObjectMap);
-        let codeEntity = this.entityIdVsObjectMap[this.selectedOrg + ':' + id];
-        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
-        
-        id = entity2.value;
-        codeEntity = this.entityIdVsObjectMap[this.selectedOrg + ':' + id];
-        this.loadEntity(codeEntity.Name, null, this.selectedEntityType, this.selectedOrg, codeEntity);
+        // // Pick first 10 entities from the current entityList
+        // const entitiesToLoad = this.entityList.slice(0, 10)
+        //     .map((entity: any) => this.entityIdVsObjectMap[this.selectedOrg + ':' + entity.value])
+        //     .filter((e: any) => !!e);
+        // if (entitiesToLoad.length > 0) {
+        //     await this.loadEntityBulk(entitiesToLoad, this.selectedOrg);
+        // } else {
+        //     this.showSnackBar('No entities found to load.');
+        // }
+
+        this.loadEntitiesFromPackageXml(`<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <name>ApexClass</name>
+        <members>CF_UC_FinancialDetails_CC</members>
+        <members>CF_UC_Pre_DA_CC</members>
+    </types>
+    <version>64.0</version>
+</Package>`);
 
         // let res = await this._ipc.callMethod('codeGlobalSearch', {
         //     orgName : this.selectedOrg, searchText : 'asdf'
@@ -1633,7 +1960,7 @@ export class CodeBrowserComponent {
     clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
         if(bundleDetails) { 
             this.loadEntity(bundleItem.value!, null, bundleDetails.entityType, this.activeTab!.orgName,
-                new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix, this.activeTab!.orgName));
+                new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.entityType, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix, this.activeTab!.orgName));
         }
     }
 
@@ -1691,8 +2018,8 @@ export class CodeBrowserComponent {
     }
 
     reloadingBundleDetails : boolean = false
-    async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean) {
-        let orgName = this.selectedOrg;
+    async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean, orgName : string) {
+        // let orgName = this.selectedOrg;
         if(this.reloadingBundleDetails) return;
 
         this.reloadingBundleDetails = true;
@@ -1787,7 +2114,7 @@ export class CodeBrowserComponent {
             
             //fetch code from org
             let name = tab.codeEntity!.Name;
-            let response = await this.fetchCode(tab.codeEntity!, name, tab.entityType, tab.orgName);
+            let response = await this.fetchCode([tab.codeEntity!], [tab.orgName]);
             let lang = this.getEntityLanguage(name, tab.entityType, tab.codeEntity!.mimeType);
     
             //validate response
@@ -1839,6 +2166,11 @@ export class CodeBrowserComponent {
             sub.unsubscribe();
             // Optionally handle after close
         });
+    }
+
+    treeViewMode = true;
+    toggleTreeViewMode(event : any) {
+        this.treeViewMode = !this.treeViewMode;
     }
     
     log(...str: any) {

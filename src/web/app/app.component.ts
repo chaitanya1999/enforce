@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, importProvidersFrom, ViewChild, ElementRef } from '@angular/core';
+import { Component, ChangeDetectorRef, importProvidersFrom, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { IpcService } from '../ipc.service';
 import {FormsModule} from '@angular/forms';
@@ -25,6 +25,7 @@ import { ConfirmDialogComponent } from './confirm-dialog/confirm-dialog.componen
 import { NewOrgDialogComponent } from './new-org-dialog/new-org-dialog.component';
 import { EnForceResponse } from './enforce-utils';
 import {MatTooltipModule} from '@angular/material/tooltip';
+import { firstValueFrom } from 'rxjs';
 
 
 class NavTab {
@@ -92,6 +93,11 @@ export class AppComponent {
         { tabName : 'Anonymous Apex' , active : false , template : 'anonApex', icon : '../assets/tab-icon-anonymous-apex.png', iconActive : '../assets/tab-icon-anonymous-apex-active.png' },
         { tabName : 'Help' , active : true , template : 'help', icon : '../assets/tab-icon-help.png', iconActive : '../assets/tab-icon-help-active.png' },
     ]
+
+    getTab(tabTemplate : string) : NavTab | undefined {
+        return this.navTabs.find(x => x.template == tabTemplate);
+    }
+
     selectedTabTemplate : string = 'codeBrowser';
 
     searchText : string = '';
@@ -104,6 +110,30 @@ export class AppComponent {
         this.getCreds(ref);
         titleService.setTitle('EnForce IDE');
         this.webMode = !(<any>window).desktopMode;
+    }
+
+    @HostListener('window:beforeunload', ['$event'])
+    beforeUnloadHandler(event: BeforeUnloadEvent) {
+        // Only prevent default; browsers will show a generic confirm dialog
+        // event.preventDefault();
+    }
+
+    @HostListener('window:popstate', ['$event'])
+    async onPopState(event: PopStateEvent) {
+        // Only intercept our dummy state
+        // if (event.state && event.state.enforceDummy) {
+        //     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+        //         data: { text: 'Are you sure you want to leave or navigate away? Unsaved changes may be lost.' }
+        //     });
+        //     const result = await firstValueFrom(dialogRef.afterClosed());
+        //     if (!result) {
+        //         // User chose No, so push the dummy state again
+        //         history.pushState({ enforceDummy: true }, '', window.location.href);
+        //     } else {
+        //         // Allow navigation: go back one more step
+        //         history.back();
+        //     }
+        // }
     }
 
     setTitle(x: string) {
@@ -169,11 +199,13 @@ export class AppComponent {
     }
 
 	async ngOnInit() {
-		this.selectedTabTemplate = this.navTabs.find(x => x.active)?.template ?? '';
+        this.selectedTabTemplate = this.navTabs.find(x => x.active)?.template ?? '';
         document.addEventListener('click', (e) => {
             this.globalEventsSvc.globalClickEvent.emit(e);
-        })
-	}
+        });
+        // Push a dummy state to history to intercept back/forward
+        history.pushState({ enforceDummy: true }, '', window.location.href);
+    }
 
     selectTab(tab : NavTab) {
         let reselected = tab.active;

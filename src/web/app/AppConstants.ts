@@ -5,12 +5,12 @@ export enum CodeEntity {
     LWC = 'LWC',
     VFPage = 'VFPage',
     VFComponent = 'VFComponent',
-    CustomLabels = 'CustomLabels',
-    Objects = 'Objects',
-    ObjectRecords = 'ObjectRecords',
-    FieldSets = 'FieldSets',
+    // CustomLabels = 'CustomLabels',
+    // Objects = 'Objects',
+    // ObjectRecords = 'ObjectRecords',
+    // FieldSets = 'FieldSets',
     StaticResource = 'StaticResource',
-    EmailTemplate = 'EmailTemplate'
+    // EmailTemplate = 'EmailTemplate'
 }
 
 export class AppConstants {
@@ -96,6 +96,16 @@ export class AppConstants {
         'VFPage' : 'Visualforce Page',
         'VFComponent' : 'Visualforce Component',
         'StaticResource' : 'Static Resource',
+    }
+
+    static packageXmlEntityTypeToEnforceType : any = {
+        'ApexClass' : CodeEntity.ApexClass,
+        'ApexTrigger' : CodeEntity.ApexTrigger,
+        'AuraDefinitionBundle' : CodeEntity.AuraComponent,
+        'LightningComponentBundle' : CodeEntity.LWC,
+        'StaticResource' : CodeEntity.StaticResource,
+        'ApexPage' : CodeEntity.VFPage,
+        'ApexComponent' : CodeEntity.VFComponent,
     }
 
     static defaultCode : any = {

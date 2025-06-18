@@ -74,13 +74,13 @@
                 }
             </div>
     
-            <app-code-browser [hidden]="selectedTabTemplate != 'codeBrowser'" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-code-browser>   
+            <app-code-browser [isComponentActive]="getTab('codeBrowser')!.active" [hidden]="selectedTabTemplate != 'codeBrowser'" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-code-browser>   
             
-            <app-query-tool [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'queryTool'" ></app-query-tool>
+            <app-query-tool [isComponentActive]="getTab('queryTool')!.active" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'queryTool'" ></app-query-tool>
     
-            <app-anonymous-apex style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'anonApex'"></app-anonymous-apex>
+            <app-anonymous-apex [isComponentActive]="getTab('anonApex')!.active" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'anonApex'"></app-anonymous-apex>
     
-            <app-help [hidden]="selectedTabTemplate != 'help'"></app-help>
+            <app-help [isComponentActive]="getTab('help')!.active" [hidden]="selectedTabTemplate != 'help'"></app-help>
         </div>
         <!-- <mat-tab-group mat-stretch-tabs="false" animationDuration="0ms" selectedIndex="1" id="tab-group">
             <mat-tab label="Credentials Manager">
