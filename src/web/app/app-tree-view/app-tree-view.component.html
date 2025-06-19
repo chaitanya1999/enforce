@@ -40,7 +40,7 @@
                                     (contextmenu)="handleNodeContextMenu(tab, $event)"
                                     (mouseup)="handleNodeMouseUp(tab, $event)">
                                     <img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16" style="margin-right: 4px;" />
-                                    <span class="tree-label">{{tab.tabName}}</span>
+                                    <span class="tree-label">{{getDisplayTabName(tab)}}</span>
                                     @if(isTabPinned(tab)) {
                                       <span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill" style="color:#ffd966;"></i></span>
                                     }
@@ -63,7 +63,7 @@
                             (contextmenu)="handleNodeContextMenu(tab, $event)"
                             (mouseup)="handleNodeMouseUp(tab, $event)">
                             <img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16" style="margin-right: 4px;" />
-                            <span class="tree-label">{{tab.tabName}}</span>
+                            <span class="tree-label">{{getDisplayTabName(tab)}}</span>
                             @if(isTabPinned(tab)) {
                               <span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill" style="color:#ffd966;"></i></span>
                             }

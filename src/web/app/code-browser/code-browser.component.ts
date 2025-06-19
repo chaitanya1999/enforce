@@ -646,11 +646,11 @@ export class CodeBrowserComponent {
 
     async loadEntityBulk(
         codeEntities: NormalizedCodeEntity[],
-        org: string,
+        org: string[],
         openInBackground?: boolean,
         openHidden?: boolean,
         ignoreSpinner?: boolean
-    ) {
+    ) : Promise<{[key : string]: CodeTab[]} | null> {
         if (!ignoreSpinner) this.showSpinner = true;
         try {
             // Find already loaded entities
@@ -658,7 +658,7 @@ export class CodeBrowserComponent {
             const toFetchEntities: NormalizedCodeEntity[] = [];
             for (const codeEntity of codeEntities) {
                 const existingTab = this.openTabs.find(
-                    x => x.tabValue === codeEntity.Name && x.orgName === org && x.entityType === codeEntity.entityType
+                    x => x.tabValue === codeEntity.Name && org.includes(x.orgName) && x.entityType === codeEntity.entityType
                 );
                 if (existingTab) {
                     alreadyLoadedTabs.push(existingTab);
@@ -691,49 +691,52 @@ export class CodeBrowserComponent {
             }
 
             let createdTabs: CodeTab[] = [];
-            // Fetch code for each entityType group
-            for (const entityType of Object.keys(entityTypeGroups)) {
-                const entities = entityTypeGroups[entityType];
-                const response: EnForceResponse = await this.fetchCode(entities, [org]);
-                const entityTypeResponse = (response as any)[org]?.[entityType];
+            // Bulk fetch code for all entityType groups at once
+            if (Object.keys(entityTypeGroups).length > 0) {
+                // Fetch code for all entities in one call using the original codeEntities array
+                const response: EnForceResponse = await this.fetchCode(codeEntities, org);
+                // The response is an object: { [org]: { [entityType]: EnForceResponse } }
+                for (const orgName of org) {
+                    for (const entityType of Object.keys(entityTypeGroups)) {
+                        const entities = entityTypeGroups[entityType];
+                        const entityTypeResponse = (response as any)[orgName]?.[entityType];
+                        const data = entityTypeResponse?.data as BulkFetchCodeData | undefined;
 
-                // entityTypeResponse is an EnForceResponse object with data as BulkFetchCodeData
-                const data = entityTypeResponse?.data as BulkFetchCodeData | undefined;
+                        if (!entityTypeResponse || !entityTypeResponse.isSuccess || !data || !Array.isArray(data.contents)) {
+                            errorMessages.push(`ERROR: No valid response for ${entityType} in org ${orgName}`);
+                            continue;
+                        }
 
-                if (!entityTypeResponse || !entityTypeResponse.isSuccess || !data || !Array.isArray(data.contents)) {
-                    errorMessages.push(`ERROR: No valid response for ${entityType}`);
-                    continue;
-                }
+                        // Each entity in entities should correspond to a content in contents by order
+                        for (let i = 0; i < entities.length; i++) {
+                            const codeEntity = entities[i];
+                            const name = codeEntity.Name;
+                            const lang = this.getEntityLanguage(name, codeEntity.entityType, codeEntity.mimeType);
 
-                // Each entity in entities should correspond to a content in contents by order
-                for (let i = 0; i < entities.length; i++) {
-                    const codeEntity = entities[i];
-                    const name = codeEntity.Name;
-                    const lang = this.getEntityLanguage(name, codeEntity.entityType, codeEntity.mimeType);
+                            // Try to find the content for this entity by name
+                            const contentObj = data.contents.find(x => x.id === codeEntity.Id || (codeEntity.Name in x));
+                            if (!contentObj || !contentObj[name]) {
+                                notFoundNames.push(name);
+                                continue;
+                            }
 
-                    // Try to find the content for this entity by name
-                    const contentObj = data.contents[i];
-                    if (!contentObj || !contentObj[name]) {
-                        notFoundNames.push(name);
-                        continue;
+                            const code = contentObj[name];
+                            const recordId = contentObj.id || '';
+
+                            const modelId = this.editorCmp.createCodeEditorModel(code, lang);
+                            const tabName = this.getTabName(name, codeEntity.entityType, codeEntity);
+                            const icon = AppConstants.languageVsIcon[lang];
+                            const codeTab = new CodeTab(tabName, modelId, name, icon, orgName, AppConstants.CODE_EDITOR, codeEntity.entityType, recordId);
+                            codeTab.bundleName = codeEntity.BundleName!;
+                            codeTab.codeEntity = codeEntity;
+                            codeTab.hidden = !!openHidden;
+                            this.addTab(codeTab);
+                            createdTabs.push(codeTab);
+                            loadedNames.push(tabName);
+
+                            if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, orgName);
+                        }
                     }
-
-                    const code = contentObj[name];
-                    const recordId = contentObj.id || '';
-
-                    const modelId = this.editorCmp.createCodeEditorModel(code, lang);
-                    const tabName = this.getTabName(name, codeEntity.entityType, codeEntity);
-                    const icon = AppConstants.languageVsIcon[lang];
-                    const codeTab = new CodeTab(tabName, modelId, name, icon, org, AppConstants.CODE_EDITOR, codeEntity.entityType, recordId);
-                    codeTab.bundleName = codeEntity.BundleName!;
-                    codeTab.codeEntity = codeEntity;
-                    codeTab.hidden = !!openHidden;
-                    this.addTab(codeTab);
-                    // this.changeDetectorRef.detectChanges();
-                    createdTabs.push(codeTab);
-                    loadedNames.push(tabName);
-
-                    if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, org);
                 }
             }
 
@@ -758,15 +761,22 @@ export class CodeBrowserComponent {
             }
 
             // Find the tab (either already loaded or just created) for the last entity
-            lastTab = [...alreadyLoadedTabs, ...createdTabs].find(
-                tab => tab.tabValue === lastEntity.Name && tab.orgName === org && tab.entityType === lastEntity.entityType
-            );
+            lastTab = [...alreadyLoadedTabs, ...createdTabs].at(-1);
+            // .find(
+            //     tab => tab.tabValue === lastEntity.Name && tab.orgName === org && tab.entityType === lastEntity.entityType
+            // );
 
             if (lastTab && !openInBackground) {
                 this.selectTab(lastTab);
             }
 
-            return [...alreadyLoadedTabs, ...createdTabs];
+            // Group tabs by orgName into an object: { [orgName]: CodeTab[] }
+            return [...alreadyLoadedTabs, ...createdTabs].reduce((acc, tab) => {
+                if (!acc[tab.orgName]) acc[tab.orgName] = [];
+                acc[tab.orgName].push(tab);
+                return acc;
+            }, {} as { [key: string]: CodeTab[] });
+
         } catch (err) {
             this.log('loadEntityBulk ERROR =>', err);
             this.showSnackBar('Some error occurred');
@@ -792,12 +802,19 @@ export class CodeBrowserComponent {
         const getText = (el: Element, tag: string) =>
             Array.from(el.getElementsByTagName(tag)).map(e => e.textContent?.trim() || '');
 
+        let orgs = [this.selectedOrg];
+        let diffFlag = false;
+        if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+            orgs.push(this.selectedOrg2);
+            diffFlag = true;
+        }
+
         for (let typeEl of types) {
             let members = getText(typeEl, "members");
             let nameArr = getText(typeEl, "name");
             if (!nameArr.length) continue;
             let entityType = nameArr[0];
-            if(!Object.values(AppConstants.packageXmlEntityTypeToEnforceType).includes(entityType))
+            if(!Object.keys(AppConstants.packageXmlEntityTypeToEnforceType).includes(entityType))
                 continue; // Skip unsupported types
 
             // Map package.xml type to AppConstants entityType if needed
@@ -806,6 +823,7 @@ export class CodeBrowserComponent {
 
             // Get all code entities for this type from the selected org
             let codeEntities = this.entityTypeVsList[normalizedEntityType] || [];
+            if(diffFlag) codeEntities.push(...(this.entityTypeVsList2[normalizedEntityType] || []));
 
             if (normalizedEntityType === this.$entityTypeAura || normalizedEntityType === this.$entityTypeLWC) {
                 // For Aura/LWC, match by bundleName
@@ -838,11 +856,55 @@ export class CodeBrowserComponent {
             return;
         }
 
-        // let orgs = [this.selectedOrg];
-        // if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
-        //     orgs.push(this.selectedOrg2);
-        // }
-        await this.loadEntityBulk(entitiesToLoad, this.selectedOrg);
+
+        let orgVsTab = await this.loadEntityBulk(entitiesToLoad, orgs, diffFlag == true);
+        let tabsList : CodeTab[] = Object.values(orgVsTab || {}).flat();
+
+        if(diffFlag) {
+            this.log('loadEntitiesFromPackageXml | Creating diff tabs for orgs');
+            this.log('loadEntitiesFromPackageXml | Tabs Count before = ' + tabsList.length);
+
+            // In quick diff mode, we create diff tabs for entities present in both orgs
+            this.showSpinner = true;
+            // orgVsTab: { [orgName]: CodeTab[] }
+            // There will always be only two orgs in orgVsTab
+            if (orgVsTab && orgs.length === 2) {
+                const [org1, org2] = orgs;
+                const tabs1 = orgVsTab[org1] || [];
+                const tabs2 = orgVsTab[org2] || [];
+
+                // Map by tabValue + entityType for unique match
+                const tabMap1 = new Map<string, CodeTab>();
+                const tabMap2 = new Map<string, CodeTab>();
+                tabs1.forEach(tab => tabMap1.set(`${tab.tabValue}::${tab.entityType}`, tab));
+                tabs2.forEach(tab => tabMap2.set(`${tab.tabValue}::${tab.entityType}`, tab));
+
+                // For each entity present in both orgs, create a diff tab
+                for (const [key, tab1] of tabMap1.entries()) {
+                    const tab2 = tabMap2.get(key);
+                    if (tab2) {
+                        // Hide originals, show only diff
+                        if (!tab1.hidden) this.hideShowTab(tab1);
+                        if (!tab2.hidden) this.hideShowTab(tab2);
+                        tabsList.push(this.createDiffTab(tab1, tab2, undefined, true));
+                    } else {
+                        // Only present in org1, do not create diff tab, show original
+                        if (tab1.hidden) this.hideShowTab(tab1);
+                    }
+                }
+                // Also check for entities only in org2 (not in org1)
+                for (const [key, tab2] of tabMap2.entries()) {
+                    if (!tabMap1.has(key)) {
+                        // Only present in org2, do not create diff tab, show original
+                        if (tab2.hidden) this.hideShowTab(tab2);
+                    }
+                }
+            }
+            this.showSpinner = false;
+            this.log('loadEntitiesFromPackageXml | Tabs Count after = ' + tabsList.length);
+        }
+        if(tabsList.length)
+            this.selectTab(tabsList.at(-1)!)
     }
 
     async openFromPackageXml() {
@@ -1401,41 +1463,67 @@ export class CodeBrowserComponent {
         this.compareTab = this.tabForContextMenu;
     }
 
-    createDiffTab(tab1 : CodeTab | null , tab2 : CodeTab, modelId1? : string) {
+    createDiffTab(
+        tab1: CodeTab | null,
+        tab2: CodeTab,
+        modelId1?: string,
+        createInBackground: boolean = false
+    ): CodeTab {
         //check for existing tab
-        let diffTabName = this.getDiffTabValueString(tab1 || tab2 , tab2);
-        let diffTabOrg = this.getDiffOrgNameString(tab1 , tab2);
-        let diffEntityType = this.getDiffEntityType(tab1 || tab2 , tab2);
-        let diffMimeType = this.getDiffMimeType(tab1 || tab2 , tab2);
+        let diffTabName = this.getDiffTabValueString(tab1 || tab2, tab2);
+        let diffTabOrg = this.getDiffOrgNameString(tab1, tab2);
+        let diffEntityType = this.getDiffEntityType(tab1 || tab2, tab2);
+        let diffMimeType = this.getDiffMimeType(tab1 || tab2, tab2);
 
-        let existingDiffTab = this.openTabs.filter(x => x.editorType == AppConstants.DIFF_EDITOR && x.tabValue == diffTabName && x.orgName == diffTabOrg && x.entityType == diffEntityType)[0];
-        if(existingDiffTab) {
+        let existingDiffTab = this.openTabs.filter(
+            x =>
+                x.editorType == AppConstants.DIFF_EDITOR &&
+                x.tabValue == diffTabName &&
+                x.orgName == diffTabOrg &&
+                x.entityType == diffEntityType
+        )[0];
+        if (existingDiffTab) {
             existingDiffTab.hidden = false;
-            this.activeTabModelId = existingDiffTab.modelId;
-            this.editorCmp.switchModel(existingDiffTab.modelId);
-            return;
+            if (!createInBackground) {
+                this.activeTabModelId = existingDiffTab.modelId;
+                this.editorCmp.switchModel(existingDiffTab.modelId);
+            }
+            return existingDiffTab;
         }
 
         //create diff model
-        let diffModelId = this.editorCmp.createDiffEditorModel((tab1?.modelId || modelId1!), tab2.modelId!);
-        // tab1.diffModelId = diffModelId;
-        // tab2.diffModelId = diffModelId;
+        let diffModelId = this.editorCmp.createDiffEditorModel(
+            tab1?.modelId || modelId1!,
+            tab2.modelId!
+        );
 
         //create diff tab
         let lang = this.getEntityLanguage(diffTabName, diffEntityType, diffMimeType);
         let icon = AppConstants.languageVsIcon[lang];
-        
-        let tab = new CodeTab(diffTabName, diffModelId, diffTabName, icon, diffTabOrg, AppConstants.DIFF_EDITOR, diffEntityType);
+
+        let tab = new CodeTab(
+            diffTabName,
+            diffModelId,
+            diffTabName,
+            icon,
+            diffTabOrg,
+            AppConstants.DIFF_EDITOR,
+            diffEntityType
+        );
         tab.model1ForDiff = tab1?.modelId || modelId1!;
         tab.model2ForDiff = tab2.modelId;
         tab.unloadModel1 = !tab1 && !!modelId1;
+        tab.bundleName = this.getDiffBundleName(tab1 || tab2, tab2);
 
-        if(tab1) tab1.diffTabModelIds.add(diffModelId);
+        if (tab1) tab1.diffTabModelIds.add(diffModelId);
         tab2.diffTabModelIds.add(diffModelId);
         this.addTab(tab);
-        // this.changeDetectorRef.detectChanges();
 
-        this.selectTab(tab);
+        if (!createInBackground) {
+            this.selectTab(tab);
+        }
+
+        return tab;
     }
     compareWithSelected() {
         let tab1 = this.compareTab!;
@@ -1463,6 +1551,10 @@ export class CodeBrowserComponent {
     getDiffMimeType(tab1 : CodeTab, tab2 : CodeTab) {
         if(tab1.codeEntity?.mimeType == tab2.codeEntity?.mimeType) return `${tab1.codeEntity?.mimeType}`;
         return `${tab1.codeEntity?.mimeType} <> ${tab2.codeEntity?.mimeType}`;
+    }
+    getDiffBundleName(tab1 : CodeTab, tab2 : CodeTab) {
+        if(tab1.codeEntity?.BundleName == tab2.codeEntity?.BundleName) return `${tab1.codeEntity?.BundleName}`;
+        return `${tab1.codeEntity?.BundleName} <> ${tab2.codeEntity?.BundleName}`;
     }
 
     reloadEntity(useActiveTab? : boolean){
