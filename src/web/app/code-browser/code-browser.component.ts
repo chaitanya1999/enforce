@@ -30,11 +30,12 @@ import { CodeGlobalSearchComponent } from '../code-global-search/code-global-sea
 import { CommandPaletteComponent } from '../command-palette/command-palette.component';
 import { AppTreeViewComponent } from '../app-tree-view/app-tree-view.component';
 import { text } from 'express';
+import { firstValueFrom } from 'rxjs';
 
 // Type for the data inside EnForceResponse for bulk fetch
 type BulkFetchCodeData = {
     count: number;
-    contents: Array<{ id: string; [key:string] : string; }>;
+    contents: Array<{ Id: string; [key:string] : string; }>;
 };
 
 class CodeTab {
@@ -155,6 +156,14 @@ export class CodeBrowserComponent {
         LWC: []
     }
     entityTypeVsList2: {[key: string] : Array<NormalizedCodeEntity>} = {}
+
+    get entityCount1() {
+        return Object.values(this.entityTypeVsList).flat().length || 0;
+    }
+
+    get entityCount2() {
+        return Object.values(this.entityTypeVsList2).flat().length || 0;
+    }
 
     entityList: any = []
     entityIdVsObjectMap : {[key: string] : NormalizedCodeEntity} = {};
@@ -596,7 +605,7 @@ export class CodeBrowserComponent {
 
             //success response. proceed to create tabs
             code = response.data.contents[0][name];
-            let recordId = response.data.Id;
+            let recordId = response.data.contents[0].Id;
 
             //check if tab was reloaded
             if(tabToReload) {
@@ -646,7 +655,7 @@ export class CodeBrowserComponent {
 
     async loadEntityBulk(
         codeEntities: NormalizedCodeEntity[],
-        org: string[],
+        org: string[], //org is not needed as NormalizedCodeEntity already has orgName , so org can be derived from it
         openInBackground?: boolean,
         openHidden?: boolean,
         ignoreSpinner?: boolean
@@ -658,7 +667,7 @@ export class CodeBrowserComponent {
             const toFetchEntities: NormalizedCodeEntity[] = [];
             for (const codeEntity of codeEntities) {
                 const existingTab = this.openTabs.find(
-                    x => x.tabValue === codeEntity.Name && org.includes(x.orgName) && x.entityType === codeEntity.entityType
+                    x => x.tabValue === codeEntity.Name && x.orgName === codeEntity.OrgName && x.entityType === codeEntity.entityType
                 );
                 if (existingTab) {
                     alreadyLoadedTabs.push(existingTab);
@@ -696,32 +705,35 @@ export class CodeBrowserComponent {
                 // Fetch code for all entities in one call using the original codeEntities array
                 const response: EnForceResponse = await this.fetchCode(codeEntities, org);
                 // The response is an object: { [org]: { [entityType]: EnForceResponse } }
-                for (const orgName of org) {
+                // for (const orgName of org) {
                     for (const entityType of Object.keys(entityTypeGroups)) {
                         const entities = entityTypeGroups[entityType];
-                        const entityTypeResponse = (response as any)[orgName]?.[entityType];
-                        const data = entityTypeResponse?.data as BulkFetchCodeData | undefined;
-
-                        if (!entityTypeResponse || !entityTypeResponse.isSuccess || !data || !Array.isArray(data.contents)) {
-                            errorMessages.push(`ERROR: No valid response for ${entityType} in org ${orgName}`);
-                            continue;
-                        }
 
                         // Each entity in entities should correspond to a content in contents by order
                         for (let i = 0; i < entities.length; i++) {
                             const codeEntity = entities[i];
+                            let orgName = codeEntity.OrgName;
+
+                            const entityTypeResponse = (response as any)[orgName]?.[entityType];
+                            const data = entityTypeResponse?.data as BulkFetchCodeData | undefined;
+
+                            if (!entityTypeResponse || !entityTypeResponse.isSuccess || !data || !Array.isArray(data.contents)) {
+                                errorMessages.push(`ERROR: No valid response for ${entityType} in org ${orgName}`);
+                                continue;
+                            }
+
                             const name = codeEntity.Name;
                             const lang = this.getEntityLanguage(name, codeEntity.entityType, codeEntity.mimeType);
 
                             // Try to find the content for this entity by name
-                            const contentObj = data.contents.find(x => x.id === codeEntity.Id || (codeEntity.Name in x));
+                            const contentObj = data.contents.find(x => x.Id === codeEntity.Id || (codeEntity.Name in x));
                             if (!contentObj || !contentObj[name]) {
                                 notFoundNames.push(name);
                                 continue;
                             }
 
                             const code = contentObj[name];
-                            const recordId = contentObj.id || '';
+                            const recordId = contentObj.Id || '';
 
                             const modelId = this.editorCmp.createCodeEditorModel(code, lang);
                             const tabName = this.getTabName(name, codeEntity.entityType, codeEntity);
@@ -737,26 +749,26 @@ export class CodeBrowserComponent {
                             if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, orgName);
                         }
                     }
-                }
+                // }
             }
 
             // Collate all messages and show a single snackbar
             let messages: string[] = [];
             if (alreadyLoadedNames.length) {
-                messages.push(`Already loaded: ${alreadyLoadedNames.join(', ')}`);
+                messages.push(`Already open: ${alreadyLoadedNames.length}`);
             }
             if (loadedNames.length) {
-                messages.push(`Loaded: ${loadedNames.join(', ')}`);
+                messages.push(`Loaded: ${loadedNames.length}`);
             }
             if (notFoundNames.length) {
-                messages.push(`Not Found: ${notFoundNames.join(', ')}`);
+                messages.push(`Not Found: ${notFoundNames.length}`);
             }
             if (errorMessages.length) {
                 messages.push(errorMessages.join('\n'));
             }
             if (messages.length) {
                 let finalMsg = messages.join('\n');
-                this.showSnackBar(finalMsg);
+                this.showSnackBar(finalMsg , null, 2000);
                 this.log('loadEntityBulk | Messages => ', finalMsg);
             }
 
@@ -822,20 +834,22 @@ export class CodeBrowserComponent {
             let normalizedEntityType = AppConstants.packageXmlEntityTypeToEnforceType[entityType];
 
             // Get all code entities for this type from the selected org
-            let codeEntities = this.entityTypeVsList[normalizedEntityType] || [];
+            let codeEntities = Array.from(this.entityTypeVsList[normalizedEntityType] || []); //copy array
             if(diffFlag) codeEntities.push(...(this.entityTypeVsList2[normalizedEntityType] || []));
 
             if (normalizedEntityType === this.$entityTypeAura || normalizedEntityType === this.$entityTypeLWC) {
                 // For Aura/LWC, match by bundleName
                 for (let bundleName of members) {
-                    let matched = codeEntities.filter(e => e.BundleName === bundleName);
-                    entitiesToLoad.push(...matched);
+                    let matched : NormalizedCodeEntity[] = codeEntities.filter(e => e.BundleName === bundleName) || [];
+                    this.log(`loadEntitiesFromPackageXml | Matching ${normalizedEntityType} by BundleName: ${bundleName} = ` , matched.length);
+                    if(matched.length) entitiesToLoad.push(...matched);
                 }
             } else {
                 // For others, match by Name
                 for (let name of members) {
-                    let matched = codeEntities.find(e => e.Name === name);
-                    if (matched) entitiesToLoad.push(matched);
+                    let matched : NormalizedCodeEntity[] = codeEntities.filter(e => e.Name === name) || [];
+                    this.log(`loadEntitiesFromPackageXml | Matching ${normalizedEntityType} by Name: ${name} = ` , matched.length);
+                    if(matched.length) entitiesToLoad.push(...matched);
                 }
             }
         }
@@ -843,7 +857,7 @@ export class CodeBrowserComponent {
         // Remove duplicates
         const seen = new Set();
         entitiesToLoad = entitiesToLoad.filter(e => {
-            const key = `${e.entityType}:${e.Name}`;
+            const key = `${e.entityType}:${e.Name}:${e.OrgName}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
@@ -1087,24 +1101,26 @@ export class CodeBrowserComponent {
         this.organizationType = '';
     }
 
-    onTabClose(tab : CodeTab) {
+    async onTabClose(tab: CodeTab): Promise<void> {
         this.log('onTabClose | tab modelId CLOSE = ' + tab.modelId);
 
-        if(tab.editorType == AppConstants.CODE_EDITOR && tab.diffTabModelIds.size) {
-            this.showSnackBar('Cannot close parent tab when DIFF is open',null, 1500);
+        if (tab.editorType == AppConstants.CODE_EDITOR && tab.diffTabModelIds.size) {
+            this.showSnackBar('Cannot close parent tab when DIFF is open', null, 1500);
             return;
         }
-        if(tab.editorType == AppConstants.CODE_EDITOR && tab.contentChanged) {
-            let dialogRef = this.dialog.open(ConfirmDialogComponent, { data : { text : `You may have some unsaved changes.<br/>Are you sure to close the tab without saving ?` } });
-            dialogRef.afterClosed().subscribe(result => {
-                if(result) {
-                    this.proceedForClosingTab(tab);
+        if (tab.editorType == AppConstants.CODE_EDITOR && tab.contentChanged) {
+            const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+                data: {
+                    text: `${tab.tabName} [${tab.orgName}]<br/>You may have some unsaved changes.<br/>Are you sure to close the tab without saving ?`
                 }
             });
+            const result = await firstValueFrom(dialogRef.afterClosed());
+            if (result) {
+                this.proceedForClosingTab(tab);
+            }
         } else {
             this.proceedForClosingTab(tab);
         }
-
     }
 
     proceedForClosingTab(tab : CodeTab) {
@@ -1131,20 +1147,38 @@ export class CodeBrowserComponent {
         this.editorCmp.focus();
     }
 
+    /**
+     * Switches to another visible tab after closing or hiding the given tab.
+     * If no visible tab is found, clears the active tab and unloads the editor model.
+     * @param closedHiddenTab The tab that was closed or hidden.
+     */
     switchTabAfterClosingHiding(closedHiddenTab : CodeTab) {
+        // Find the index of the closed/hidden tab in the openTabs array
         let index = this.openTabs.findIndex( (x:CodeTab) => closedHiddenTab.modelId == x.modelId);
         //! ASSERT index != -1
+
+        // Initialize variable to hold the index of the next visible tab
         let newTabIndex = null;
+
+        // Search for the nearest visible tab before the closed/hidden tab
         for(let i=0; i<index; i++) {
             let iTab = this.openTabs[i];
             if(!iTab.hidden) newTabIndex = i;
         }
-        if(!newTabIndex && newTabIndex!==0) for(let i=index+1; i<this.openTabs.length; i++) {
-            let iTab = this.openTabs[i];
-            if(!iTab.hidden) {newTabIndex = i;break;}
+
+        // If not found before, search for the next visible tab after the closed/hidden tab
+        if(!newTabIndex && newTabIndex!==0) {
+            for(let i=index+1; i<this.openTabs.length; i++) {
+                let iTab = this.openTabs[i];
+                if(!iTab.hidden) {newTabIndex = i;break;}
+            }
         }
-        if(newTabIndex || newTabIndex===0) this.selectTab(this.openTabs[newTabIndex]);
-        else {
+
+        // If a visible tab is found, select it
+        if(newTabIndex || newTabIndex===0) {
+            this.selectTab(this.openTabs[newTabIndex]);
+        } else {
+            // If no visible tab is found, clear the active tab and unload the editor model
             this.activeTabModelId = null;
             this.editorCmp.unloadModel();
         }
@@ -1205,6 +1239,9 @@ export class CodeBrowserComponent {
 
     // Command Palette integration
     private commandPaletteCommands : Command[] = [
+        new Command('Select org.', 'select-org', () => this.selectOrg('selectedOrg')),
+        new Command('Select second org.', 'select-org-2', () => this.selectOrg('selectedOrg2')),
+        new Command('Select entity type', 'select-entity-type', () => this.selectEntityType()),
         new Command('Global Search', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
         new Command('Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
         new Command('Refresh org metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata()),
@@ -1217,8 +1254,31 @@ export class CodeBrowserComponent {
         new Command('Open in separate window (popup)', 'open-in-popup', () => this.openAsPopup()),
         new Command('Select language mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
         new Command('Toggle errors pane', 'toggle-errors-pane', () => this.showErrorsPane()),
-        new Command('Open in bulk from package xml', 'toggle-errors-pane', () => this.openFromPackageXml()),
+        new Command('Open in bulk from package xml', 'open-bulk-package-xml', () => this.openFromPackageXml()),
     ];
+
+    selectEntityType() {
+        this.openCommandPalette('selectEntityType', {
+            commands: this.entityTypeList.map(entityType => ({
+                name: entityType.label,
+                action: () => this.onEntityTypeSelect(entityType.value)
+            })),
+            placeholder: 'Select an entity type...',
+            emptyMessage: 'No entity types available',
+        }, true);
+    }
+
+    selectOrg(orgProperty : string) {
+        if(orgProperty == 'selectedOrg2' && !this.quickDiffModeFlag) {
+            this.showSnackBar('Quick Diff Mode is not enabled. Please enable it to select second org.', null, 2000);
+            return;
+        }
+        this.openCommandPalette('selectOrg', {
+            commands: this.orgCredsList.map((org : OrgCredential) => new Command(org.orgName +'/'+org.username, org.orgName+'/'+org.username, () => this.onOrgSelect(org.orgName, orgProperty), org.authMode)),
+            placeholder: 'Select an org...',
+            emptyMessage: 'No orgs available'
+        }, true);
+    }
 
     selectLanguageMode() {
         this.openCommandPalette('selectLanguageMode',{
@@ -1230,10 +1290,16 @@ export class CodeBrowserComponent {
             emptyMessage: 'No languages available',
         }, true);
     }
+
+
     commandPaletteOpen : number = 0; 
     openCommandPalette(paletteName: string, options?: { commands?: any[], placeholder?: string, commandFlag?: boolean, emptyMessage?: string }, nested?: boolean) {
-        if(this.commandPaletteOpen > 0 && !nested) return; //prevent multiple open
+        
+        if(this.commandPaletteOpen > 0 && !nested)
+            return; //prevent multiple open
+
         this.commandPaletteOpen++;
+        
         const dialogRef = this.dialog.open(CommandPaletteComponent, {
             data: { commands: options?.commands || this.commandPaletteCommands, placeholder: options?.placeholder, commandFlag: !!options?.commandFlag, emptyMessage: options?.emptyMessage },
             panelClass: 'command-palette-container',
@@ -1282,10 +1348,19 @@ export class CodeBrowserComponent {
                 placeholder: 'Select a file...',
                 emptyMessage: 'No files open'
             });
-         }else if(event.ctrlKey && !event.shiftKey &&  !event.altKey && event.key.toLowerCase() == 'b') {
+        } else if(event.ctrlKey && !event.shiftKey &&  !event.altKey && event.key.toLowerCase() == 'b') {
             event.stopPropagation();
             event.preventDefault();
             this.toggleSidePanel(null);
+        } else if(event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() == 'o') {
+            this.typeahead.focus();
+            event.preventDefault();
+        } else if(event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() == 'q') {
+            if(this.activeTab) this.onTabClose(this.activeTab);
+            event.preventDefault();
+        } else if(event.ctrlKey && event.shiftKey && !event.altKey && event.key.toLowerCase() == 'q') {
+            if(this.activeTab) this.closeAllTabs(false);
+            event.preventDefault();
         }
     }
 
@@ -1358,11 +1433,6 @@ export class CodeBrowserComponent {
                 this.openTabs[tabIdVsIndex[tab2.modelId]] = tab1;
             }
             this.scrollToTab(this.activeTab!);
-        }
-        else if(evt.ctrlKey && !evt.shiftKey && !evt.altKey && evt.key.toLowerCase() == 'o') {
-            // this.orgSelect.nativeElement.click();
-            this.typeahead.focus();
-            evt.preventDefault();
         }
         // else if(evt.ctrlKey && !evt.shiftKey &&  !evt.altKey && evt.key.toLowerCase() == 'p') {
         //     evt.preventDefault();
@@ -1478,8 +1548,8 @@ export class CodeBrowserComponent {
         let existingDiffTab = this.openTabs.filter(
             x =>
                 x.editorType == AppConstants.DIFF_EDITOR &&
-                x.tabValue == diffTabName &&
-                x.orgName == diffTabOrg &&
+                (x.tabValue == diffTabName || x.tabValue == this.diffReversal(diffTabName)) &&
+                (x.orgName == diffTabOrg || x.orgName == this.diffReversal(diffTabOrg)) &&
                 x.entityType == diffEntityType
         )[0];
         if (existingDiffTab) {
@@ -1499,7 +1569,7 @@ export class CodeBrowserComponent {
 
         //create diff tab
         let lang = this.getEntityLanguage(diffTabName, diffEntityType, diffMimeType);
-        let icon = AppConstants.languageVsIcon[lang];
+        let icon = AppConstants.languageVsIcon[lang] || 'assets/log icon.png';
 
         let tab = new CodeTab(
             diffTabName,
@@ -1513,7 +1583,11 @@ export class CodeBrowserComponent {
         tab.model1ForDiff = tab1?.modelId || modelId1!;
         tab.model2ForDiff = tab2.modelId;
         tab.unloadModel1 = !tab1 && !!modelId1;
-        tab.bundleName = this.getDiffBundleName(tab1 || tab2, tab2);
+
+        if(tab1?.entityType == CodeEntity.LWC || tab2.entityType == CodeEntity.LWC || tab1?.entityType == CodeEntity.AuraComponent || tab2.entityType == CodeEntity.AuraComponent) {
+            // If either tab is a bundle, set the bundle name
+            tab.bundleName = this.getDiffBundleName(tab1 || tab2, tab2);
+        }
 
         if (tab1) tab1.diffTabModelIds.add(diffModelId);
         tab2.diffTabModelIds.add(diffModelId);
@@ -1530,6 +1604,17 @@ export class CodeBrowserComponent {
         let tab2 = this.tabForContextMenu!;
 
         this.createDiffTab(tab1, tab2);
+    }
+
+    diffReversal(value : string) {
+        // Reverse the diff tab value string
+        
+        let parts = ( (value.startsWith('Diff : ')) ? value.substring(7) : value ).split(' <> ');
+        if(parts.length == 2) {
+            return `Diff : ${parts[1]} <> ${parts[0]}`;
+        }
+        
+        return value;
     }
 
     getDiffTabValueString(tab1 : CodeTab, tab2 : CodeTab) {
@@ -2206,9 +2291,11 @@ export class CodeBrowserComponent {
             
             //fetch code from org
             let name = tab.codeEntity!.Name;
-            let response = await this.fetchCode([tab.codeEntity!], [tab.orgName]);
+            let response : any = await this.fetchCode([tab.codeEntity!], [tab.orgName]);
             let lang = this.getEntityLanguage(name, tab.entityType, tab.codeEntity!.mimeType);
     
+            response = <EnForceResponse>(response[tab.orgName][tab.entityType]);
+
             //validate response
             if(!response.isSuccess) {
                 this.showSnackBar('ERROR : ' + response.errors[0].message);
@@ -2216,11 +2303,12 @@ export class CodeBrowserComponent {
             } else if(!response.data['count']) {
                 this.showSnackBar('Not Found : ' + name);
                 return;
-            } 
+            }
+
 
             //success response. proceed to create tabs
-            let code = response.data[name];
-            let recordId = response.data.Id;
+            let code = response.data.contents[0][name];
+            let recordId = response.data.contents[0].Id;
 
             //create model
             let modelId = this.editorCmp.createCodeEditorModel(code, lang);
@@ -2263,6 +2351,31 @@ export class CodeBrowserComponent {
     treeViewMode = true;
     toggleTreeViewMode(event : any) {
         this.treeViewMode = !this.treeViewMode;
+    }
+
+    async closeAllTabs(keepCurrentTab : boolean) {
+        const tabsToClose = keepCurrentTab
+            ? this.openTabs.filter(tab => tab !== this.activeTab && !tab.temporary)
+            : this.openTabs.filter(tab => !tab.temporary);
+
+        if (tabsToClose.length === 0) {
+            // this.showSnackBar('No tabs to close');
+            return;
+        }
+
+        const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+            data: {
+                text: `Are you sure you want to close ${tabsToClose.length} tab(s)?${keepCurrentTab ? ' (Current tab will be kept open)' : ''}`
+            }
+        });
+
+        let result = await firstValueFrom(dialogRef.afterClosed());
+        if (result) {
+            // Copy array to avoid mutation issues during iteration
+            for(let tab of [...tabsToClose]) {
+                await this.onTabClose(tab);
+            }
+        }
     }
     
     log(...str: any) {

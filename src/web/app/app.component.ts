@@ -26,6 +26,7 @@ import { NewOrgDialogComponent } from './new-org-dialog/new-org-dialog.component
 import { EnForceResponse } from './enforce-utils';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
+import { environment } from './environment';
 
 
 class NavTab {
@@ -112,10 +113,23 @@ export class AppComponent {
         this.webMode = !(<any>window).desktopMode;
     }
 
+    @HostListener('window:keydown', ['$event'])
+    onKeyDown(event: KeyboardEvent) {
+        if (event.ctrlKey && event.altKey && !event.shiftKey) {
+            const key = event.key;
+            const tabIndex = parseInt(key, 10) - 1;
+            if (tabIndex >= 0 && tabIndex < this.navTabs.length) {
+                this.selectTab(this.navTabs[tabIndex]);
+                event.preventDefault();
+            }
+        }
+    }
+
     @HostListener('window:beforeunload', ['$event'])
     beforeUnloadHandler(event: BeforeUnloadEvent) {
         // Only prevent default; browsers will show a generic confirm dialog
-        // event.preventDefault();
+        if(environment.production) event.preventDefault();
+        // if(!environment.production) event.preventDefault();
     }
 
     @HostListener('window:popstate', ['$event'])

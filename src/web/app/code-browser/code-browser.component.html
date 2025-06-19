@@ -123,6 +123,9 @@
                     <option [value]="entityType.value">{{entityType.label}}</option>
                 }
             </select>
+
+            <!-- {{entityCount1}}
+            {{entityCount2}} -->
     
             <!-- class component name list -->
             <app-custom-typeahead inputStyle="margin-left:0px; border-radius:0px;height:30px;" class="entityTypeahead" #entityTypeahead [dataset]="entityList" style="min-width: 100px; width: 40em; flex-shrink:  1;" (onSelect)="onEntitySelect($event)" (onUnfocus)="typeaheadUnfocus()" placeholder="Type a name to open (supports * wildcard) ..."></app-custom-typeahead>
@@ -219,7 +222,7 @@
             <span><i class="bi bi-caret-right-fill"></i></span>
             <span class="">{{activeTab?.entityDisplayType}}</span>
             <span><i class="bi bi-caret-right-fill"></i></span>
-            @if(activeTab?.bundleName) {
+            @if(!!activeTab?.bundleName) {
                 <span class="">{{activeTab?.bundleName}}</span>
                 <span><i class="bi bi-caret-right-fill"></i></span>
             }
@@ -312,6 +315,8 @@
                 @if(tabForContextMenu?.pinned){Unpin Tab}
                 @else {Pin Tab}
             </li>
+            <li class="dropdown-item" (click)="closeAllTabs(false)">Close all tabs</li>
+            <li class="dropdown-item" (click)="closeAllTabs(true)">Close other tabs</li>
             <!-- <li class="dropdown-divider"></li>
             <li class="dropdown-item"><a class="dropdown-item" tabindex="-1" href="#">Separated link</a></li> -->
         </ul>

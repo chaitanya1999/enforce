@@ -226,7 +226,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             viewStateList[modelIndex] = undefined;
             // this.editorModels.splice(modelId, 1);
         }
-        this.editorActive = this.$codeEditor;
+        // this.editorActive = this.$codeEditor;
     }
 
     @Output() unloadModel() {
@@ -236,6 +236,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             this.diffEditorInstance?.setModel(null);
         }
         this.modelIndex = -1;
+        this.editorActive = this.$codeEditor;
         // this.modelType = null;
     }
 
@@ -565,6 +566,15 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         this.diffEditorInstance?.updateOptions({
             renderSideBySide : value
         })
+    }
+
+    @Output() switchEditor(editor: string) {
+        if(editor == AppConstants.CODE_EDITOR) {
+            this.editorActive = this.$codeEditor;
+        }
+        else if(editor == AppConstants.DIFF_EDITOR) {
+            this.editorActive = this.$diffEditor;
+        }
     }
 
     log(...str: any) {
