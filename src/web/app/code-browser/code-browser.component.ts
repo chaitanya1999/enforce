@@ -31,6 +31,7 @@ import { CommandPaletteComponent } from '../command-palette/command-palette.comp
 import { AppTreeViewComponent } from '../app-tree-view/app-tree-view.component';
 import { text } from 'express';
 import { firstValueFrom } from 'rxjs';
+import { CommandPaletteDialogData } from '../command-palette/command-palette-dialog-data';
 
 // Type for the data inside EnForceResponse for bulk fetch
 type BulkFetchCodeData = {
@@ -293,6 +294,7 @@ export class CodeBrowserComponent {
         this.createOption('xml'),
         this.createOption('css'),
         this.createOption('typescript'),
+        this.createOption('sql'),
     ]
     selectedLanguage : string = 'apex';
 
@@ -623,7 +625,7 @@ export class CodeBrowserComponent {
             let tabName = this.getTabName(name, entityType, codeEntity);            
 
             //decide icon
-            icon = AppConstants.languageVsIcon[lang];
+            icon = AppConstants.languageVsIcon[lang] || 'assets/log icon.png';
 
             //create tab
             let codeTab = new CodeTab(tabName , modelId , name , icon , org, AppConstants.CODE_EDITOR, entityType, recordId);
@@ -923,6 +925,12 @@ export class CodeBrowserComponent {
 
     async openFromPackageXml() {
         this.log('openFromPackageXml | Opening package.xml dialog');
+
+        if(!this.isOrgSelected) {
+            this.showSnackBar('Please select an org first');
+            this.log('openFromPackageXml | No org selected');
+            return;
+        }
 
         // Call IPC method to fetch last package.xml contents (async/await version)
         const res: EnForceResponse = await this._ipc.callMethod('getLastPackageXml');
@@ -1239,23 +1247,35 @@ export class CodeBrowserComponent {
 
     // Command Palette integration
     private commandPaletteCommands : Command[] = [
-        new Command('Select org.', 'select-org', () => this.selectOrg('selectedOrg')),
-        new Command('Select second org.', 'select-org-2', () => this.selectOrg('selectedOrg2')),
-        new Command('Select entity type', 'select-entity-type', () => this.selectEntityType()),
-        new Command('Global Search', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
-        new Command('Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
-        new Command('Refresh org metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata()),
-        new Command('Deploy current file', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S'),
-        new Command('Reload current file', 'reload-current-file', () => this.reloadEntity(true)),
-        new Command('Compare current file with org', 'compare-current-file-with-org', () => this.diffWithOrg(true)),
-        new Command('Editor : Toggle word wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z'),
-        new Command('Editor : Increase font size', 'increase-font-size', () => this.changeFontSize(true)),
-        new Command('Editor : Decrease font size', 'decrease-font-size', () => this.changeFontSize(false)),
-        new Command('Open in separate window (popup)', 'open-in-popup', () => this.openAsPopup()),
-        new Command('Select language mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
-        new Command('Toggle errors pane', 'toggle-errors-pane', () => this.showErrorsPane()),
-        new Command('Open in bulk from package xml', 'open-bulk-package-xml', () => this.openFromPackageXml()),
+        new Command('Org: Select Primary Org', 'select-org', () => this.selectOrg('selectedOrg')),
+        new Command('Org: Select Secondary Org (for Quick Diff)', 'select-org-2', () => this.selectOrg('selectedOrg2')),
+        new Command('Org: Refresh Org Metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata()),
+        new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType()),
+        new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
+        new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
+        new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true)),
+        new Command('File: Deploy Current File', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S'),
+        new Command('File: Reload Current File from Org', 'reload-current-file', () => this.reloadEntity(true)),
+        new Command('File: Open Files from Package.xml', 'open-bulk-package-xml', () => this.openFromPackageXml()),
+        new Command('Editor: Toggle Word Wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z'),
+        new Command('Editor: Increase Font Size', 'increase-font-size', () => this.changeFontSize(true)),
+        new Command('Editor: Decrease Font Size', 'decrease-font-size', () => this.changeFontSize(false)),
+        new Command('Editor: Select Language Mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
+        new Command('Editor: Toggle Errors Panel', 'toggle-errors-pane', () => this.showErrorsPane()),
+        new Command('Editor: Reload Theme Engine', 'reload-theme-engine', () => this.editorCmp.reloadThemeEngine()),
+        new Command('Editor: Change Theme', 'change-editor-theme', () => this.changeEditorTheme()),
+        new Command('Window: Open EnForce in Separate Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
     ];
+
+    changeEditorTheme() {
+        this.openCommandPalette('changeEditorTheme', {
+            commands: this.editorCmp.getThemesList().map((theme: string) => ({
+                name: theme
+            })),
+            placeholder: 'Select a theme...',
+            emptyMessage: 'No themes available',
+        }, true);
+    }
 
     selectEntityType() {
         this.openCommandPalette('selectEntityType', {
@@ -1293,15 +1313,19 @@ export class CodeBrowserComponent {
 
 
     commandPaletteOpen : number = 0; 
-    openCommandPalette(paletteName: string, options?: { commands?: any[], placeholder?: string, commandFlag?: boolean, emptyMessage?: string }, nested?: boolean) {
+    openCommandPalette(paletteName: string, options?: CommandPaletteDialogData, nested?: boolean) {
         
         if(this.commandPaletteOpen > 0 && !nested)
             return; //prevent multiple open
 
         this.commandPaletteOpen++;
         
+        if(!options) options = {};
+        options.commands = options.commands || this.commandPaletteCommands;
+        options.commandFlag = !!options.commandFlag; //force command flag to be boolean
+
         const dialogRef = this.dialog.open(CommandPaletteComponent, {
-            data: { commands: options?.commands || this.commandPaletteCommands, placeholder: options?.placeholder, commandFlag: !!options?.commandFlag, emptyMessage: options?.emptyMessage },
+            data: options,
             panelClass: 'command-palette-container',
             autoFocus: false
         });
@@ -1314,6 +1338,11 @@ export class CodeBrowserComponent {
                         this.commandPaletteCommands.unshift(found);
                     }
                 }
+            }
+
+            if(paletteName == 'changeEditorTheme') {
+                this.log('openCommandPalette | changeEditorTheme | ' + cmd.name);
+                this.editorCmp.setTheme(cmd.name);
             }
 
             if (cmd && cmd.action) {
@@ -1329,8 +1358,9 @@ export class CodeBrowserComponent {
         
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
-            this.openCommandPalette('editorCommands',{
-                commandFlag : true
+            this.openCommandPalette('editorCommands',<any>{
+                commandFlag : true,
+                wildcardEnabled: true,
             });
         }
         else if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
@@ -1346,7 +1376,8 @@ export class CodeBrowserComponent {
                     }
                 })),
                 placeholder: 'Select a file...',
-                emptyMessage: 'No files open'
+                emptyMessage: 'No files open',
+                wildcardEnabled: true
             });
         } else if(event.ctrlKey && !event.shiftKey &&  !event.altKey && event.key.toLowerCase() == 'b') {
             event.stopPropagation();

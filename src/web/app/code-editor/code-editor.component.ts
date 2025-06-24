@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, EventEmitter, Input, NgZone, OnChanges, Output, ViewChild, model } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, NgZone, OnChanges, Output, ViewChild, model } from '@angular/core';
 import { EditorConfigService } from '../editor-config.service';
 import { AppConstants } from '../AppConstants';
 import { shikiToMonaco } from '@shikijs/monaco';
@@ -69,7 +69,19 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
     @Input() loadingSpinner : boolean = false;
 
-    constructor(private zone: NgZone, private configService: EditorConfigService, private readonly _ipc: IpcService) {
+    @Output() ctrlEnter : EventEmitter<boolean> = new EventEmitter<boolean>();
+
+    ctrlEnterCallback : Function = () => {};
+
+    shikiHighlighter: any;
+    shikiTheme: string = 'dark-plus';
+    themesList: string[] = ['vitesse-dark','vitesse-light','slack-dark',
+                            'one-dark-pro','solarized-dark','ayu-dark',
+                            'slack-ochin','andromeeda','dark-plus', 
+                            //this.configService.getDarkPlusShikiTheme()
+                            ];
+
+    constructor(private zone: NgZone, private configService: EditorConfigService, private readonly _ipc: IpcService,private cdRef: ChangeDetectorRef) {
         this.document = inject(DOCUMENT);
         this.window = this.document?.defaultView;
     }
@@ -295,6 +307,16 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
     }
 
     ngAfterViewInit() {
+        let that = this;
+        this.ctrlEnterCallback = () => {
+            that.zone.run(() => {
+                // setTimeout(() => {
+                    console.log('Ctrl+Enter pressed');
+                    that.ctrlEnter.emit(true);
+                    // that.cdRef.detectChanges();
+                // }, 50);
+            });
+        }
         if(!this.delayLoad) {
             this.loadMonacoLibrary();
         }
@@ -355,12 +377,9 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
         //---------------------- SHIKI --------------------------------------
         // Create the highlighter, it can be reused
-        const highlighter = await createHighlighter({
+        this.shikiHighlighter = await createHighlighter({
             themes: [
-                'vitesse-dark',
-                'vitesse-light',
-                'slack-dark',
-                'one-dark-pro','solarized-dark','ayu-dark','slack-ochin','andromeeda','dark-plus', this.configService.getDarkPlusShikiTheme()
+                ...this.themesList
             ],
             langs: [
                 'javascript',
@@ -385,6 +404,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         monaco.languages.register({ id: 'css' })
         monaco.languages.register({ id: 'xml' })
         monaco.languages.register({ id: 'svg' })
+        monaco.languages.register({ id: 'sql' })
         
         // Register the themes from Shiki, and provide syntax highlighting for Monaco.
         // await AppConstants.sleep(2000);
@@ -421,7 +441,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         // grammars.set('javascript', 'source.js')
 
         // let theme = 'vs-dark';
-
+        let that = this;
         this.zone.runOutsideAngular(() => {
             let codeEditorInstance = monaco.editor.create(this._editorContainer!.nativeElement, {
                 value: this.code,
@@ -467,24 +487,79 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 })
 
                 this.codeEditorModels.push(this.codeEditorInstance!.getModel()!);
-
                 this.setModelLanguage(this.defaultLanguage);
+                // Register Monaco command for Ctrl+Enter
+                // that.codeEditorInstance!.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, that.ctrlEnterCallback.bind(that));
+                // Add native keydown fallback for Ctrl+Enter
+                // const editorDomNode = that.codeEditorInstance!.getDomNode();
+                // if (editorDomNode) {
+                //     editorDomNode.addEventListener('keydown', function nativeCtrlEnterListener(e: KeyboardEvent) {
+                //         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                //             that.ctrlEnterCallback();
+                //         }
+                //     });
+                //     // Store for cleanup
+                //     (that as any)._nativeCtrlEnterListener = function(e: KeyboardEvent) {
+                //         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                //             that.ctrlEnterCallback();
+                //         }
+                //     };
+                //     (that as any)._nativeCtrlEnterDomNode = editorDomNode;
+                // }
+
+                // --- Fix: Ensure editor is focused and command is registered after a delay ---
+                // setTimeout(() => {
+                //     this.codeEditorInstance!.focus();
+                //     // Remove any previous command if needed (Monaco doesn't support removing, so just re-add)
+                //     that.codeEditorInstance!.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, that.ctrlEnterCallback.bind(that));
+                // }, 100);
+
+                // --- Fallback: Listen for Ctrl+Enter on the editor container ---
+                this._editorContainer?.nativeElement.addEventListener('keydown', (event: KeyboardEvent) => {
+                    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        this.zone.run(() => {
+                            this.ctrlEnter.emit(true);
+                        });
+                    }
+                });
 
                 // await monaco.languages.typescript.getTypeScriptWorker();
                 await AppConstants.sleep(500);
-                shikiToMonaco(highlighter, monaco)
-                theme = 'dark-plus';
-                monaco.editor.setTheme(theme);
+                shikiToMonaco(this.shikiHighlighter, monaco)
+                this.shikiTheme = 'dark-plus';
+                monaco.editor.setTheme(this.shikiTheme);
+
+                // Add Ctrl+Enter keybinding
 
             })
         });
 
 
-        
-
         // await AppConstants.sleep(2000);
         // await wireTmGrammars(<any>monaco, registry, grammars, <any>this.codeEditorInstance);
         // await wireTmGrammars(<any>monaco, registry, grammars, <any>this.diffEditorInstance);
+    }
+
+    @Output()
+    reloadThemeEngine() {
+        this.log('reloadThemeEngine');
+        shikiToMonaco(this.shikiHighlighter, monaco)
+        monaco.editor.setTheme(this.shikiTheme);
+        this.log('reloadThemeEngine | reloaded');
+    }
+
+    @Output()
+    setTheme(theme: string) {
+        this.log('setTheme | ' + theme);
+        if(this.themesList.includes(theme)) {
+            this.shikiTheme = theme;
+            monaco.editor.setTheme(theme);
+        }
+    }
+
+    @Output()
+    getThemesList() {
+        return this.themesList;
     }
 
     setModelLanguage(language: string) {
@@ -554,7 +629,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         }
     }
 
-    fontSize = 13;
+    @Input() fontSize = 13;
     @Output() changeFontSize(increment : boolean) {
         if(increment) this.fontSize ++;
         else this.fontSize --;
@@ -577,11 +652,34 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         }
     }
 
+    @Output() toggleMinimap(value: boolean) {
+        this.codeEditorInstance?.updateOptions({
+            minimap: {
+                enabled: value
+            }
+        });
+        this.diffEditorInstance?.updateOptions({
+            minimap: {
+                enabled: value
+            }
+        });
+    }
+
     log(...str: any) {
         if(!str) str = [];
         str.unshift('code-editor.component |');
         // console.log('#$#$ ' , str);
         console.log(...str);
+    }
+
+    // Add cleanup in ngOnDestroy
+    ngOnDestroy() {
+        // Remove native keydown listener if present
+        const listener = (this as any)._nativeCtrlEnterListener;
+        const domNode = (this as any)._nativeCtrlEnterDomNode;
+        if (listener && domNode) {
+            domNode.removeEventListener('keydown', listener);
+        }
     }
 
 }

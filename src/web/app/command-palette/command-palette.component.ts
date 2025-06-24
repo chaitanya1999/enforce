@@ -1,6 +1,7 @@
 import { Component, Inject, ViewChild, ViewChildren, QueryList, ElementRef, AfterViewInit, ViewEncapsulation } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
+import { CommandPaletteDialogData } from './command-palette-dialog-data';
 
 @Component({
 	selector: 'app-command-palette',
@@ -18,16 +19,17 @@ export class CommandPaletteComponent implements AfterViewInit {
 	placeholder: string = 'Type a command...';
 	emptyMessage: string = 'No commands found';
 	commandFlag: boolean = false;
+	wildcardEnabled: boolean = false;
 
 	constructor(
 		public dialogRef: MatDialogRef<CommandPaletteComponent>,
-		@Inject(MAT_DIALOG_DATA) public data: {
-			emptyMessage: string; commands: any[], placeholder?: string, commandFlag?: boolean 
-		}
+		@Inject(MAT_DIALOG_DATA) public data: CommandPaletteDialogData
 	) {
+		data.commands = data.commands || [];
 		this.filtered = data.commands;
 		if (data.placeholder) this.placeholder = data.placeholder;
 		if (typeof data.commandFlag === 'boolean') this.commandFlag = data.commandFlag;
+		if (typeof data.wildcardEnabled === 'boolean') this.wildcardEnabled = data.wildcardEnabled;
 		this.emptyMessage = data.emptyMessage || 'No commands found';
 	}
 
@@ -37,9 +39,17 @@ export class CommandPaletteComponent implements AfterViewInit {
 
 	onInput() {
 		const s = this.search.toLowerCase();
-		this.filtered = this.data.commands.filter(cmd =>
-			cmd.name.toLowerCase().includes(s)
-		);
+		if (this.wildcardEnabled && s.includes('*')) {
+			console.log('wildcardEnabled');
+			// Convert * to .*, escape other regex chars
+			const regexStr = '' + s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '';
+			const regex = new RegExp(regexStr, 'i');
+			this.filtered = this.data.commands!.filter(cmd => regex.test(cmd.name.toLowerCase()));
+		} else {
+			this.filtered = this.data.commands!.filter(cmd =>
+				cmd.name.toLowerCase().includes(s)
+			);
+		}
 		this.activeIndex = 0;
 	}
 

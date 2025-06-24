@@ -62,7 +62,7 @@ export class AppConstants {
         '.evt' : 'html',
         '.auradoc' : 'html',
         '.design' : 'html',
-        '.svg' : 'svg'
+        '.svg' : 'xml'
     }
 
     static lwcSuffixVsLanguage : any = {
