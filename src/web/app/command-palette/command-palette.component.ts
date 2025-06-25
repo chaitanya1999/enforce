@@ -1,4 +1,5 @@
 import { Component, Inject, ViewChild, ViewChildren, QueryList, ElementRef, AfterViewInit, ViewEncapsulation } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { FormsModule } from '@angular/forms';
 import { CommandPaletteDialogData } from './command-palette-dialog-data';
@@ -6,7 +7,7 @@ import { CommandPaletteDialogData } from './command-palette-dialog-data';
 @Component({
 	selector: 'app-command-palette',
 	standalone: true,
-	imports: [FormsModule],
+	imports: [FormsModule, CommonModule],
 	templateUrl: './command-palette.component.html',
 	styleUrls: ['./command-palette.component.css']
 })
@@ -20,6 +21,9 @@ export class CommandPaletteComponent implements AfterViewInit {
 	emptyMessage: string = 'No commands found';
 	commandFlag: boolean = false;
 	wildcardEnabled: boolean = false;
+	limitResults: boolean = false;
+	maxResults: number = 100;
+	totalFiltered: number = 0;
 
 	constructor(
 		public dialogRef: MatDialogRef<CommandPaletteComponent>,
@@ -31,6 +35,12 @@ export class CommandPaletteComponent implements AfterViewInit {
 		if (typeof data.commandFlag === 'boolean') this.commandFlag = data.commandFlag;
 		if (typeof data.wildcardEnabled === 'boolean') this.wildcardEnabled = data.wildcardEnabled;
 		this.emptyMessage = data.emptyMessage || 'No commands found';
+		if (typeof data.limitResults === 'boolean') this.limitResults = data.limitResults;
+		if (typeof data.maxResults === 'number') this.maxResults = data.maxResults;
+		this.totalFiltered = this.filtered.length;
+		if (this.limitResults) {
+			this.filtered = this.filtered.slice(0, this.maxResults);
+		}
 	}
 
 	ngAfterViewInit() {
@@ -39,16 +49,21 @@ export class CommandPaletteComponent implements AfterViewInit {
 
 	onInput() {
 		const s = this.search.toLowerCase();
-		if (this.wildcardEnabled && s.includes('*')) {
-			console.log('wildcardEnabled');
-			// Convert * to .*, escape other regex chars
-			const regexStr = '' + s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '';
+		let matches: any[];
+		if (this.wildcardEnabled && (s.includes('*') || s.includes(' '))) {
+			const regexStr = '' + s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'.*')).join('.*') + '';
 			const regex = new RegExp(regexStr, 'i');
-			this.filtered = this.data.commands!.filter(cmd => regex.test(cmd.name.toLowerCase()));
+			matches = this.data.commands!.filter(cmd => regex.test(cmd.name.toLowerCase()));
 		} else {
-			this.filtered = this.data.commands!.filter(cmd =>
+			matches = this.data.commands!.filter(cmd =>
 				cmd.name.toLowerCase().includes(s)
 			);
+		}
+		this.totalFiltered = matches.length;
+		if (this.limitResults) {
+			this.filtered = matches.slice(0, this.maxResults);
+		} else {
+			this.filtered = matches;
 		}
 		this.activeIndex = 0;
 	}
@@ -83,6 +98,6 @@ export class CommandPaletteComponent implements AfterViewInit {
 	}
 
 	select(cmd: any) {
-		this.dialogRef.close(cmd);
+		this.dialogRef.close({command : cmd , commonAction : this.data.commonAction});
 	}
 }

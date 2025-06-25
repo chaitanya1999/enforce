@@ -31,7 +31,19 @@
     
             
             <!-- Query Input -->
+            <!--
             <textarea #queryInput class="queryInput" [(ngModel)]="soqlQuery" (ngModelChange)="onQueryTyped()" (keypress)="onKeyPress($event)" spellcheck="false"></textarea>
+            -->
+            <app-code-editor #queryInput
+              [(code)]="soqlQuery"
+              [defaultLanguage]="'sql'"
+              (codeChange)="onQueryTyped($event)"
+              (onCursorPositionChange)="onCodeEditorCursor($event)"
+              (ctrlEnter)="executeQuery()"
+              style="height:120px;width:100%;"
+              [fontSize]="16"
+              [passContentOnContentChange]="true"
+            ></app-code-editor>
             
             <!-- Execute button -->
             <button class="btn btn-primary topBarItem" (click)="executeQuery()">Execute</button>
@@ -41,16 +53,16 @@
             <!-- Salesforce Org dropdown -->
             <select class="form-select topBarItem" aria-label="Salesforce Org"
                 [ngModel]="selectedOrg"
-                (ngModelChange)="onOrgSelect($event)">
+                (ngModelChange)="onOrgSelect($event)"
+                style="width: 180px; min-width: 120px; max-width: 220px; display: inline-block;">
                 <option>--Org--</option>
                 @for (orgCred of orgCredsList; track orgCred) {
                     <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
                 }
             </select>
-            
-            <div class="filter">
-                <!-- <span style="margin-right: 5px;">Filter</span> -->
-                <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput"/>
+
+            <div class="filter" style="width: 180px; min-width: 100px; max-width: 220px; display: inline-block; margin-left: 10px;">
+                <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput" style="width: 100%;"/>
             </div>
 
             {{parseQuerySituation}}

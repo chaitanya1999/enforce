@@ -6,20 +6,23 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { QueryOutputTableComponent } from '../query-output-table/query-output-table.component';
 import { ChangeDetectorRef } from '@angular/core';
 import { EnForceResponse } from '../enforce-utils';
+import { CodeEditorComponent } from '../code-editor/code-editor.component';
+import { MatSnackBar, MatSnackBarVerticalPosition } from '@angular/material/snack-bar';
+import { GlobalEventsService } from '../global-events.service';
 
 
 
 @Component({
   selector: 'app-query-tool',
   standalone: true,
-  imports: [FormsModule, MatProgressSpinnerModule, QueryOutputTableComponent],
+  imports: [FormsModule, MatProgressSpinnerModule, QueryOutputTableComponent, CodeEditorComponent],
   templateUrl: './query-tool.component.html',
   styleUrl: './query-tool.component.css'
 })
 export class QueryToolComponent {
     @Input() isComponentActive : boolean = false;
     
-    selectedOrg: string = '';
+    selectedOrg: string = '--Org--';
     selectedEntityType: string = '';
     showSpinner : boolean = false;
     flattenSubqueries : boolean = false;
@@ -34,6 +37,11 @@ export class QueryToolComponent {
     // get flattenSubqueries() : boolean {
     //     return this._flattenSubqueries;
     // }
+
+    get isOrgSelected() {
+        return this.selectedOrg && this.selectedOrg != '--Org--';
+    }
+
     toolingApi : boolean = false;
     fetchDeleted : boolean = false;
 
@@ -52,15 +60,21 @@ export class QueryToolComponent {
     filterInput : string = '';
     instanceUrl : string = '';
     queryHistory : SelectOption[] = [];
-    defaultQueryHistoryOption : SelectOption = {label : 'Query History', value : ''};
+    defaultQueryHistoryOption : SelectOption = {label : 'Query History', value : 'Query History'};
     selectedQueryHistory : SelectOption = this.defaultQueryHistoryOption;
     // selectedQueryHistoryQuery : string = '';
     MAX_QUERY_HISTORY : number = 15;
 
-    @ViewChild('queryInput') queryInputBox : ElementRef | undefined;
+    // @ViewChild('queryInput') queryInputBox : ElementRef | undefined;
+    @ViewChild('queryInput') queryInputBox! : CodeEditorComponent;
     parseQuerySituation : string = ''
 
-    constructor(private _ipc:IpcService, private ref: ChangeDetectorRef){
+    // Store latest code and cursor position for context-aware parsing
+    latestQueryValue: string = this.soqlQuery;
+    latestCursorPos: number = 0;
+    objectSuggestions: string[] = [];
+
+    constructor(private _ipc:IpcService, private ref: ChangeDetectorRef, private snackBar: MatSnackBar, private globalEventsSvc: GlobalEventsService){
 
     }
 
@@ -71,6 +85,10 @@ export class QueryToolComponent {
         if(str) this.queryHistory = JSON.parse(str);
         // this.queryHistory.unshift(this.defaultQueryHistoryOption);
         this.selectedQueryHistory = this.defaultQueryHistoryOption;
+
+        this.globalEventsSvc.tabSelectEvent.subscribe((x:any) => {
+            if(x.tab.tabName == 'Query Tool') this.queryInputBox.focus();
+        });
     }
 
     async onOrgSelect(value: any) {
@@ -91,8 +109,8 @@ export class QueryToolComponent {
 
     async executeQuery() {
         this.log('executeQuery');
-        if(!this.selectedOrg) {
-            alert('select org');
+        if(!this.isOrgSelected) {
+            this.showSnackBar('Please select an org first');
             return;
         }
         if(!this.soqlQuery) {
@@ -218,44 +236,106 @@ export class QueryToolComponent {
         };
     }
 
-    onQueryTyped() {
+    // Called when code changes in the editor
+    onQueryTyped(event: any) {
         this.selectedQueryHistory = this.defaultQueryHistoryOption;
-        this.parseQuery();
+        // event.value is the code string
+        this.latestQueryValue = typeof event.value === 'string' ? event.value : this.soqlQuery;
+        //this.parseQueryWithLatest();
     }
 
-    parseQuery() {
-        let cursorPos = this.queryInputBox?.nativeElement.selectionStart;
-        if(!cursorPos || cursorPos==-1) {
+    // Helper to always parse with latest state
+    parseQueryWithLatest() {
+        //this.parseQuery(this.latestQueryValue, this.latestCursorPos);
+    }
+
+    /**
+     * Parses the SOQL query and determines the context at the cursor position.
+     * Sets parseQuerySituation to one of: 'select', 'field', 'from', 'object', 'where', 'condition', 'unknown', 'expecting select'.
+     * @param query The current SOQL query string
+     * @param cursorPos The current cursor position (number)
+     */
+    parseQuery(query: string, cursorPos: number) {
+        if (!query || cursorPos == null || cursorPos < 0) {
             this.parseQuerySituation = '';
+            this.objectSuggestions = [];
             return;
         }
-
-        let tokenizedQuery = this.soqlQuery?.split(' ') || [];
-        let prefixSum : any = [];
-        let sum=0;
-        tokenizedQuery.forEach((x:string) => {
-            sum+=(x.length || 1);
-            prefixSum.push(sum);
-        });
-
-        let firstFromIndex = tokenizedQuery.findIndex(x => x.toUpperCase() == 'FROM');
-        if(!firstFromIndex || firstFromIndex == -1) {
-            this.parseQuerySituation = '';
+        // Lowercase for easier matching, but keep original for slicing
+        const upToCursor = query.slice(0, cursorPos);
+        const lower = upToCursor.toLowerCase();
+        // Find keyword positions (first occurrence)
+        const selectMatch = /select\b/i.exec(lower);
+        const fromMatch = /from\b/i.exec(lower);
+        const whereMatch = /where\b/i.exec(lower);
+        const groupByMatch = /group\s+by\b/i.exec(lower);
+        const orderByMatch = /order\s+by\b/i.exec(lower);
+        // 1. Before SELECT
+        if (!selectMatch || cursorPos <= selectMatch.index + 6) {
+            this.parseQuerySituation = 'select';
+            this.objectSuggestions = [];
             return;
         }
-        let nextTokenAfterFirstFrom = firstFromIndex+1;
-        if(nextTokenAfterFirstFrom < tokenizedQuery.length) while(nextTokenAfterFirstFrom < tokenizedQuery.length) {
-            if(tokenizedQuery[nextTokenAfterFirstFrom].match(/\s+/g)?.length) nextTokenAfterFirstFrom++;
-            else break;
-        } else {
-            nextTokenAfterFirstFrom = -1;
+        // 2. Between SELECT and FROM
+        if (!fromMatch || cursorPos <= fromMatch.index + 4) {
+            this.parseQuerySituation = 'field';
+            this.objectSuggestions = [];
+            return;
         }
+        // 3. Between FROM and WHERE/GROUP BY/ORDER BY
+        let afterFrom = fromMatch.index + 4;
+        let nextClauseIndex = lower.length;
+        if (whereMatch && whereMatch.index > afterFrom) nextClauseIndex = Math.min(nextClauseIndex, whereMatch.index);
+        if (groupByMatch && groupByMatch.index > afterFrom) nextClauseIndex = Math.min(nextClauseIndex, groupByMatch.index);
+        if (orderByMatch && orderByMatch.index > afterFrom) nextClauseIndex = Math.min(nextClauseIndex, orderByMatch.index);
+        if (cursorPos > afterFrom && cursorPos <= nextClauseIndex) {
+            this.parseQuerySituation = 'object';
+            this.objectSuggestions = ['Account', 'Contact', 'Lead', 'Opportunity'];
+            // Call the code editor's method to show the dropdown
+            if (this.queryInputBox && this.queryInputBox.showObjectDropdown) {
+                this.queryInputBox.showObjectDropdown(this.objectSuggestions);
+            }
+            return;
+        }
+        // 4. WHERE clause
+        if (whereMatch && cursorPos > whereMatch.index + 5 && (!groupByMatch || cursorPos <= groupByMatch.index) && (!orderByMatch || cursorPos <= orderByMatch.index)) {
+            this.parseQuerySituation = 'where';
+            this.objectSuggestions = [];
+            return;
+        }
+        // 5. GROUP BY clause
+        if (groupByMatch && cursorPos > groupByMatch.index + 8 && (!orderByMatch || cursorPos <= orderByMatch.index)) {
+            this.parseQuerySituation = 'groupby';
+            this.objectSuggestions = [];
+            return;
+        }
+        // 6. ORDER BY clause
+        if (orderByMatch && cursorPos > orderByMatch.index + 8) {
+            this.parseQuerySituation = 'orderby';
+            this.objectSuggestions = [];
+            return;
+        }
+        // Fallback
+        this.parseQuerySituation = 'unknown';
+        this.objectSuggestions = [];
+    }
 
-        //check if cursor is after first FROM
-        if(cursorPos > prefixSum[firstFromIndex]-1) {
-            if(nextTokenAfterFirstFrom == -1 || cursorPos<=(prefixSum[nextTokenAfterFirstFrom]-tokenizedQuery[nextTokenAfterFirstFrom].length))
-                this.parseQuerySituation = 'show object names';
+    // Called when cursor position changes in the editor
+    onCodeEditorCursor(pos: { lineNumber: number, column: number }) {
+        // this.latestCursorPos = this.getAbsoluteCursorPos(this.latestQueryValue, pos);
+        // this.parseQueryWithLatest();
+    }
+
+    // Utility: Convert (line, column) to absolute offset in the string
+    getAbsoluteCursorPos(text: string, pos: { lineNumber: number, column: number }): number {
+        if (!pos || !text) return 0;
+        const lines = text.split('\n');
+        let offset = 0;
+        for (let i = 0; i < pos.lineNumber - 1; i++) {
+            offset += (lines[i]?.length ?? 0) + 1; // +1 for newline
         }
+        offset += pos.column - 1;
+        return offset;
     }
 
     onQueryHistorySelect(event: any) {
@@ -270,6 +350,15 @@ export class QueryToolComponent {
         if(evt.key == '\n') {
             this.executeQuery();
         }
+    }
+
+
+    showSnackBar(message : string, action? : string | null, duration? : number, verticalPosition? : MatSnackBarVerticalPosition) {
+        this.snackBar.open(message, action || 'Close', {
+            horizontalPosition: 'center',
+            duration: duration || 2000,
+            verticalPosition : verticalPosition || 'top'
+        });
     }
 
     log(...str: any) {

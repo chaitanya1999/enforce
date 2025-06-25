@@ -24,6 +24,7 @@ import { GlobalEventsService } from '../global-events.service';
 
 
 export class CodeEditorComponent implements AfterViewInit, OnChanges {
+    private objectCompletionProviderDisposable: any = null;
     // loadedMonaco = false;
     // static loadedMonacoGlobal = false;
     static globalMonaco : any;
@@ -81,6 +82,35 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                             //this.configService.getDarkPlusShikiTheme()
                             ];
 
+    @Input() passContentOnContentChange: boolean = false;
+    /**
+     * Call this method to show the object dropdown with the given suggestions.
+     */
+    @Output() showObjectDropdown(suggestions: string[]) {
+        const monaco = EditorConfigService.monaco;
+        // Dispose previous provider if any
+        if (this.objectCompletionProviderDisposable) {
+            this.objectCompletionProviderDisposable.dispose();
+        }
+        if (!suggestions || suggestions.length === 0) return;
+        this.objectCompletionProviderDisposable = monaco.languages.registerCompletionItemProvider('sql', {
+            provideCompletionItems: (model: any, position: any) => {
+                return {
+                    suggestions: suggestions.map(obj => ({
+                        label: obj,
+                        kind: monaco.languages.CompletionItemKind.Class,
+                        insertText: obj,
+                        range: undefined // Monaco will infer
+                    }))
+                };
+            }
+        });
+        // Programmatically trigger the suggestions widget
+        if (this.codeEditorInstance) {
+            this.codeEditorInstance.trigger('keyboard', 'editor.action.triggerSuggest', {});
+        }
+    }
+
     constructor(private zone: NgZone, private configService: EditorConfigService, private readonly _ipc: IpcService,private cdRef: ChangeDetectorRef) {
         this.document = inject(DOCUMENT);
         this.window = this.document?.defaultView;
@@ -111,8 +141,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         model.onDidChangeContent(e => {
             this.codeChange.emit({
                 modelId : modelId,
-                canUndo : (<any>model).canUndo()
-                // value : this.codeEditorInstance!.getValue()
+                canUndo : (<any>model).canUndo(),
+                value : this.passContentOnContentChange ? this.codeEditorInstance!.getValue() : ''
             });
         });
         return modelId;
@@ -476,8 +506,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 this.codeEditorInstance!.getModel()!.onDidChangeContent(e => {
                     this.codeChange.emit({
                         modelId : this.modelId,
-                        canUndo : (<any>this.codeEditorInstance!.getModel()).canUndo()
-                        // value : this.codeEditorInstance!.getValue()
+                        canUndo : (<any>this.codeEditorInstance!.getModel()).canUndo(),
+                        value : this.passContentOnContentChange ? this.codeEditorInstance!.getValue() : ''
                     });
                 });
 
@@ -515,8 +545,11 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 // }, 100);
 
                 // --- Fallback: Listen for Ctrl+Enter on the editor container ---
-                this._editorContainer?.nativeElement.addEventListener('keydown', (event: KeyboardEvent) => {
+                // this._editorContainer?.nativeElement.addEventListener('keydown', (event: KeyboardEvent) => {
+                this.codeEditorInstance!.getDomNode()!.addEventListener('keydown', (event: KeyboardEvent) => {
                     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        event.preventDefault();
+                        event.stopPropagation();
                         this.zone.run(() => {
                             this.ctrlEnter.emit(true);
                         });
@@ -553,7 +586,13 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         this.log('setTheme | ' + theme);
         if(this.themesList.includes(theme)) {
             this.shikiTheme = theme;
-            monaco.editor.setTheme(theme);
+            // monaco.editor.setTheme(theme);
+            this.codeEditorInstance?.updateOptions({
+                theme: this.shikiTheme
+            });
+            this.diffEditorInstance?.updateOptions(<any>{
+                theme: this.shikiTheme
+            });
         }
     }
 
@@ -680,6 +719,9 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         if (listener && domNode) {
             domNode.removeEventListener('keydown', listener);
         }
+        // Dispose completion provider if present
+        if (this.objectCompletionProviderDisposable) {
+            this.objectCompletionProviderDisposable.dispose();
+        }
     }
-
 }

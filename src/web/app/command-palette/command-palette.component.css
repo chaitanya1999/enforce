@@ -90,23 +90,21 @@
   min-height: 28px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
-.command-palette-list-item.active {
-  background: linear-gradient(90deg, #3a8bfd 0%, #23272e 100%);
-  color: #fff;
-}
-.command-palette-list-item:hover {
-  background: linear-gradient(90deg, #fdbf3a 0%, #23272e 100%);
-  color: #fff;
-}
-.command-palette-list-item.disabled {
-  color: #888;
-  cursor: not-allowed;
-  background: none;
+.command-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+  /* Prevents overlap with badge */
+  display: block;
 }
 .command-badge {
   margin-left: auto;
+  flex: 0 0 auto;
   background: #23272e;
   color: #bdbdbd;
   border-radius: 4px;
@@ -120,4 +118,17 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+}
+.command-palette-list-item.active {
+  background: linear-gradient(90deg, #3a8bfd 0%, #23272e 100%);
+  color: #fff;
+}
+.command-palette-list-item:hover {
+  background: linear-gradient(90deg, #fdbf3a 0%, #23272e 100%);
+  color: #fff;
+}
+.command-palette-list-item.disabled {
+  color: #888;
+  cursor: not-allowed;
+  background: none;
 }

@@ -1,43 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CodeEntity } from '../AppConstants'; // Adjust the import path as necessary
-/*
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Package xmlns="http://soap.sforce.com/2006/04/metadata">
-    <types>
-        <members>CF_ALL_NetBankingHelper</members>
-        <members>CF_ALL_PerfiosUpldStrtRequest</members>
-        <members>CF_UC_UploadBankStmnt_CC</members>
-        <members>CF_UC_Pre_DA_CC</members>
-        <name>ApexClass</name>
-    </types>
-    <types>
-        <members>CF_UC_Pre_DA</members>
-        <name>AuraDefinitionBundle</name>
-    </types>
-	<types>
-        <members>cf_UC_DA_Charges</members>
-        <name>LightningComponentBundle</name>
-    </types>
-    <types>
-        <members>LoanApplicationTrigger</members>
-        <name>ApexTrigger</name>
-    </types>
-    <types>
-        <members>LoanApplicationCalculations</members>
-        <name>StaticResource</name>
-    </types>
-    <types>
-        <members>CF_ALL_LoanApplicationEdit</members>
-        <name>ApexPage</name>
-    </types>
-    <types>
-        <members>CF_UC_ApplicationFormPDF</members>
-        <name>ApexComponent</name>
-    </types>
-    <version>59.0</version>
-</Package>
-*/
 
 @Component({
 	selector: 'app-tree-view',
@@ -71,13 +34,32 @@ export class AppTreeViewComponent implements OnInit, OnChanges, AfterViewInit {
 	}
 
 	ngOnChanges(changes: SimpleChanges) {
-		if (changes['treeData'] && !changes['treeData'].firstChange) {
-			this.expandAllNodes();
-		}
+		// Do NOT expand all nodes on every treeData change
+		// if (changes['treeData'] && !changes['treeData'].firstChange) {
+		// 	this.expandAllNodes();
+		// }
 		if (changes['activeTabModelId'] && this.activeTabModelId) {
 			this.expandPathToActiveTab();
 			this.scrollToActiveTab();
 		}
+	}
+
+	/** Collapse all nodes in the tree (future use) */
+	collapseAllNodes() {
+		const collapsed: { [key: string]: boolean } = {};
+		const tree = this.tree;
+		for (const orgName of this.getKeys(tree)) {
+			collapsed[orgName] = false;
+			for (const entityType of this.getKeys(tree[orgName])) {
+				collapsed[orgName + '-' + entityType] = false;
+				if (entityType == this.CodeEntity.AuraComponent || entityType == this.CodeEntity.LWC) {
+					for (const bundle of this.getKeys(tree[orgName][entityType])) {
+						collapsed[orgName + '-' + entityType + '-' + bundle] = false;
+					}
+				}
+			}
+		}
+		this.expanded.set(collapsed);
 	}
 
 	expandAllNodes() {

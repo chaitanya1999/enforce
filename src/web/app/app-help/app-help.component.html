@@ -1,7 +1,7 @@
 <div class="root">
     <div style="display: flex; flex-direction: column; justify-content: center; width:fit-content;">
         <h1 style="margin: 0px;;"><b>Welcome to EnForce IDE </b></h1>
-        <h4 style="align-self: flex-start;">developed by <b>Chaitanya V.</b></h4>
+        <h4 style="align-self: flex-start;">developed by <a href="https://www.linkedin.com/in/chaitanya-v1/"><b>Chaitanya V.</b></a></h4>
     </div>
     EnForce is a modern, VSCode-powered web IDE for Salesforce that reimagines the Developer Console. It is designed for serious development — Tailored for real-world dev work — with multi-org support, smart Apex tooling, and full control over your Salesforce codebase.
     <br/>
@@ -10,11 +10,18 @@
     <ul type="disc">
         <li>Connect to multiple orgs at once</li>
         <li>Facilitates Apex, Aura, LWC, VF development and deployment across multiple orgs at once (using tooling API)</li>
+        <li>Allows creation and editing of Static Resources as well</li>
         <li>Allows code comparison between orgs (right click on tabs to select for comparison) </li>
         <li>Dedicated Quick Diff mode allowing to select classes/components from two orgs at once, directly showing the difference. Useful for code reviews. </li>
+        <li>Open lots of classes and components in BULK using Package XML (supports Quick Diff Mode as well for immediate comparison across orgs) </li>
         <li>Allows to execute SOQL queries on any connected org</li>
         <li>Allows to execute Anonymous Apex on any connected org</li>
-        <li>Lots of tiny features for assisting the developer (right click on a tab to see)</li>
+        <li>Global search a keyword in the entire codebase (Supports apex & visualforce as of now)</li>
+        <li>Allows comparing local copy of code with its org copy, say before deployment</li>
+        <li>Directly login to the corresponding org through an active tab by clicking on the organization name on the bottom left</li>
+        <li>Command Palette (Accessible using Ctrl Shift P) with shortcuts to all the features</li>
+        <li>Allows hiding and pinning tabs to organize open tabs better</li>
+        <li>And many more features - like Zen Mode , Themes, Quick open a file from Bundle(Aura/LWC), Quick open any file universally, refresh current class/component from org ... etc</li>
     </ul>
     <!-- <br/> -->
 
@@ -38,18 +45,37 @@
         <li>Test authentication via authenticate button</li>
     </ol>
 
+    <h2>Please Note - </h2>
+    <ul type="disc">
+        <li>When dealing with tabs (save / reload) - the IDE will interact with the org to which the current active tab belongs to.</li>
+        <li>Actions present on the quick actions bar (top of the screen) will interact with the org selected from the dropdown</li>
+        <li>The feature "Load from Selected org" will work with the org selected from the dropdown and attempt to fetch the active class/component from there</li>
+    </ul>
+
     <h2>Known Issues -</h2> 
     <ul type="disc">
         <li>Some issues with keyboard shortcuts due to browser default behavior</li>
-        <li>Code editor : tabs drag and drop</li>
+        <li>Code editor : tabs drag and drop doesn't works yet, instead use keyboard shortcuts</li>
     </ul>
 
+    <h2>Keyboard Shortcuts - Global</h2> 
+    <ul type="disc">
+        <li>Ctrl + Alt + 1/2/3/4/5 = Switch across application tabs - Org Manager / Code Editor / Query Tool / Anonymous Apex / Help</li>
+    </ul>
     <h2>Keyboard Shortcuts - Code Editor</h2> 
     <ul type="disc">
-        <li>Ctrl + P = Switch to open class/component input field</li>
+        <li>Ctrl + P = Show list of open classes & components for quick switching between tabs</li>
+        <li>Ctrl + Shift + P = Opens the command palette with commands to every feature</li>
+        <li>Ctrl + Shift + U = Open any class/component universally for the selected org</li>
+        <li>Ctrl + B = Toggle sidebar</li>
+        <li>Ctrl + Shift + B = Open another file from same bundle (Aura/LWC)</li>
         <li>Ctrl + S = Save code</li>
-        <li>Ctrl + [PgUp / Tab] = Cycle Tabs Forward</li>
-        <li>Ctrl + [PgDown / Shift+Tab] = Cycle Tabs Backwards</li>
+        <li>Ctrl + [W / Q] = Close active tab</li>
+        <li>Ctrl + Shift + Q = Close all tabs</li>
+        <li>Alt + Z = Toggle word wrap</li>
+        <li>Ctrl + O = Switch to open class/component input field</li>
+        <li>Ctrl + [PgUp / Tab / >] = Cycle Tabs Forward</li>
+        <li>Ctrl + [PgDown / Shift+Tab / <] = Cycle Tabs Backwards</li>
         <li>Ctrl + Shift + [PgDown/PgUp] = Reorder tabs left right</li>
     </ul>
 

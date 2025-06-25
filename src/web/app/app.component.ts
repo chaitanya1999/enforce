@@ -293,7 +293,11 @@ export class AppComponent {
                 this.saveOrgCreds();
             }
         });
-    } 
+    }
+
+    logoClick() {
+        this.globalEventsSvc.logoClickEvent.emit();
+    }
 
 }
 

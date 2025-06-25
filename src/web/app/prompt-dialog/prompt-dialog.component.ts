@@ -4,6 +4,29 @@ import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.compone
 import { FormsModule } from '@angular/forms';
 import { CustomTypeaheadComponent } from "../custom-typeahead/custom-typeahead.component";
 
+export class PromptDialogOptions {
+    text?: string;
+    label?: string;
+    regex?: string; // legacy, fallback
+    
+    dropdownRequired?: boolean;
+    dropdownList?: any[];
+    dropdownPlaceholder?: string;
+    
+    isTextFieldRequired?: boolean;
+    placeholder?: string;
+    textFieldRegex?: string;
+    inputValue?: string;
+    validationText?: string;
+    
+    isTextAreaRequired?: boolean;
+    textAreaRegex?: string;
+    textAreaValue?: string;
+    
+    checkboxRequired?: boolean;
+    checkboxValue?: boolean;
+    checkboxLabel?: string;
+}
 
 @Component({
     selector: 'app-prompt-dialog',
@@ -16,7 +39,7 @@ export class PromptDialogComponent {
     text: string;
     placeholder: string;
     label: string;
-    regex: string;
+    regex?: string;
     inputValue?: string;
     @ViewChild('formInput') inputField: any;
     validationText: string;
@@ -37,7 +60,11 @@ export class PromptDialogComponent {
     textFieldRegex?: string;
     textAreaRegex?: string;
 
-    constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: any) {
+    checkboxRequired :  boolean = false;
+    checkboxValue : boolean = false;
+    checkboxLabel : string = 'Checkbox'
+
+    constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: PromptDialogOptions) {
         this.text = data.text || 'Please enter some input';
         this.placeholder = data.placeholder || 'Input';
         this.label = data.label || 'Input';
@@ -45,13 +72,16 @@ export class PromptDialogComponent {
         this.textFieldRegex = data.textFieldRegex || this.regex;
         this.textAreaRegex = data.textAreaRegex || this.regex;
         this.validationText = data.validationText || 'Please enter a valid input';
-        this.dropdownRequired = data.dropdownRequired;
+        this.dropdownRequired = !!data.dropdownRequired;
         this.dropdownList = data.dropdownList;
-        this.dropdownPlaceholder = data.dropdownPlaceholder;
+        this.dropdownPlaceholder = data.dropdownPlaceholder || '';
         this.isTextAreaRequired = !!data.isTextAreaRequired;
         this.isTextFieldRequired = data.isTextFieldRequired !== false; // default true
         this.textAreaValue = data.textAreaValue || '';
         this.inputValue = data.inputValue || '';
+        this.checkboxRequired = data.checkboxRequired || false;
+        this.checkboxValue = data.checkboxValue || false;
+        this.checkboxLabel = data.checkboxLabel || '';
     }
 
     isTextFieldValid(): boolean {

@@ -89,7 +89,7 @@ class CodeTab {
 class Command {
     name: string;
     uniqueId: string;
-    action: () => void;
+    action?: () => void;
     badge?: string;
 
     constructor(name: string, uniqueId: string, action: () => void, badge?: string) {
@@ -157,6 +157,7 @@ export class CodeBrowserComponent {
         LWC: []
     }
     entityTypeVsList2: {[key: string] : Array<NormalizedCodeEntity>} = {}
+    allEntitiesList: Array<SelectOption> = [];
 
     get entityCount1() {
         return Object.values(this.entityTypeVsList).flat().length || 0;
@@ -319,10 +320,13 @@ export class CodeBrowserComponent {
     organizationType : string = '';
 
     quickDiffModeFlag : boolean = false;
+    isCodeBrowserActive : boolean = false; // Used to track if tab is active or not. If not active, it will not load the code editor model.
 
     get activeEntityTypeLabel() {
         return AppConstants.entityTypeVsName_singular[this.activeTab!.entityType];
     }
+
+    showQuickActions : boolean = true; // Used to show/hide quick actions in code editor
 
     constructor(private readonly _ipc: IpcService, private ref: ChangeDetectorRef, private snackBar: MatSnackBar
         , private globalEventsSvc: GlobalEventsService , private zone: NgZone, private injector : Injector , private changeDetectorRef : ChangeDetectorRef
@@ -365,7 +369,16 @@ export class CodeBrowserComponent {
         // this.openTabs[0].bundleDetails.contents[3].toBeCreated = true;
 
         this.globalEventsSvc.tabSelectEvent.subscribe((x:any) => {
-            if(x.reselected == true && x.tab.tabName == 'Code Browser') this.toggleSidePanel(null);
+            if(x.reselected == true && x.tab.tabName == 'Code Browser') {
+                this.toggleSidePanel(null);
+            }
+            this.isCodeBrowserActive = (x.tab.tabName == 'Code Browser');
+        });
+
+        this.globalEventsSvc.logoClickEvent.subscribe((x:any) => {
+            if(this.isCodeBrowserActive) {
+                this.openMainCommandPalette();
+            }
         });
     }
 
@@ -399,8 +412,8 @@ export class CodeBrowserComponent {
             if(this.quickDiffModeFlag) {
                 if(this.selectedOrg == this.selectedOrg2 && this.isOrgSelected && this.isOrg2Selected) {
                     this.showSnackBar('Both orgs cannot be same in Quick Diff Mode');
-                    if(orgProperty=='selectedOrg') this.selectedOrg = '--Org--';
-                    if(orgProperty=='selectedOrg2') this.selectedOrg2 = '--Org 2--';
+                    if(orgProperty=='selectedOrg') setTimeout(() => this.selectedOrg = '--Org--', 0);
+                    if(orgProperty=='selectedOrg2') setTimeout(() => this.selectedOrg2 = '--Org 2--', 0);
                     return ;
                 }
             }
@@ -415,6 +428,7 @@ export class CodeBrowserComponent {
         }
     }
 
+    /* This function will only be called for one org at a time. For quick diff mode , it is called twice, once for each org */
     async fetchAllEntities(ignoreCache : boolean, orgProperty? : string, reloadBothOrgs?: boolean, ignoreSpinner?: boolean){
         try {
             //? orgProperty = selectedOrg1 / selectedOrg2 based on user selectoin
@@ -458,7 +472,11 @@ export class CodeBrowserComponent {
             }
 
             if(success) {
-                if(!reloadBothOrgs) this.onEntityTypeSelect(this.selectedEntityType);
+                if(!reloadBothOrgs) { //should get called only once when reloading both orgs which happens in DIFF mode ONLY when both orgs are selected
+                    this.setEntityIdVsObjectMap(orgProperty);
+                    this.setAllEntitiesList();
+                    this.onEntityTypeSelect(this.selectedEntityType);
+                }
                 this.showSnackBar('List loaded succesfully');
             }
 
@@ -469,6 +487,31 @@ export class CodeBrowserComponent {
             this.showSnackBar('Some error occurred');
         }
     }
+
+    setEntityIdVsObjectMap(orgProperty? : string) {
+        this.entityIdVsObjectMap = {}; //clear the map when invoked for one org only
+        if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+            //if quick diff mode is enabled, we need to set the map for both orgs
+            this.setEntityIdVsObjectMapForOrg('selectedOrg');
+            this.setEntityIdVsObjectMapForOrg('selectedOrg2');
+        } else {
+            if(!orgProperty) orgProperty = 'selectedOrg';
+            this.setEntityIdVsObjectMapForOrg(orgProperty);
+        }
+        this.log('setEntityIdVsObjectMap | this.entityIdVsObjectMap = ', Object.keys(this.entityIdVsObjectMap).length);
+    }
+
+    setEntityIdVsObjectMapForOrg(orgProperty: string) {
+        let org = (<any>this)[orgProperty];
+        let entityTypeVsList = orgProperty == 'selectedOrg' ? this.entityTypeVsList : this.entityTypeVsList2;
+
+        Object.keys(entityTypeVsList).forEach((entityType) => {
+            entityTypeVsList[entityType].forEach((codeEntity: NormalizedCodeEntity) => {
+                this.entityIdVsObjectMap[org + ':' + codeEntity.Id] = codeEntity;
+            });
+        });
+    }
+        
 
     async onEntityTypeSelect(value: any) {
         let clearSearch = value != this.selectedEntityType; //clear if entity type selection is changed
@@ -488,21 +531,22 @@ export class CodeBrowserComponent {
         let selEntityType = this.selectedEntityType;
         if(this.quickDiffModeFlag && this.isOrg2Selected) org2 = this.selectedOrg2;
 
-        this.entityIdVsObjectMap = {};
+        // this.entityIdVsObjectMap = {};
         let entityLabelMap : any = {}; //for unique items in quick diff mode
 
         //selected org 1 handling
-        this.entityTypeVsList[selEntityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
-            this.entityIdVsObjectMap[org1 + ':' + codeEntity.Id] = codeEntity;
-            let x = codeEntity.Name;
-            if(selEntityType == CodeEntity.LWC)
-                x = x.substring(4);
-            entityLabelMap[x] = { label : x, value : codeEntity.Id, value2 : null, org1 : org1, org2 : org2 };
-        });
-
+        if(this.isOrgSelected) {
+            this.entityTypeVsList[selEntityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
+                // this.entityIdVsObjectMap[org1 + ':' + codeEntity.Id] = codeEntity;
+                let x = codeEntity.Name;
+                if(selEntityType == CodeEntity.LWC)
+                    x = x.substring(4);
+                entityLabelMap[x] = { label : x, value : codeEntity.Id, value2 : null, org1 : org1, org2 : org2, value1: selEntityType };
+            });
+        }
         if(org2) {
             this.entityTypeVsList2[selEntityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
-                this.entityIdVsObjectMap[org2 + ':' + codeEntity.Id] = codeEntity;
+                // this.entityIdVsObjectMap[org2 + ':' + codeEntity.Id] = codeEntity;
                 let x = codeEntity.Name;
                 if(selEntityType == CodeEntity.LWC)
                     x = x.substring(4);
@@ -510,7 +554,8 @@ export class CodeBrowserComponent {
                 let entityOption = entityLabelMap[x] || {};
                 entityOption = {
                     ...entityOption,
-                    label : x, value2 : codeEntity.Id, org1 : org1, org2 : org2   
+                    label : x, value2 : codeEntity.Id, org1 : org1, org2 : org2,
+                    value1: selEntityType
                 }
                 entityLabelMap[x] = entityOption;
             });
@@ -518,6 +563,55 @@ export class CodeBrowserComponent {
 
         this.entityList = Object.values(entityLabelMap);
 
+    }
+
+    setAllEntitiesList() {
+        let allEntitiesList : any = [];
+        for (const entityType of Object.keys(AppConstants.entityTypeVsName)) {
+            let org1 = this.selectedOrg, org2 = null;
+            if (this.quickDiffModeFlag && this.isOrg2Selected) org2 = this.selectedOrg2;
+
+            let entityLabelMap: any = {};
+
+            // Org 1 entities
+            if (this.isOrgSelected) {
+                this.entityTypeVsList[entityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
+                    let x = codeEntity.Name;
+                    if (entityType == CodeEntity.LWC)
+                        x = x.substring(4);
+                    entityLabelMap[entityType + ':' + x] = {
+                        label: x,
+                        value: codeEntity.Id,
+                        value2: null,
+                        org1: org1,
+                        org2: org2,
+                        value1: entityType
+                    };
+                });
+            }
+            // Org 2 entities (for quick diff)
+            if (org2) {
+                this.entityTypeVsList2[entityType]?.forEach((codeEntity: NormalizedCodeEntity) => {
+                    let x = codeEntity.Name;
+                    if (entityType == CodeEntity.LWC)
+                        x = x.substring(4);
+                    let key = entityType + ':' + x;
+                    let entityOption = entityLabelMap[key] || {};
+                    entityOption = {
+                        ...entityOption,
+                        label: x,
+                        value2: codeEntity.Id,
+                        org1: org1,
+                        org2: org2,
+                        value1: entityType
+                    };
+                    entityLabelMap[key] = entityOption;
+                });
+            }
+            allEntitiesList.push(...Object.values(entityLabelMap));
+        }
+        this.allEntitiesList = allEntitiesList;
+        this.log('setAllEntitiesList | allEntitiesList length = ', this.allEntitiesList);
     }
 
     onFocused(evt: any) {
@@ -531,13 +625,15 @@ export class CodeBrowserComponent {
         let org2 = this.selectedOrg2;
         let codeEntity = this.entityIdVsObjectMap[org + ':' + id];
         let codeEntity2 = this.entityIdVsObjectMap[org2 + ':' + id2];
+        
+        let entityType = selectOption.value1 || this.selectedEntityType;
 
         if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
             if(codeEntity && codeEntity2) {
                 this.showSpinner = true;
                 Promise.all(
-                    [this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity, true, false, true, true, true),
-                    this.loadEntity(codeEntity2.Name, null, this.selectedEntityType, org2, codeEntity2, true, false, true, true, true)]
+                    [this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity, true, false, true, true, true),
+                    this.loadEntity(codeEntity2.Name, null, entityType, org2, codeEntity2, true, false, true, true, true)]
                 ).then((result) => {
                     let tab1 = result[0] , tab2 = result[1];
                     if(tab1 && tab2) {
@@ -559,10 +655,10 @@ export class CodeBrowserComponent {
                 if(!codeEntity2) {
                     this.showSnackBar(`Not Found on Org : ${org2} ` + selectOption.label);
                 }
-                this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity);
+                this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity);
             }
         } else {
-            this.loadEntity(codeEntity.Name, null, this.selectedEntityType, org, codeEntity);
+            this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity);
         }
     }
 
@@ -1201,6 +1297,9 @@ export class CodeBrowserComponent {
             this.showSpinner = true;
             Promise.all([this.fetchAllEntities(true, 'selectedOrg', true), this.fetchAllEntities(true, 'selectedOrg2', true)])
             .then((values : any) => {
+                this.setEntityIdVsObjectMap();
+                this.setAllEntitiesList();
+                this.onEntityTypeSelect(this.selectedEntityType);
                 this.showSpinner = false;
             })
         } else {
@@ -1245,6 +1344,8 @@ export class CodeBrowserComponent {
         // }
     }
 
+    //#region Command Palette
+
     // Command Palette integration
     private commandPaletteCommands : Command[] = [
         new Command('Org: Select Primary Org', 'select-org', () => this.selectOrg('selectedOrg')),
@@ -1254,6 +1355,8 @@ export class CodeBrowserComponent {
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
         new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
         new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true)),
+        new Command('File: Quick Open File Universally', 'universal-quick-open-file', () => this.quickOpenFile(true), 'Ctrl+Shift+U'),
+        new Command('File: Open File from Bundle', 'open-file-from-bundle', () => this.openFileFromBundle(true), 'Ctrl+Shift+B'),
         new Command('File: Deploy Current File', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S'),
         new Command('File: Reload Current File from Org', 'reload-current-file', () => this.reloadEntity(true)),
         new Command('File: Open Files from Package.xml', 'open-bulk-package-xml', () => this.openFromPackageXml()),
@@ -1262,10 +1365,59 @@ export class CodeBrowserComponent {
         new Command('Editor: Decrease Font Size', 'decrease-font-size', () => this.changeFontSize(false)),
         new Command('Editor: Select Language Mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
         new Command('Editor: Toggle Errors Panel', 'toggle-errors-pane', () => this.showErrorsPane()),
+        new Command('Editor: Zen Mode - Show/Hide Quick Actions', 'toggle-quick-actions', () => this.showQuickActions = !this.showQuickActions),
         new Command('Editor: Reload Theme Engine', 'reload-theme-engine', () => this.editorCmp.reloadThemeEngine()),
         new Command('Editor: Change Theme', 'change-editor-theme', () => this.changeEditorTheme()),
-        new Command('Window: Open EnForce in Separate Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
+        new Command('Window: Launch EnForce in a Dedicated Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
     ];
+
+    openFileFromBundle(nested?: boolean) {
+        if(!this.activeTabModelId) return;
+        if(this.activeTab?.entityType != CodeEntity.AuraComponent && this.activeTab?.entityType != CodeEntity.LWC) {
+            // this.showSnackBar('This command is only available for Aura and LWC components');
+            return;
+        }
+        if(this.activeTab?.bundleDetails?.contents?.length) {
+            this.openCommandPalette('openFileFromBundle', {
+                commands: this.activeTab.bundleDetails.contents.map((bundleItem: NormalizedBundleItem) => (<Command>{
+                    name: bundleItem.label,
+                    uniqueId: bundleItem.value,
+                    bundleItem: bundleItem,
+                    bundleDetails: this.activeTab?.bundleDetails
+                })),
+                placeholder: 'Select a file to open...',
+                emptyMessage: 'No files in bundle',
+                wildcardEnabled: true,
+                commonAction: (cmd: any) => {
+                    this.log('openFileFromBundle | commonAction | cmd = ', cmd);
+                    this.clickBundleItem(cmd.bundleItem, cmd.bundleDetails);
+                }
+            }, nested);
+        }
+    }
+
+    quickOpenFile(nested?: boolean) {
+        if(!this.isOrgSelected) {
+            this.showSnackBar('Please select an org first');
+            return;
+        }
+        this.openCommandPalette('quickOpenFiles', {
+            commands: this.allEntitiesList.map(selectOption => ({
+                name: selectOption.label,
+                selectOption: selectOption,
+                badge: selectOption.value1, //entity type
+            })),
+            placeholder: 'Select a file to load...',
+            emptyMessage: 'No files open',
+            wildcardEnabled: true,
+            limitResults : true,
+            maxResults: 100,
+            commonAction: (cmd: any) => {
+                this.log('quickOpenFile | commonAction | cmd = ', cmd);
+                this.onEntitySelect(cmd.selectOption);
+            }
+        }, nested);
+    }
 
     changeEditorTheme() {
         this.openCommandPalette('changeEditorTheme', {
@@ -1274,6 +1426,10 @@ export class CodeBrowserComponent {
             })),
             placeholder: 'Select a theme...',
             emptyMessage: 'No themes available',
+            commonAction: (cmd: Command) => {
+                this.log('changeEditorTheme | commonAction | cmd = ', cmd);
+                this.editorCmp.setTheme(cmd.name);
+            }
         }, true);
     }
 
@@ -1311,9 +1467,25 @@ export class CodeBrowserComponent {
         }, true);
     }
 
+    openMainCommandPalette() {
+        this.openCommandPalette('editorCommands',<CommandPaletteDialogData>{
+            commands: this.commandPaletteCommands,
+            commandFlag : true,
+            wildcardEnabled: true,
+            commonAction : (cmd : Command) => {
+                if (cmd && cmd.uniqueId) {
+                    const idx = this.commandPaletteCommands.findIndex(c => c.uniqueId === cmd.uniqueId);
+                    if (idx > 0) {
+                        const [found] = this.commandPaletteCommands.splice(idx, 1);
+                        this.commandPaletteCommands.unshift(found);
+                    }
+                }
+            }
+        });
+    }
 
     commandPaletteOpen : number = 0; 
-    openCommandPalette(paletteName: string, options?: CommandPaletteDialogData, nested?: boolean) {
+    openCommandPalette(paletteName: string, options: CommandPaletteDialogData, nested?: boolean) {
         
         if(this.commandPaletteOpen > 0 && !nested)
             return; //prevent multiple open
@@ -1329,39 +1501,35 @@ export class CodeBrowserComponent {
             panelClass: 'command-palette-container',
             autoFocus: false
         });
-        dialogRef.afterClosed().subscribe((cmd) => {
-            if(paletteName == 'editorCommands') {
-                if (cmd && cmd.uniqueId) {
-                    const idx = this.commandPaletteCommands.findIndex(c => c.uniqueId === cmd.uniqueId);
-                    if (idx > 0) {
-                        const [found] = this.commandPaletteCommands.splice(idx, 1);
-                        this.commandPaletteCommands.unshift(found);
-                    }
-                }
-            }
+        dialogRef.afterClosed().subscribe((data) => {
+            let cmd = data?.command;
 
-            if(paletteName == 'changeEditorTheme') {
-                this.log('openCommandPalette | changeEditorTheme | ' + cmd.name);
-                this.editorCmp.setTheme(cmd.name);
-            }
-
-            if (cmd && cmd.action) {
-                cmd.action();
+            if (cmd) {
+                if(cmd.action) cmd.action();
+                if(data.commonAction) data.commonAction(cmd);
             }
             this.commandPaletteOpen--;
         });
     }
 
+    //#endregion
+
+    //#region Keyboard Shortcuts
     @HostListener('window:keydown', ['$event'])
     onGlobalKeyDown(event: KeyboardEvent) {
         if(!this.isComponentActive) return; //ignore if component is not active
         
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
-            this.openCommandPalette('editorCommands',<any>{
-                commandFlag : true,
-                wildcardEnabled: true,
-            });
+            this.openMainCommandPalette();
+        }
+        else if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'u') {
+            event.preventDefault();
+            this.quickOpenFile();
+        }
+        else if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'b') {
+            event.preventDefault();
+            this.openFileFromBundle(false);
         }
         else if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
@@ -1407,14 +1575,17 @@ export class CodeBrowserComponent {
         console.log('#$#$ Keyboard Shortcut = ' , str);
         if(evt.repeat)  return;
 
-        if((evt.ctrlKey && evt.shiftKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageUp')) {
+        if((evt.ctrlKey && evt.shiftKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageUp')
+            || (evt.ctrlKey && !evt.shiftKey && evt.key == ',')) {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
             tabIndex = (tabIndex - 1 + this.openTabs.length) % this.openTabs.length;
             this.selectTab(this.openTabs[tabIndex]);
         }
-        else if((evt.ctrlKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageDown')) {
+        else if((evt.ctrlKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageDown')
+            || (evt.ctrlKey && !evt.shiftKey && evt.key == '.')
+        ) {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
@@ -1496,6 +1667,7 @@ export class CodeBrowserComponent {
     setEquals(set1 : Set<any>, set2 : Set<any>) {
         return set1.size == set2.size && [...set1].every(x => set2.has(x));
     }
+    // #endregion
 
 
     //#region Drag Drop
@@ -1559,6 +1731,8 @@ export class CodeBrowserComponent {
             `);
         }, 100);
     }
+
+    //#region DIFF feature
 
     selectForCompare() {
         this.compareTab = this.tabForContextMenu;
@@ -1673,17 +1847,6 @@ export class CodeBrowserComponent {
         return `${tab1.codeEntity?.BundleName} <> ${tab2.codeEntity?.BundleName}`;
     }
 
-    reloadEntity(useActiveTab? : boolean){
-        let tab : CodeTab | null | undefined = this.tabForContextMenu;
-        if(useActiveTab) tab = this.activeTab;
-        if(!tab || tab.temporary) {
-            if(useActiveTab)
-                this.showSnackBar('No valid tab active to reload');
-            return;
-        }
-        this.loadEntity(tab.tabValue, tab, tab.entityType, tab.orgName, tab.codeEntity!);
-    }
-
     prevDiff() {
         this.editorCmp?.prevDiff();
         this.editorCmp?.focus();
@@ -1699,6 +1862,18 @@ export class CodeBrowserComponent {
             this.editorCmp?.swapDiff();
             this.activeTab.orgName = this.activeTab?.orgName.split(' <> ').reverse().join(' <> ');
         }
+    }
+    //#endregion
+
+    reloadEntity(useActiveTab? : boolean){
+        let tab : CodeTab | null | undefined = this.tabForContextMenu;
+        if(useActiveTab) tab = this.activeTab;
+        if(!tab || tab.temporary) {
+            if(useActiveTab)
+                this.showSnackBar('No valid tab active to reload');
+            return;
+        }
+        this.loadEntity(tab.tabValue, tab, tab.entityType, tab.orgName, tab.codeEntity!);
     }
 
     typeaheadUnfocus() {
@@ -1725,6 +1900,7 @@ export class CodeBrowserComponent {
         this.selectedLanguage = language.value;
     }
 
+    //#region Save/Deploy code
     handleSave() {
         let tab : CodeTab | null | undefined = this.activeTab;
         if(!tab || tab.temporary) {
@@ -1825,6 +2001,8 @@ export class CodeBrowserComponent {
             tab.deploymentInProgess = false;
         }
     }
+
+    // #endregion
 
     showErrorsPane() {
         this.errorsPaneVisibility = !this.errorsPaneVisibility;
@@ -2049,6 +2227,8 @@ export class CodeBrowserComponent {
         this.editorCmp.showWhitespaceDifference(this.whitespaceDifferences = !this.whitespaceDifferences);
     }
 
+    // #region Side Panel
+
     sidePanelDisplay = true;
     @ViewChild('sidePanelElement') sidePanelElement : ElementRef | undefined;
     @ViewChild('rootElement') rootElement : ElementRef | undefined;
@@ -2063,14 +2243,15 @@ export class CodeBrowserComponent {
             this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
             this.rootElement!.nativeElement.style.width = this.widthExcludingPanel;
         } else {
-            this.rootElement!.nativeElement.style.width = 'calc(100% - 0px - 12px)';
+            this.rootElement!.nativeElement.style.width = `calc(100% - 0px - ${this.panelToggleWidth})`;
             this.sidePanelElement!.nativeElement.style.width = '0px';
         }
     }
 
+    panelToggleWidth = `4px`;
     panelResizingFlag = false;
     panelWidth = 'max(15%, 200px)';
-    widthExcludingPanel = `calc(100% - ${this.panelWidth} - 12px)`;
+    widthExcludingPanel = `calc(100% - ${this.panelWidth} - ${this.panelToggleWidth})`;
 
     panelResizingStart(evt : MouseEvent) {
         document.body.style.cursor = 'ew-resize';
@@ -2105,9 +2286,9 @@ export class CodeBrowserComponent {
         this.changeDetectorRef.detectChanges();
         
         let posX = event.clientX - this.sidePanelElement!.nativeElement.getBoundingClientRect().left;
-        posX -= 6; //6px for the resize handle width
+        posX -= 4; //6px for the resize handle width
         this.panelWidth = `max(15%, min(${posX}px , 50%))`;
-        this.widthExcludingPanel = `calc(100% - ${this.panelWidth} - 12px)`
+        this.widthExcludingPanel = `calc(100% - ${this.panelWidth} - ${this.panelToggleWidth})`
 
         this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
         this.rootElement!.nativeElement.style.width = this.widthExcludingPanel;
@@ -2118,6 +2299,8 @@ export class CodeBrowserComponent {
     onResize(event : any) {
         // this.panelSizeRecompute();
     }
+
+    //#endregion
 
     async dummyButton() {
         this.showSnackBar('adsf');
@@ -2135,16 +2318,6 @@ export class CodeBrowserComponent {
         // } else {
         //     this.showSnackBar('No entities found to load.');
         // }
-
-        this.loadEntitiesFromPackageXml(`<?xml version="1.0" encoding="UTF-8"?>
-<Package xmlns="http://soap.sforce.com/2006/04/metadata">
-    <types>
-        <name>ApexClass</name>
-        <members>CF_UC_FinancialDetails_CC</members>
-        <members>CF_UC_Pre_DA_CC</members>
-    </types>
-    <version>64.0</version>
-</Package>`);
 
         // let res = await this._ipc.callMethod('codeGlobalSearch', {
         //     orgName : this.selectedOrg, searchText : 'asdf'
@@ -2403,7 +2576,12 @@ export class CodeBrowserComponent {
         let result = await firstValueFrom(dialogRef.afterClosed());
         if (result) {
             // Copy array to avoid mutation issues during iteration
-            for(let tab of [...tabsToClose]) {
+            for(let tab of [...tabsToClose].sort((x: CodeTab, y: CodeTab) => {
+                if (x.editorType === AppConstants.CODE_EDITOR && y.editorType !== AppConstants.CODE_EDITOR) return 1;   //diff tab close first
+                if (x.editorType !== AppConstants.CODE_EDITOR && y.editorType === AppConstants.CODE_EDITOR) return -1;  //editor tab close later
+                // If both are same type, keep original order
+                return 0;
+            })) {
                 await this.onTabClose(tab);
             }
         }

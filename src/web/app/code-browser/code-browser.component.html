@@ -1,94 +1,108 @@
 <div class="rootRoot" (keydown)="onKeyDown($event)">
     <div class="sidePanel" #sidePanelElement draggable="false" [hidden]="!sidePanelDisplay">
-        <!-- <div class="panelContent" [hidden]="!sidePanelDisplay"> -->
-            <!-- <div class="customAccordion"> -->
-                 <!-- margin-top:max(16px, 10vh) -->
-                <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body1"  data-toggle-collapsed="false" style="margin-top: 10px;">
-                    Bundle Details
+        @if(!showQuickActions) {
+            <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body0"  data-toggle-collapsed="false">
+                🧠 Workspace Details
+            </div>
+            <div class="customAccordion-body" data-toggle-id="body0" style="min-height: 50px; padding: 2px 2px 4px 6px; color: white; font-size: 0.8em;">
+                <div class="card text-bg-dark" style="width: 100%;">
+                    <div class="card-header">
+                        Primary Org : {{this.selectedOrg}}
+                    </div>
+                    <div class="card-header">
+                        Secondary Org : {{this.selectedOrg2}}
+                    </div>
+                    <div class="card-header">
+                        Word Wrap : {{wordWrap ? 'On' : 'Off'}}
+                    </div> 
                 </div>
-                <div class="customAccordion-body" data-toggle-id="body1" style="min-height: 100px;">
-                    @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
-                        <div class="bundleTitle" style="position: relative;">
-                            <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
-                            <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
-                            <div class="reload-bundle">
-                                <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true, this.selectedOrg)"></i>
-                            </div>
-                        </div>
-                        @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
-                            <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
-                                {{bundleItem.label}}
-                                @if(bundleItem.toBeCreated) {
-                                    <span style="justify-self: flex-end; flex-grow:1;text-align: right;">(create)</span>
-                                }
-                            </div>
+                <!-- <span class="card">Primary Org : {{this.selectedOrg}}</span>
+                @if(quickDiffModeFlag) {
+                    <span class="card">Secondary Org : {{this.selectedOrg}}</span>
+                }
+                <span class="card">Selected Entity Type : {{selectedEntityType}}</span>
+                <span class="card">Word Wrap : {{wordWrap ? 'On' : 'Off'}}</span> -->
+            </div>
+        }
+        <div class="customAccordion-header" (click)="handleAccordion($event)" data-toggle-content="body1"  data-toggle-collapsed="false">
+            📦 Bundle Details
+        </div>
+        <div class="customAccordion-body" data-toggle-id="body1" style="min-height: 100px;">
+            @if(activeTab?.entityType == $entityTypeAura || activeTab?.entityType == $entityTypeLWC) {
+                <div class="bundleTitle" style="position: relative;">
+                    <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
+                    <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
+                    <div class="reload-bundle">
+                        <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true, this.selectedOrg)"></i>
+                    </div>
+                </div>
+                @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
+                    <div class="bundleItem" (click)="clickBundleItem(bundleItem, activeTab?.bundleDetails)" [attr.data-active]="activeTab?.tabValue == bundleItem.value">
+                        {{bundleItem.label}}
+                        @if(bundleItem.toBeCreated) {
+                            <span style="justify-self: flex-end; flex-grow:1;text-align: right;">(create)</span>
                         }
-                        @if(activeTab?.isAuraApplication) {
-                            <div class="bundleTitle auraAppPreview" (click)="previewAuraApplication()">
-                                PREVIEW APPLICATION
-                            </div>
+                    </div>
+                }
+                @if(activeTab?.isAuraApplication) {
+                    <div class="bundleTitle auraAppPreview" (click)="previewAuraApplication()">
+                        PREVIEW APPLICATION
+                    </div>
+                }
+            } @else {
+                <span style="color:white;width: 100%; height: 100px; display: flex; align-items:center; justify-content:center; font-size: 0.8em;">Nothing here !</span>
+            }
+        </div>
+    
+        <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false" style="position: relative;">
+            <span>🗂️ Open Editors</span>
+            <button type="button"
+                class="accordion-header-btn"
+                (click)="toggleTreeViewMode($event); $event.stopPropagation();"
+                matTooltip="Toggle Tree View Mode"
+                style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+                <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
+                <span class="visually-hidden">Toggle Tree View</span>
+            </button>
+        </div>
+        <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
+            <div class="treeViewContainer" [hidden]="!treeViewMode">
+                <app-tree-view [treeData]="openTabs" 
+                    [activeTabModelId]="activeTabModelId" 
+                    (onNodeClick)="onTabClick($event)" 
+                    (onNodeContextMenu)="onTabContextMenu($event.node, $event.event)"
+                    (onNodeMouseUp)="onTabMouseUp($event.node, $event.event)"
+                    (closeTab)="onTabClose($event)"
+                    [showHiddenNodes]="true"
+                    [showPinnedNodes]="true"
+                    [showTemporaryNodes]="false"
+                    [showOrgName]="true"></app-tree-view>
+            </div>
+            <div [hidden]="treeViewMode">
+                @for(tab of openTabs; track tab) {
+                    <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
+                        (click)="onTabClick(tab)" 
+                        (contextmenu)="onTabContextMenu(tab, $event)">
+                        <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
+                        <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
+                        <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
+                        @if(tab.pinned) {
+                            <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
+                        } @else {
+                            <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
                         }
-                    } @else {
-                        <span style="color:white;width: 100%; height: 100px; display: flex; align-items:center; justify-content:center; font-size: 0.8em;">Nothing here !</span>
-                    }
-                </div>
-            <!-- </div> -->
-            <!-- <div class="customAccordion"> -->
-                <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false" style="position: relative;">
-                    <span>Open Editors</span>
-                    <button type="button"
-                        class="accordion-header-btn"
-                        (click)="toggleTreeViewMode($event); $event.stopPropagation();"
-                        matTooltip="Toggle Tree View Mode"
-                        style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                        <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
-                        <span class="visually-hidden">Toggle Tree View</span>
-                    </button>
-                </div>
-                <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
-                    @if(treeViewMode) {
-                        <div class="treeViewContainer">
-                            <app-tree-view [treeData]="openTabs" 
-                                [activeTabModelId]="activeTabModelId" 
-                                (onNodeClick)="onTabClick($event)" 
-                                (onNodeContextMenu)="onTabContextMenu($event.node, $event.event)"
-                                (onNodeMouseUp)="onTabMouseUp($event.node, $event.event)"
-                                (closeTab)="onTabClose($event)"
-                                [showHiddenNodes]="true"
-                                [showPinnedNodes]="true"
-                                [showTemporaryNodes]="false"
-                                [showOrgName]="true"></app-tree-view>
-                        </div>
-                    }
-                    @else {
-                        @for(tab of openTabs; track tab) {
-                            <!-- @if(!tab.temporary) { -->
-                                <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
-                                (click)="onTabClick(tab)" 
-                                (contextmenu)="onTabContextMenu(tab, $event)">
-                                    
-                                    <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
-                                    <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
-                                    <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
-                                    @if(tab.pinned) {
-                                        <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
-                                    } @else {
-                                        <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
-                                    }
-                                </div>
-                            <!-- } -->
-                        }
-                    }
-                </div>
-            <!-- </div> -->
-        <!-- </div> -->
+                    </div>
+                }
+            </div>
+        </div>
     </div>
     <!-- (click)="toggleSidePanel($event)" -->
     <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizingStart($event)">
-        <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span>
+        <!-- <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span> -->
+         <span style="height: 100%;"></span>
     </div>
     <div class="root" #rootElement>
-        <div [class]="'topBar ' + (quickDiffModeFlag ? 'quickDiff' : '')" (click)="clickEmptySpace($event)" data-emptyspace="true">
+        <div [class]="'topBar ' + (quickDiffModeFlag ? 'quickDiff' : '')" (click)="clickEmptySpace($event)" data-emptyspace="true" [hidden]="!showQuickActions">
             <!-- SF Org dropdown -->
             <select class="form-select topBarItem connectedButton-left" aria-label="SF Org" style="max-width: fit-content; font-size: var(--fontSize);flex-shrink: 4;" #orgselect
                 [ngModel]="selectedOrg"
@@ -178,7 +192,7 @@
             <button class="btn btn-secondary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="changeFontSize(false)" matTooltip="Decrease Font Size" matTooltipPosition="below"><i class="bi bi-patch-minus"></i></button>
             
             <!-- Open in popup window -->
-            <button class="btn btn-primary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Open in popup window"><i class="bi bi-window-stack"></i></button>
+            <button class="btn btn-primary topBarItem connectedButton-mid" style="flex-shrink:0;" (click)="openAsPopup()" matTooltipPosition="below" matTooltip="Launch in a Dedicated Window"><i class="bi bi-window-stack"></i></button>
             
             <!-- Quick Diff Mode -->
             <button [class]="'btn btn-primary topBarItem connectedButton-right ' + (quickDiffModeFlag ? 'active' : '')" style="flex-shrink:0;" (click)="quickDiffMode()" matTooltipPosition="below" matTooltip="Quick Diff Mode : Useful for code reviews and code comparison across orgs"><i class="bi bi-file-diff"></i></button>
