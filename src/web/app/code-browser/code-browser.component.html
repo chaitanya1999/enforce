@@ -55,19 +55,29 @@
         </div>
     
         <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false" style="position: relative;">
-            <span>🗂️ Open Editors</span>
+            <span>🗂️ Open Editors ({{openTabs.length}})</span>
+            <button type="button"
+            class="accordion-header-btn"
+            (click)="toggleTreeViewMode($event); $event.stopPropagation();"
+            matTooltip="Toggle Tree View Mode"
+            style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+            <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
+            <span class="visually-hidden">Toggle Tree View</span>
+        </button>
+        @if(treeViewMode) {
             <button type="button"
                 class="accordion-header-btn"
-                (click)="toggleTreeViewMode($event); $event.stopPropagation();"
-                matTooltip="Toggle Tree View Mode"
-                style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
-                <span class="visually-hidden">Toggle Tree View</span>
+                (click)="expandCollapseAll(); $event.stopPropagation();"
+                matTooltip="Expand/Collapse all"
+                style="background: transparent; border: none; box-shadow: none; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+                <i class="bi bi-plus-slash-minus"></i>
+                <span class="visually-hidden">Expand/Collapse all</span>
             </button>
+        }
         </div>
         <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
             <div class="treeViewContainer" [hidden]="!treeViewMode">
-                <app-tree-view [treeData]="openTabs" 
+                <app-tree-view #treeView [treeData]="openTabs" 
                     [activeTabModelId]="activeTabModelId" 
                     (onNodeClick)="onTabClick($event)" 
                     (onNodeContextMenu)="onTabContextMenu($event.node, $event.event)"

@@ -2586,6 +2586,14 @@ export class CodeBrowserComponent {
             }
         }
     }
+
+    expanded : boolean = true;
+    @ViewChild('treeView') treeView! : AppTreeViewComponent;
+    expandCollapseAll() {
+        this.expanded = !this.expanded;
+        if(this.expanded) this.treeView.collapseAllNodes();
+        else this.treeView.expandAllNodes();
+    }
     
     log(...str: any) {
         if(!str) str = [];
