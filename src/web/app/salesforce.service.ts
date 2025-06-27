@@ -199,9 +199,10 @@ export class SalesforceService {
         return session.instanceUrl + '/secur/frontdoor.jsp?sid=' + session.accessToken;
     }
 
+    /* Loads bundle details of multiple bundles of same type at once from ONE ORG*/
     async getBundleDetails(x : any) {
         let orgName = x[0].orgName;
-        let bundleName = x[0].bundleName;
+        let bundleNames = x[0].bundleName;
         let entityType = x[0].entityType;
         let ignoreCache = x[0].ignoreCache;
         let query = ``;
@@ -209,9 +210,21 @@ export class SalesforceService {
         let apiVersion = null;
         let namespace = null
         let bundleId = null;
+        
+        debug('SalesforceService - getBundleDetails | orgName = ' + orgName + ' | entityType = ' + entityType + ' | bundleNames = ' + bundleNames.length + ' | ignoreCache = ' + ignoreCache);
 
-        let bundlePresent : NormalizedBundleDetails = this.loadedBundleInfo[orgName]?.[entityType]?.[bundleName];
-        if(bundlePresent && !ignoreCache) return EnForceResponse.success(bundlePresent);
+        let bundlesToFetch : string[] = [];
+        let bundlesPresent : string[] = [];
+
+        let bundleVsDetails : {[key: string] : NormalizedBundleDetails} = {};
+
+        for(let bundleName of bundleNames) {
+            let bundlePresent : NormalizedBundleDetails = this.loadedBundleInfo[orgName]?.[entityType]?.[bundleName];
+            if(bundlePresent && !ignoreCache)
+                bundleVsDetails[bundleName] = bundlePresent;
+            else
+                bundlesToFetch.push(bundleName);
+        }
 
         if(entityType == CodeEntity.AuraComponent) {
             let sortOrder : any = {
@@ -231,17 +244,42 @@ export class SalesforceService {
                 return p;
             }, {});
             //aura
-            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix from AuraDefinition where AuraDefinitionBundle.DeveloperName = '${bundleName}'`;
+            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix, AuraDefinitionBundle.DeveloperName from AuraDefinition where AuraDefinitionBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
             let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
             if(!res.isSuccess) return res;
+
             
             for(let record of res.data.records) {
                 existingDefTypes[record['DefType']] = true;
+                let bundleName = record['AuraDefinitionBundle']['DeveloperName'];
                 let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
-                bundleContents.push({label : record['DefType'] , value : name, id : record['Id']});
+
                 apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
                 bundleId = record['AuraDefinitionBundleId'];
                 namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
+
+                let bundleDetails = <NormalizedBundleDetails>{
+                    bundleId : bundleId,
+                    bundleName : bundleName,
+                    contents : [],
+                    apiVersion : apiVersion,
+                    entityType,
+                    namespacePrefix : namespace
+                };
+
+                if(!bundleVsDetails[bundleName]) {
+                    bundleVsDetails[bundleName] = bundleDetails;
+                }
+
+                bundleVsDetails[bundleName].contents.push({label : record['DefType'] , value : name, id : record['Id']});
+                
+            }
+
+            for(let bundleDetails of Object.values(bundleVsDetails)) {
+                bundleDetails.contents = bundleDetails.contents.sort((x:any, y:any) => {
+                    return sortOrder[x.label] - sortOrder[y.label];
+                });
+                bundleContents.push(...bundleDetails.contents);
             }
             // for(let key in existingDefTypes) {
             //     if(existingDefTypes[key] == false && key != 'COMPONENT' && key != 'APPLICATION' ) { //either application or component, one must exist
@@ -249,32 +287,40 @@ export class SalesforceService {
             //         bundleContents.push({label : key , value : value, toBeCreated : true});
             //     }
             // }
-            bundleContents = bundleContents.sort((x:any, y:any) => {
-                return sortOrder[x.label] - sortOrder[y.label];
-            });
+            
+
         } else {
             //lwc
-            query = `select id,Format,FilePath,LightningComponentBundleId, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix from LightningComponentResource where LightningComponentBundle.DeveloperName = '${bundleName}'`;
+            query = `select id,Format,FilePath,LightningComponentBundleId, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
             let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query, toolingApi : true}]);
             if(!res.isSuccess) return res;
 
             for(let record of res.data.records) {
+                let bundleName = record['LightningComponentBundle']['DeveloperName'];
                 let name = record['FilePath'];
                 name = name.substring(name.lastIndexOf('/')+1);
-                bundleContents.push({label : name , value : record['FilePath'], id : record['Id']});
+
                 apiVersion = record['LightningComponentBundle']['ApiVersion'];
                 bundleId = record['LightningComponentBundleId'];
                 namespace = record['LightningComponentBundle']['NamespacePrefix'];
+
+                let bundleDetails = <NormalizedBundleDetails>{
+                    bundleId : bundleId,
+                    bundleName : bundleName,
+                    contents : [],
+                    apiVersion : apiVersion,
+                    entityType,
+                    namespacePrefix : namespace
+                };
+
+                if(!bundleVsDetails[bundleName]) {
+                    bundleVsDetails[bundleName] = bundleDetails;
+                }
+
+                bundleVsDetails[bundleName].contents.push({label : name , value : record['FilePath'], id : record['Id']});
             }
         }
-        let bundleDetails = <NormalizedBundleDetails>{
-            bundleId : bundleId,
-            bundleName : bundleName,
-            contents : bundleContents,
-            apiVersion : apiVersion,
-            entityType,
-            namespacePrefix : namespace
-        };
+
 
         if(!this.loadedBundleInfo[orgName]) {
             this.loadedBundleInfo[orgName] = {}
@@ -282,9 +328,12 @@ export class SalesforceService {
         if(!this.loadedBundleInfo[orgName][entityType]){
             this.loadedBundleInfo[orgName][entityType] = {};
         }
-        this.loadedBundleInfo[orgName][entityType][bundleName] = bundleDetails;        
 
-        return EnForceResponse.success(bundleDetails);         
+        for(let bundleName in bundleVsDetails) {
+            this.loadedBundleInfo[orgName][entityType][bundleName] = bundleVsDetails[bundleName];
+        }
+
+        return EnForceResponse.success(bundleVsDetails);         
     }
 
     async getOrganizationDetails(params : any) {

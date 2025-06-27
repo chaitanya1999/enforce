@@ -22,7 +22,7 @@ import { GlobalEventsService } from '../global-events.service';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { AlertDialogComponent } from '../alert-dialog/alert-dialog.component';
 import Utils, { EnForceResponse, NormalizedBundleDetails, NormalizedBundleItem, NormalizedCodeEntity } from '../enforce-utils';
-import { PromptDialogComponent } from '../prompt-dialog/prompt-dialog.component';
+import { PromptDialogComponent, PromptDialogOptions } from '../prompt-dialog/prompt-dialog.component';
 import { sfApiVersion } from '../salesforce.service';
 import { ResizableModule } from 'angular-resizable-element';
 import {MatTooltipModule} from '@angular/material/tooltip';
@@ -735,7 +735,7 @@ export class CodeBrowserComponent {
 
             this.log('loadEntity | loadBundleDetails ');
             if(this.isBundle(entityType))
-                this.loadBundleDetails(codeTab, false, org);
+                this.loadBundleDetails([codeTab], entityType, false, org);
             
             this.selectedLanguage = this.editorCmp.getModelLanguage();
             // this.languageSelector.setSearchQuery(this.selectedLanguage);
@@ -844,11 +844,40 @@ export class CodeBrowserComponent {
                             createdTabs.push(codeTab);
                             loadedNames.push(tabName);
 
-                            if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, orgName);
+                            // if (this.isBundle(codeEntity.entityType)) this.loadBundleDetails(codeTab, false, orgName);
                         }
                     }
                 // }
             }
+
+
+            // Bundle Details loading logic START
+
+            let entityTypeVsCreatedTabs: { [key: string]: CodeTab[] } = {};
+            for (const tab of createdTabs) {
+                if (!entityTypeVsCreatedTabs[tab.entityType]) {
+                    entityTypeVsCreatedTabs[tab.entityType] = [];
+                }
+                entityTypeVsCreatedTabs[tab.entityType].push(tab);
+            }
+            // Load bundle details for all created tabs
+            for (const entityType of Object.keys(entityTypeVsCreatedTabs)) {
+                const tabs = entityTypeVsCreatedTabs[entityType];
+                if (this.isBundle(entityType)) {
+                    let orgVsTabs: { [key: string]: CodeTab[] } = {};
+                    // Group tabs by orgName
+                    for (const tab of tabs) {
+                        if (!orgVsTabs[tab.orgName]) orgVsTabs[tab.orgName] = [];
+                        orgVsTabs[tab.orgName].push(tab);
+                    }
+                    // Load bundle details for each org
+                    for (const orgName of Object.keys(orgVsTabs)) {
+                        // Load bundle details for all tabs of this entity type
+                        this.loadBundleDetails(orgVsTabs[orgName], entityType, false, orgName);
+                    }
+                }
+            }
+            // Bundle Details loading logic END
 
             // Collate all messages and show a single snackbar
             let messages: string[] = [];
@@ -900,8 +929,8 @@ export class CodeBrowserComponent {
      * Loads all entities from a Salesforce package.xml string.
      * @param packageXml The package.xml content as a string.
      */
-    async loadEntitiesFromPackageXml(packageXml: string) {
-        this.log('loadEntitiesFromPackageXml | packageXml = ', packageXml);
+    async loadEntitiesFromPackageXml(packageXml: string, skipFewAuraFiles : boolean) {
+        this.log('loadEntitiesFromPackageXml | skipFewAuraFiles = ', skipFewAuraFiles);
         // Parse the XML string
         let parser = new DOMParser();
         let xmlDoc = parser.parseFromString(packageXml, "application/xml");
@@ -940,6 +969,13 @@ export class CodeBrowserComponent {
                 for (let bundleName of members) {
                     let matched : NormalizedCodeEntity[] = codeEntities.filter(e => e.BundleName === bundleName) || [];
                     this.log(`loadEntitiesFromPackageXml | Matching ${normalizedEntityType} by BundleName: ${bundleName} = ` , matched.length);
+                    if(normalizedEntityType === this.$entityTypeAura && skipFewAuraFiles) {
+                        matched = matched.filter((x : NormalizedCodeEntity) => {
+                            const found = Object.entries(AppConstants.aura_suffixVsDefTypes).find(([suffix, _]) => x.Name.endsWith(suffix));
+                            const defType = found ? found[1] as string : 'COMPONENT';
+                            return !['RENDERER', 'DESIGN', 'SVG', 'DOCUMENTATION'].includes(defType)
+                        })
+                    }
                     if(matched.length) entitiesToLoad.push(...matched);
                 }
             } else {
@@ -1034,7 +1070,7 @@ export class CodeBrowserComponent {
 
         // Open a prompt dialog to get package.xml string from user
         const dialogRef = this.dialog.open(PromptDialogComponent, {
-            data: {
+            data: <PromptDialogOptions>{
                 text: 'Paste your Salesforce package.xml here',
                 placeholder: 'package.xml',
                 label: 'package.xml',
@@ -1042,6 +1078,9 @@ export class CodeBrowserComponent {
                 isTextFieldRequired : false,
                 validationText: 'Please enter a valid Salesforce package.xml',
                 textAreaValue: lastPackageXml,
+                checkboxRequired: true,
+                checkboxLabel: 'Skip Aura non-essential files',
+                checkboxValue: true
             }
         });
 
@@ -1073,7 +1112,7 @@ export class CodeBrowserComponent {
             }
 
             this._ipc.callMethod('storePackageXml', xml);
-            await this.loadEntitiesFromPackageXml(xml);
+            await this.loadEntitiesFromPackageXml(xml , data.checkbox);
         });
     }
 
@@ -1265,17 +1304,11 @@ export class CodeBrowserComponent {
         let newTabIndex = null;
 
         // Search for the nearest visible tab before the closed/hidden tab
-        for(let i=0; i<index; i++) {
-            let iTab = this.openTabs[i];
-            if(!iTab.hidden) newTabIndex = i;
-        }
+        newTabIndex = this.findPreviousTab(index);
 
         // If not found before, search for the next visible tab after the closed/hidden tab
         if(!newTabIndex && newTabIndex!==0) {
-            for(let i=index+1; i<this.openTabs.length; i++) {
-                let iTab = this.openTabs[i];
-                if(!iTab.hidden) {newTabIndex = i;break;}
-            }
+            newTabIndex = this.findNextTab(index);
         }
 
         // If a visible tab is found, select it
@@ -1286,6 +1319,28 @@ export class CodeBrowserComponent {
             this.activeTabModelId = null;
             this.editorCmp.unloadModel();
         }
+    }
+
+    findNextTab(index : number) : number | null {
+        let newTabIndex = null;
+
+        for(let i=index+1; i<this.openTabs.length; i++) {
+            let iTab = this.openTabs[i];
+            if(!iTab.hidden) {newTabIndex = i;break;}
+        }
+
+        return newTabIndex;
+    }
+
+    findPreviousTab(index : number) : number | null {
+        let newTabIndex = null;
+
+        for(let i=0; i<index; i++) {
+            let iTab = this.openTabs[i];
+            if(!iTab.hidden) newTabIndex = i;
+        }
+
+        return newTabIndex;
     }
 
     open() {
@@ -1575,23 +1630,28 @@ export class CodeBrowserComponent {
         console.log('#$#$ Keyboard Shortcut = ' , str);
         if(evt.repeat)  return;
 
+        //switch to previous tab
         if((evt.ctrlKey && evt.shiftKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageUp')
             || (evt.ctrlKey && !evt.shiftKey && evt.key == ',')) {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
-            tabIndex = (tabIndex - 1 + this.openTabs.length) % this.openTabs.length;
-            this.selectTab(this.openTabs[tabIndex]);
+            let newTabIndex = this.findPreviousTab(tabIndex);
+            if(newTabIndex && newTabIndex >= 0)
+                this.selectTab(this.openTabs[newTabIndex]);
         }
+        //switch to next tab
         else if((evt.ctrlKey && evt.key == 'Tab') || (evt.ctrlKey && !evt.shiftKey && evt.key == 'PageDown')
             || (evt.ctrlKey && !evt.shiftKey && evt.key == '.')
         ) {
             evt.stopPropagation();
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
-            tabIndex = (tabIndex + 1) % this.openTabs.length;
-            this.selectTab(this.openTabs[tabIndex]);
+            let newTabIndex = this.findNextTab(tabIndex);
+            if(newTabIndex && newTabIndex < this.openTabs.length)
+                this.selectTab(this.openTabs[newTabIndex]);
         }
+        //move tab right
         else if(evt.ctrlKey && evt.shiftKey && evt.key == 'PageDown') {
             evt.stopPropagation();
             evt.preventDefault();
@@ -1615,6 +1675,7 @@ export class CodeBrowserComponent {
             }
             this.scrollToTab(this.activeTab!);
         }
+        //move tab left
         else if(evt.ctrlKey && evt.shiftKey && evt.key == 'PageUp') {
             evt.stopPropagation();
             evt.preventDefault();
@@ -2381,12 +2442,19 @@ export class CodeBrowserComponent {
     }
 
     handleAccordion(evt : MouseEvent) {
+        this.log('handleAccordion | evt = ' , evt);
+
         let target = evt.target;
         if(!(target instanceof HTMLElement)) return;
-        let t_id = target!.dataset['toggleContent'];
-        let collapsed = target!.dataset['toggleCollapsed']=='true' || false;
+
+        let element : HTMLElement | null = target.closest('div.customAccordion-header');
+        if(!element) return;
+
+        let t_id = element!.dataset['toggleContent'];
+        let collapsed = element!.dataset['toggleCollapsed']=='true' || false;
         let toggleContent : HTMLElement | null = document.querySelector(`[data-toggle-id=${t_id}]`);
         if(!toggleContent) return;
+
         if(collapsed) {
             toggleContent.style.display = 'block';
         } else {
@@ -2394,26 +2462,30 @@ export class CodeBrowserComponent {
         }
         collapsed = !collapsed;
 
-        target.dataset['toggleCollapsed'] = '' + collapsed;
+        element.dataset['toggleCollapsed'] = '' + collapsed;
         // toggleContent.dataset['toggleCollapsed'] = '' + collapsed;
     }
 
     reloadingBundleDetails : boolean = false
-    async loadBundleDetails(codeTab : CodeTab, ignoreCache : boolean, orgName : string) {
+    async loadBundleDetails(codeTabs : CodeTab[], entityType : string, reload : boolean, orgName : string) {
         // let orgName = this.selectedOrg;
         if(this.reloadingBundleDetails) return;
 
-        this.reloadingBundleDetails = true;
+        this.reloadingBundleDetails = reload;
         this._ipc.callMethod('getBundleDetails', {
             orgName : orgName,
-            bundleName : codeTab.bundleName,
-            entityType : codeTab.entityType,
-            ignoreCache : ignoreCache
+            bundleName : Array.from(new Set(codeTabs.map((x:CodeTab) => x.bundleName))),
+            entityType : entityType,
+            ignoreCache : reload
         }).then( (x:EnForceResponse) => {
             this.reloadingBundleDetails = false;
             if(x.isSuccess) {
                 this.log('loadEntity | getBundleDetails | Success = ' , x);
-                codeTab.bundleDetails = x.data;
+                for(let codeTab of codeTabs) {
+                    if(codeTab.bundleName && x.data[codeTab.bundleName]) {
+                        codeTab.bundleDetails = x.data[codeTab.bundleName];
+                    }
+                }
             } else {
                 this.log('loadEntity | getBundleDetails | ERROR = ' , x);
                 this.showSnackBar('ERROR occuring while fetching bundle details ');

@@ -33,7 +33,7 @@
                     <span style="margin:auto; text-transform: capitalize; color: rgb(255, 198, 93);font-weight: bolder;">{{activeEntityTypeLabel}}</span>
                     <span style="margin:auto;">{{activeTab?.bundleDetails?.bundleName}}</span>
                     <div class="reload-bundle">
-                        <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails(activeTab!, true, this.selectedOrg)"></i>
+                        <i class="bi bi-arrow-clockwise" (click)="loadBundleDetails([activeTab!], activeTab!.entityType, true, activeTab!.orgName)"></i>
                     </div>
                 </div>
                 @for(bundleItem of activeTab?.bundleDetails?.contents; track bundleItem) {
@@ -54,26 +54,26 @@
             }
         </div>
     
-        <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false" style="position: relative;">
-            <span>🗂️ Open Editors ({{openTabs.length}})</span>
-            <button type="button"
-            class="accordion-header-btn"
-            (click)="toggleTreeViewMode($event); $event.stopPropagation();"
-            matTooltip="Toggle Tree View Mode"
-            style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
-            <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
-            <span class="visually-hidden">Toggle Tree View</span>
-        </button>
-        @if(treeViewMode) {
+        <div class="customAccordion-header d-flex justify-content-between align-items-center" (click)="handleAccordion($event)" data-toggle-content="body2" data-toggle-collapsed="false">
+            <span (click)="handleAccordion($event); $event.stopPropagation();">🗂️ Open Editors ({{openTabs.length}})</span>
             <button type="button"
                 class="accordion-header-btn"
-                (click)="expandCollapseAll(); $event.stopPropagation();"
-                matTooltip="Expand/Collapse all"
-                style="background: transparent; border: none; box-shadow: none; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                <i class="bi bi-plus-slash-minus"></i>
-                <span class="visually-hidden">Expand/Collapse all</span>
+                (click)="toggleTreeViewMode($event); $event.stopPropagation();"
+                matTooltip="Toggle Tree View Mode"
+                style="background: transparent; border: none; box-shadow: none; margin-left: auto; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+                <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
+                <span class="visually-hidden">Toggle Tree View</span>
             </button>
-        }
+            @if(treeViewMode) {
+                <button type="button"
+                    class="accordion-header-btn"
+                    (click)="expandCollapseAll(); $event.stopPropagation();"
+                    matTooltip="Expand/Collapse all"
+                    style="background: transparent; border: none; box-shadow: none; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
+                    <i class="bi bi-plus-slash-minus"></i>
+                    <span class="visually-hidden">Expand/Collapse all</span>
+                </button>
+            }
         </div>
         <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
             <div class="treeViewContainer" [hidden]="!treeViewMode">

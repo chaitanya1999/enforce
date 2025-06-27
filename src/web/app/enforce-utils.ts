@@ -157,7 +157,7 @@ export default class Utils {
         }
     }
 
-    static arrayToInClauseRHS(arr : any, quotes : any) {
+    static arrayToInClauseRHS(arr : any, quotes : boolean) {
         let inClauseRHS = ' (';
         let first = true;
         arr.forEach((str : string) => { inClauseRHS += (first ? ' ' : ', ') + Utils.quoter(str, quotes) + ' '; first = false; });
