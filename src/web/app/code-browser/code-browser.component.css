@@ -45,7 +45,7 @@ div.rootRoot div.sidePanel {
 
 div.sidePanelToggle {
     background-color: rgb(25, 25, 25);
-    border-right: 1px solid #313131;
+    /* border-right: 1px solid #313131; */
     height: 100%;
     max-height: 100%;
     width: 4px;
@@ -195,14 +195,14 @@ div.auraAppPreview:hover {
     border-bottom: 1px solid rgb(63, 63, 63);
     border-top: none;
     /* min-height: 100px; */
-    padding-top: 10px;
+    /* padding-top: 10px; */
     padding-bottom: 10px;
     /* flex-shrink: 1; */
     /* flex-grow: 1; */
 }
 
 .customAccordion-header {
-    border-bottom: 1px solid rgb(63, 63, 63);
+    border-bottom: 1px solid rgba(63, 63, 63, 0.63);
     color: white;
     padding-left: 5px;
     padding-right: 5px;
@@ -210,7 +210,7 @@ div.auraAppPreview:hover {
     padding-bottom: 8px;
     width: 100%;
     user-select: none;
-    text-transform: uppercase;
+    /* text-transform: uppercase; */
     /* font-family: monospace; */
     /* font-weight: bold; */
     font-size: 0.85em;
@@ -233,7 +233,7 @@ div.auraAppPreview:hover {
     border: solid white;
     border-width: 0 2px 2px 0;
     display: inline-block;
-    padding: 4px;
+    padding: 2.5px;
     transform: translateY(-2px) rotate(+45deg);
     -webkit-transform: translateY(-2px) rotate(+45deg);
     margin-right: 8px;
@@ -264,8 +264,10 @@ div.editorTab:hover {
     background-color: rgb(77, 77, 77);
 }
 div.editorTab.tabHidden{
-    border: 1px dashed gray;
-    box-sizing: border-box;
+    /* border: 1px dashed gray;
+    box-sizing: border-box; */
+    opacity: 0.5;
+	font-style: italic;
 }
 div.editorTab-name{
     display: flex;
@@ -389,7 +391,12 @@ div.topBar.quickDiff {
     background-color: #888;
     border-radius: 4px;
 } */
-
+select.topBarItem {
+    background-color: rgb(40, 40, 40);
+    color: white;
+    border: none;
+    border-right: 1px solid rgb(65, 65, 65)
+}
 .topBarItem {
     margin-left: 5px;
     margin-top: 5px;
@@ -511,6 +518,9 @@ button.wrapActive {
     --scrollbg: transparent;
     transition: all 4s ease-in;
     background-color: var(--scrollbg);
+}
+.tabContainer::-webkit-scrollbar-track {
+    background-color: rgba(30,30,30,255)
 }
 
 .tab {

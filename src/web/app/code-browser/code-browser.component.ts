@@ -1592,7 +1592,7 @@ export class CodeBrowserComponent {
                 commands: this.openTabs.map(tab => ({
                     name: tab.tabName,
                     tab : tab,
-                    badg: tab.orgName,
+                    badge: tab.orgName,
                     action: () => {
                         this.selectTab(tab);
                         this.editorCmp.focus();
@@ -2299,14 +2299,18 @@ export class CodeBrowserComponent {
         this.panelSizeRecompute();
     }
 
+    @ViewChild('sidePanelToggleElement') sidePanelToggleElement! : ElementRef;
     panelSizeRecompute() {
         if(this.sidePanelDisplay) {
+            this.panelToggleWidth = `4px`;
             this.sidePanelElement!.nativeElement.style.width = this.panelWidth;
             this.rootElement!.nativeElement.style.width = this.widthExcludingPanel;
         } else {
+            this.panelToggleWidth = `1px`;
             this.rootElement!.nativeElement.style.width = `calc(100% - 0px - ${this.panelToggleWidth})`;
             this.sidePanelElement!.nativeElement.style.width = '0px';
         }
+        this.sidePanelToggleElement!.nativeElement.style.width = this.panelToggleWidth;
     }
 
     panelToggleWidth = `4px`;
@@ -2449,6 +2453,10 @@ export class CodeBrowserComponent {
 
         let element : HTMLElement | null = target.closest('div.customAccordion-header');
         if(!element) return;
+
+        if(target.id == 'openEditorsDropdown') return;
+        if(target.className.includes('dropdown-item')) return;
+
 
         let t_id = element!.dataset['toggleContent'];
         let collapsed = element!.dataset['toggleCollapsed']=='true' || false;
@@ -2665,6 +2673,11 @@ export class CodeBrowserComponent {
         this.expanded = !this.expanded;
         if(this.expanded) this.treeView.collapseAllNodes();
         else this.treeView.expandAllNodes();
+    }
+
+    showHiddenTabsSidePanel : boolean = true;
+    toggleHiddenTabsTreeView() {
+        this.showHiddenTabsSidePanel = !this.showHiddenTabsSidePanel;
     }
     
     log(...str: any) {

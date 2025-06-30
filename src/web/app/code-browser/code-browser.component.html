@@ -64,16 +64,26 @@
                 <i [class]="treeViewMode ? 'bi bi-diagram-3-fill' : 'bi bi-list-ul'" style="font-size: 1rem;"></i>
                 <span class="visually-hidden">Toggle Tree View</span>
             </button>
-            @if(treeViewMode) {
-                <button type="button"
+            
+            <div class="btn-group">
+                <button id="openEditorsDropdown" type="button" class="" style="background: transparent; color: white; border:none;" data-bs-toggle="dropdown" aria-expanded="false" (click)="$event.stopPropagation();" >
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="openEditorsDropdown" role="menu" style="background-color: rgb(40,40,40);">
+                    <li><a class="dropdown-item" style="font-size: 0.85em;" draggable=false (click)="toggleHiddenTabsTreeView();" role="menuitem" >Show/Hide hidden tabs</a></li>
+                    @if(treeViewMode) {
+                        <li><a class="dropdown-item" style="font-size: 0.85em;" draggable=false (click)="expandCollapseAll();" role="menuitem" >Expand/Collapse all</a></li>
+                    }
+                    </ul>
+                </div>
+                <!-- <button type="button"
                     class="accordion-header-btn"
                     (click)="expandCollapseAll(); $event.stopPropagation();"
                     matTooltip="Expand/Collapse all"
                     style="background: transparent; border: none; box-shadow: none; width: 22px; height: 22px; min-width: 0; display: flex; align-items: center; justify-content: center; color: #ccc;">
                     <i class="bi bi-plus-slash-minus"></i>
                     <span class="visually-hidden">Expand/Collapse all</span>
-                </button>
-            }
+                </button> -->
         </div>
         <div class="customAccordion-body" style="border-bottom: none;" data-toggle-id="body2">
             <div class="treeViewContainer" [hidden]="!treeViewMode">
@@ -83,31 +93,35 @@
                     (onNodeContextMenu)="onTabContextMenu($event.node, $event.event)"
                     (onNodeMouseUp)="onTabMouseUp($event.node, $event.event)"
                     (closeTab)="onTabClose($event)"
-                    [showHiddenNodes]="true"
+                    [showHiddenNodes]="showHiddenTabsSidePanel"
                     [showPinnedNodes]="true"
-                    [showTemporaryNodes]="false"
+                    [showTemporaryNodes]="true"
                     [showOrgName]="true"></app-tree-view>
             </div>
             <div [hidden]="treeViewMode">
                 @for(tab of openTabs; track tab) {
-                    <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
-                        (click)="onTabClick(tab)" 
-                        (contextmenu)="onTabContextMenu(tab, $event)">
-                        <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
-                        <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
-                        <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
-                        @if(tab.pinned) {
-                            <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
-                        } @else {
-                            <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
-                        }
-                    </div>
+                    @if(tab.hidden && !showHiddenTabsSidePanel) {
+                        <!-- Hidden tabs are not shown -->
+                    } @else {
+                        <div [class]="(tab.modelId == activeTabModelId ? 'editorTab editorTabactive' : 'editorTab') + (tab.hidden ? ' tabHidden ' : ' ')"
+                            (click)="onTabClick(tab)" 
+                            (contextmenu)="onTabContextMenu(tab, $event)">
+                            <img [src]="tab.icon" width="16px" height="16px" style="margin-right: 4px;"  />
+                            <div class="editorTab-name" [matTooltip]="tab.tabName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.tabName}}</span></div>
+                            <div class="editorTab-orgName" [matTooltip]="tab.orgName" matTooltipPosition="right" matTooltipShowDelay="1000"><span>{{tab.orgName}}</span></div>
+                            @if(tab.pinned) {
+                                <span class="pin-icon" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
+                            } @else {
+                                <span class="close-icon" (click)="onTabClose(tab)"><i class="bi bi-x"></i></span>
+                            }
+                        </div>
+                    }
                 }
             </div>
         </div>
     </div>
     <!-- (click)="toggleSidePanel($event)" -->
-    <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizingStart($event)">
+    <div class="sidePanelToggle" draggable="false" (mousedown)="panelResizingStart($event)" #sidePanelToggleElement>
         <!-- <span style="height: 95%; border: 1px solid gray; background-color: gray; border-radius: 4px;"></span> -->
          <span style="height: 100%;"></span>
     </div>
@@ -139,7 +153,7 @@
             <!-- <button class="btn btn-primary topBarItem" (click)="authenticate()">Authenticate</button> -->
     
             <!-- Code category list -->
-            <select class="form-select topBarItem connectedButton-mid" aria-label="Category" style="max-width: fit-content;flex-shrink: 4;border-right: 1px solid black;"
+            <select class="form-select topBarItem connectedButton-mid" aria-label="Category" style="max-width: fit-content;flex-shrink: 4;"
                 [ngModel]="selectedEntityType"
                 (ngModelChange)="onEntityTypeSelect($event)">
                 <option>--Type--</option>
@@ -230,7 +244,7 @@
                         <img [src]="tab.icon" width="16px" height="16px" style="margin-left: -4px; margin-right: 4px;"  />
                         <div class="tabHeading">
                             <span>{{tab.tabName}}</span>
-                            <span style="font-size:0.45rem; line-height:1;">{{tab.orgName}}</span>
+                            <span style="font-size:0.45rem; line-height:1;padding-bottom: 2px;">{{tab.orgName}}</span>
                         </div>
                         @if(tab.pinned) {
                             <span class="tabPin" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>

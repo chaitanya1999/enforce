@@ -9,6 +9,7 @@
 	list-style: none;
 	padding-left: 0.5em;
 	margin: 0;
+	margin-left: 0.7em;;
 }
 /* .tree-lines > li {
 	position: relative;
@@ -45,11 +46,12 @@
 .tree-leaf.tab-leaf.active-leaf {
 	background: #23272b;
 	color: #fff;
-	font-weight: bold;
+	font-weight: 500;
 }
 .tree-leaf.tab-leaf {
 	color: #fff;
-	padding-left: 2.2em; /* Indent leaf nodes to align under parent folders */
+	padding-left: 1.3em;
+	 /* Indent leaf nodes to align under parent folders */
 }
 .tree-leaf.tab-leaf.tab-pinned .pin-icon {
 	margin-left: 0.3em;
@@ -62,10 +64,11 @@
 .tree-label {
 	margin-left: 0.4em;
 	color: inherit;
-	font-weight: 500;
+	/* font-weight: 500; */
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+	font-size: 0.85em;;
 }
 .close-icon {
 	margin-left: 0.5em;
@@ -82,3 +85,8 @@
 	font-size: 1.1em;
 	vertical-align: middle;
 }
+/* .bi {
+	width: 1em;
+	height: 1em;
+	font-size: 1em;
+} */

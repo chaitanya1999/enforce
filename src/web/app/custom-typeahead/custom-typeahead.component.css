@@ -8,8 +8,15 @@ div.typeaheadRoot * {
     user-select: none;
 }
 
+div.typeaheadRoot input::placeholder {
+    color: gray;
+}
+
 div.typeaheadRoot input {
     width: 100%;
+    background-color: rgb(40, 40, 40);
+    border: none;
+    color: white;
 }
 
 div.typeaheadRoot div.typeaheadContainer {
@@ -28,6 +35,7 @@ div.typeahead select {
     height: 100%;
     width: 100%;
     appearance: none;
+    background-color: rgb(40, 40, 40);
 }
 
 div.typeahead select::-webkit-scrollbar {

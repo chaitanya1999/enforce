@@ -69,8 +69,7 @@ export class QueryToolComponent {
     @ViewChild('queryInput') queryInputBox! : CodeEditorComponent;
     parseQuerySituation : string = ''
 
-    // Store latest code and cursor position for context-aware parsing
-    latestQueryValue: string = this.soqlQuery;
+    // Store latest cursor position for context-aware parsing
     latestCursorPos: number = 0;
     objectSuggestions: string[] = [];
 
@@ -240,13 +239,13 @@ export class QueryToolComponent {
     onQueryTyped(event: any) {
         this.selectedQueryHistory = this.defaultQueryHistoryOption;
         // event.value is the code string
-        this.latestQueryValue = typeof event.value === 'string' ? event.value : this.soqlQuery;
+        this.soqlQuery = event.value;
         //this.parseQueryWithLatest();
     }
 
     // Helper to always parse with latest state
     parseQueryWithLatest() {
-        //this.parseQuery(this.latestQueryValue, this.latestCursorPos);
+        //this.parseQuery(this.soqlQuery, this.latestCursorPos);
     }
 
     /**
@@ -322,7 +321,7 @@ export class QueryToolComponent {
 
     // Called when cursor position changes in the editor
     onCodeEditorCursor(pos: { lineNumber: number, column: number }) {
-        // this.latestCursorPos = this.getAbsoluteCursorPos(this.latestQueryValue, pos);
+        // this.latestCursorPos = this.getAbsoluteCursorPos(this.soqlQuery, pos);
         // this.parseQueryWithLatest();
     }
 

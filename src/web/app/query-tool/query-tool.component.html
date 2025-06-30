@@ -35,14 +35,14 @@
             <textarea #queryInput class="queryInput" [(ngModel)]="soqlQuery" (ngModelChange)="onQueryTyped()" (keypress)="onKeyPress($event)" spellcheck="false"></textarea>
             -->
             <app-code-editor #queryInput
-              [(code)]="soqlQuery"
-              [defaultLanguage]="'sql'"
-              (codeChange)="onQueryTyped($event)"
-              (onCursorPositionChange)="onCodeEditorCursor($event)"
-              (ctrlEnter)="executeQuery()"
-              style="height:120px;width:100%;"
-              [fontSize]="16"
-              [passContentOnContentChange]="true"
+                [code]="'SELECT Id, Name FROM Account LIMIT 10'"
+                [defaultLanguage]="'sql'"
+                (codeChange)="onQueryTyped($event)"
+                (onCursorPositionChange)="onCodeEditorCursor($event)"
+                (ctrlEnter)="executeQuery()"
+                style="height:120px;width:100%;"
+                [fontSize]="16"
+                [passContentOnContentChange]="true"
             ></app-code-editor>
             
             <!-- Execute button -->
