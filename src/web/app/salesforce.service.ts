@@ -226,98 +226,100 @@ export class SalesforceService {
                 bundlesToFetch.push(bundleName);
         }
 
-        if(entityType == CodeEntity.AuraComponent) {
-            let sortOrder : any = {
-                "COMPONENT" : 1,
-                "APPLICATION" : 1,
-                "CONTROLLER" : 2,
-                "HELPER" : 3,
-                "STYLE" : 4,
-                "RENDERER" : 5,
-                "EVENT" : 6,
-                "DOCUMENTATION" : 7,
-                "DESIGN" : 8,
-                "SVG" : 9
-            }
-            let existingDefTypes = Object.keys(sortOrder).reduce((p: any, c : string) => {
-                p[c] = false;
-                return p;
-            }, {});
-            //aura
-            query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix, AuraDefinitionBundle.DeveloperName from AuraDefinition where AuraDefinitionBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
-            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
-            if(!res.isSuccess) return res;
-
-            
-            for(let record of res.data.records) {
-                existingDefTypes[record['DefType']] = true;
-                let bundleName = record['AuraDefinitionBundle']['DeveloperName'];
-                let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
-
-                apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
-                bundleId = record['AuraDefinitionBundleId'];
-                namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
-
-                let bundleDetails = <NormalizedBundleDetails>{
-                    bundleId : bundleId,
-                    bundleName : bundleName,
-                    contents : [],
-                    apiVersion : apiVersion,
-                    entityType,
-                    namespacePrefix : namespace
-                };
-
-                if(!bundleVsDetails[bundleName]) {
-                    bundleVsDetails[bundleName] = bundleDetails;
+        if(bundlesToFetch.length) {
+            if(entityType == CodeEntity.AuraComponent) {
+                let sortOrder : any = {
+                    "COMPONENT" : 1,
+                    "APPLICATION" : 1,
+                    "CONTROLLER" : 2,
+                    "HELPER" : 3,
+                    "STYLE" : 4,
+                    "RENDERER" : 5,
+                    "EVENT" : 6,
+                    "DOCUMENTATION" : 7,
+                    "DESIGN" : 8,
+                    "SVG" : 9
                 }
-
-                bundleVsDetails[bundleName].contents.push({label : record['DefType'] , value : name, id : record['Id']});
+                let existingDefTypes = Object.keys(sortOrder).reduce((p: any, c : string) => {
+                    p[c] = false;
+                    return p;
+                }, {});
+                //aura
+                query = `Select id, AuraDefinitionBundleId, DefType, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix, AuraDefinitionBundle.DeveloperName from AuraDefinition where AuraDefinitionBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
+                let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query}]);
+                if(!res.isSuccess) return res;
+    
                 
-            }
-
-            for(let bundleDetails of Object.values(bundleVsDetails)) {
-                bundleDetails.contents = bundleDetails.contents.sort((x:any, y:any) => {
-                    return sortOrder[x.label] - sortOrder[y.label];
-                });
-                bundleContents.push(...bundleDetails.contents);
-            }
-            // for(let key in existingDefTypes) {
-            //     if(existingDefTypes[key] == false && key != 'COMPONENT' && key != 'APPLICATION' ) { //either application or component, one must exist
-            //         let value = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[key];
-            //         bundleContents.push({label : key , value : value, toBeCreated : true});
-            //     }
-            // }
-            
-
-        } else {
-            //lwc
-            query = `select id,Format,FilePath,LightningComponentBundleId, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
-            let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query, toolingApi : true}]);
-            if(!res.isSuccess) return res;
-
-            for(let record of res.data.records) {
-                let bundleName = record['LightningComponentBundle']['DeveloperName'];
-                let name = record['FilePath'];
-                name = name.substring(name.lastIndexOf('/')+1);
-
-                apiVersion = record['LightningComponentBundle']['ApiVersion'];
-                bundleId = record['LightningComponentBundleId'];
-                namespace = record['LightningComponentBundle']['NamespacePrefix'];
-
-                let bundleDetails = <NormalizedBundleDetails>{
-                    bundleId : bundleId,
-                    bundleName : bundleName,
-                    contents : [],
-                    apiVersion : apiVersion,
-                    entityType,
-                    namespacePrefix : namespace
-                };
-
-                if(!bundleVsDetails[bundleName]) {
-                    bundleVsDetails[bundleName] = bundleDetails;
+                for(let record of res.data.records) {
+                    existingDefTypes[record['DefType']] = true;
+                    let bundleName = record['AuraDefinitionBundle']['DeveloperName'];
+                    let name = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[record['DefType']];
+    
+                    apiVersion = record['AuraDefinitionBundle']['ApiVersion'];
+                    bundleId = record['AuraDefinitionBundleId'];
+                    namespace = record['AuraDefinitionBundle']['NamespacePrefix'];
+    
+                    let bundleDetails = <NormalizedBundleDetails>{
+                        bundleId : bundleId,
+                        bundleName : bundleName,
+                        contents : [],
+                        apiVersion : apiVersion,
+                        entityType,
+                        namespacePrefix : namespace
+                    };
+    
+                    if(!bundleVsDetails[bundleName]) {
+                        bundleVsDetails[bundleName] = bundleDetails;
+                    }
+    
+                    bundleVsDetails[bundleName].contents.push({label : record['DefType'] , value : name, id : record['Id']});
+                    
                 }
-
-                bundleVsDetails[bundleName].contents.push({label : name , value : record['FilePath'], id : record['Id']});
+    
+                for(let bundleDetails of Object.values(bundleVsDetails)) {
+                    bundleDetails.contents = bundleDetails.contents.sort((x:any, y:any) => {
+                        return sortOrder[x.label] - sortOrder[y.label];
+                    });
+                    bundleContents.push(...bundleDetails.contents);
+                }
+                // for(let key in existingDefTypes) {
+                //     if(existingDefTypes[key] == false && key != 'COMPONENT' && key != 'APPLICATION' ) { //either application or component, one must exist
+                //         let value = bundleName + '/' + bundleName + AppConstants.aura_defTypeVsSuffix[key];
+                //         bundleContents.push({label : key , value : value, toBeCreated : true});
+                //     }
+                // }
+                
+    
+            } else {
+                //lwc
+                query = `select id,Format,FilePath,LightningComponentBundleId, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${Utils.arrayToInClauseRHS(bundlesToFetch, true)}`;
+                let res : EnForceResponse = await this.executeQuery([{orgName , soqlQuery : query, toolingApi : true}]);
+                if(!res.isSuccess) return res;
+    
+                for(let record of res.data.records) {
+                    let bundleName = record['LightningComponentBundle']['DeveloperName'];
+                    let name = record['FilePath'];
+                    name = name.substring(name.lastIndexOf('/')+1);
+    
+                    apiVersion = record['LightningComponentBundle']['ApiVersion'];
+                    bundleId = record['LightningComponentBundleId'];
+                    namespace = record['LightningComponentBundle']['NamespacePrefix'];
+    
+                    let bundleDetails = <NormalizedBundleDetails>{
+                        bundleId : bundleId,
+                        bundleName : bundleName,
+                        contents : [],
+                        apiVersion : apiVersion,
+                        entityType,
+                        namespacePrefix : namespace
+                    };
+    
+                    if(!bundleVsDetails[bundleName]) {
+                        bundleVsDetails[bundleName] = bundleDetails;
+                    }
+    
+                    bundleVsDetails[bundleName].contents.push({label : name , value : record['FilePath'], id : record['Id']});
+                }
             }
         }
 
