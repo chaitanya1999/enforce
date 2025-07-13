@@ -127,8 +127,12 @@ export class AppComponent {
 
     @HostListener('window:beforeunload', ['$event'])
     beforeUnloadHandler(event: BeforeUnloadEvent) {
+        this.globalEventsSvc.beforeUnloadEvent.emit(true);
+
         // Only prevent default; browsers will show a generic confirm dialog
         if(environment.production) event.preventDefault();
+
+        //? uncomment below line to allow session save and see popup in dev env
         // if(!environment.production) event.preventDefault();
     }
 

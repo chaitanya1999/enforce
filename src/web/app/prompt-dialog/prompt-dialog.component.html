@@ -1,5 +1,27 @@
 <div style="padding: 20px;" class="mainDiv">
     <p style="font-size: 1em; font-weight: bold;">{{text}}</p><br/>
+    @if(isTableRequired && tableData?.columns?.length && tableData?.rows?.length) {
+        <div style="max-height: 220px; overflow-y: auto; margin-bottom: 1em; border-radius: 6px; border: 1px solid #ddd; background: #fff;">
+            <table class="table table-sm table-bordered table-striped" style="font-size:0.97em; background: #fff; color: #222; margin-bottom: 0;">
+                <thead style="background-color: lightgray; color: #7c5700;">
+                    <tr>
+                        @for(col of tableData!.columns; track col) {
+                            <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;">{{col.label}}</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for(row of tableData!.rows; track row) {
+                        <tr>
+                            @for(col of tableData!.columns; track col) {
+                                <td style="vertical-align: middle;">{{row[col.key]}}</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
     @if(dropdownRequired) {
         <div #typeaheadParent style="width: 100%">
             <app-custom-typeahead [rootStyle]="typeaheadRootStyle" style="height: 100%;" [dataset]="dropdownList" (onSelect)="dropdownOnSelect($event)" [placeholder]="dropdownPlaceholder" 
@@ -25,16 +47,8 @@
         </div>
     </div>
     }
-    @if(checkboxRequired) {
-    <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="promptCheckbox" [(ngModel)]="checkboxValue">
-        <label class="form-check-label" for="promptCheckbox">
-            {{checkboxLabel}}
-        </label>
-    </div>
-    }
     <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
-        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">Yes</button>
-        <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">No</button>
+        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">{{okButtonText}}</button>
+        <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">{{cancelButtonText}}</button>
     </div>
 </div>

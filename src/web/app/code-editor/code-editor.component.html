@@ -1,6 +1,6 @@
 <!-- <div class="editor-container" #editorContainer style="width:100;"></div> -->
-<div class="editor-container" #editorContainer style="flex-grow:1;;flex-shrink:1;min-height: 0;" [hidden]="editorActive != $codeEditor"></div>
-<div class="editor-container" #diffContainer style="flex-grow:1;;flex-shrink:1;min-height: 0;" [hidden]="editorActive != $diffEditor"></div>
+<div class="editor-container mode-code-editor" #editorContainer style="flex-grow:1;;flex-shrink:1;min-height: 0;" [hidden]="editorActive != $codeEditor"></div>
+<div class="editor-container mode-diff-editor" #diffContainer style="flex-grow:1;;flex-shrink:1;min-height: 0;" [hidden]="editorActive != $diffEditor"></div>
 <!-- @if(loadingSpinner == true) {
     <div class="spinnerDiv">
         <div class="spinnerContainer">

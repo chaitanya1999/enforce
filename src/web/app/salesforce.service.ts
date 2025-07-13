@@ -8,6 +8,7 @@ import { AnonymousApex } from './salesforce-operations/AnonymousApex';
 import { QueryTool } from './salesforce-operations/QueryTool';
 import LZString from 'lz-string';
 import { AppConstants, CodeEntity } from './AppConstants';
+import { EditorSession } from './EditorSession';
 // let Utils = {
 //     loadSessionsData : () => {},
 //     getAllOrgs : () => {}
@@ -530,5 +531,47 @@ export class SalesforceService {
         log('SalesforceService - getLastPackageXml');
         const packageXml = localStorage.getItem('lastPackageXml') || '';
         return EnForceResponse.success(packageXml);
+    }
+
+    /**
+     * Saves the current editor session to localStorage using a namespaced key.
+     * @param editorSession The EditorSession object to persist.
+     */
+    saveEditorSession(param: any): EnForceResponse {
+        let editorSession : EditorSession = param[0];
+        if (!editorSession) {
+            debug('SalesforceService.saveEditorSession | No editorSession provided.');
+            return EnForceResponse.failure('No editorSession provided');
+        }
+        const STORAGE_KEY = 'enforce.EditorSession';
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(editorSession));
+            debug('SalesforceService.saveEditorSession | Editor session saved successfully.');
+            return EnForceResponse.success('Editor session saved successfully');
+        } catch (error) {
+            debug(`SalesforceService.saveEditorSession | Error saving to localStorage: ${error}`);
+            return EnForceResponse.failure(`Error saving editor session: ${error}`);
+        }
+    }
+
+    /**
+     * Loads the editor session from localStorage.
+     * @returns EnForceResponse containing the loaded EditorSession or an error.
+     */
+    loadEditorSession(): EnForceResponse {
+        const STORAGE_KEY = 'enforce.EditorSession';
+        try {
+            const sessionStr = localStorage.getItem(STORAGE_KEY);
+            if (!sessionStr) {
+                debug('SalesforceService.loadEditorSession | No editor session found in localStorage.');
+                return EnForceResponse.failure('No editor session found');
+            }
+            const editorSession: EditorSession = JSON.parse(sessionStr);
+            debug('SalesforceService.loadEditorSession | Editor session loaded successfully.');
+            return EnForceResponse.success(editorSession);
+        } catch (error) {
+            debug(`SalesforceService.loadEditorSession | Error loading from localStorage: ${error}`);
+            return EnForceResponse.failure(`Error loading editor session: ${error}`);
+        }
     }
 }

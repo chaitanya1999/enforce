@@ -7,4 +7,6 @@ export type CommandPaletteDialogData = {
 	limitResults?: boolean;
 	maxResults?: number;
 	commonAction? : any; //function
+	searchInBadge?: boolean;
+	searchInShadowText?: boolean;
 }

@@ -34,3 +34,10 @@
     justify-content: center;
     height: 100%;
 }
+
+.monaco-editor, 
+.monaco-diff-editor,
+.monaco-component{
+    --vscode-focusBorder: #000000 !important;
+    outline: 0;
+}

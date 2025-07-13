@@ -8,6 +8,7 @@ export class GlobalEventsService {
     globalClickEvent : EventEmitter<any> = new EventEmitter();
     tabSelectEvent : EventEmitter<any> = new EventEmitter();
     logoClickEvent : EventEmitter<any> = new EventEmitter();
+    beforeUnloadEvent : EventEmitter<any> = new EventEmitter();
 
     constructor() { }
 }

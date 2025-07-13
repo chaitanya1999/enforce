@@ -25,6 +25,9 @@ export class CommandPaletteComponent implements AfterViewInit {
 	maxResults: number = 100;
 	totalFiltered: number = 0;
 
+	searchInBadge : boolean = false;
+	searchInShadowText : boolean = false;
+
 	constructor(
 		public dialogRef: MatDialogRef<CommandPaletteComponent>,
 		@Inject(MAT_DIALOG_DATA) public data: CommandPaletteDialogData
@@ -41,6 +44,8 @@ export class CommandPaletteComponent implements AfterViewInit {
 		if (this.limitResults) {
 			this.filtered = this.filtered.slice(0, this.maxResults);
 		}
+		this.searchInBadge = data.searchInBadge || false;
+		this.searchInShadowText = data.searchInShadowText || false;
 	}
 
 	ngAfterViewInit() {
@@ -53,18 +58,19 @@ export class CommandPaletteComponent implements AfterViewInit {
 		if (this.wildcardEnabled && (s.includes('*') || s.includes(' '))) {
 			const regexStr = '' + s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'.*')).join('.*') + '';
 			const regex = new RegExp(regexStr, 'i');
-			matches = this.data.commands!.filter(cmd => regex.test(cmd.name.toLowerCase()));
+			matches = this.data.commands!.filter(cmd =>
+				regex.test(cmd.name.toLowerCase()) ||
+				(cmd.shadowText && regex.test(cmd.shadowText.toLowerCase())) || (cmd.badge && regex.test(cmd.badge.toLowerCase()))
+			);
 		} else {
 			matches = this.data.commands!.filter(cmd =>
-				cmd.name.toLowerCase().includes(s)
+				cmd.name.toLowerCase().includes(s) ||
+				(this.searchInShadowText && cmd.shadowText && cmd.shadowText.toLowerCase().includes(s))
+				|| (this.searchInBadge && cmd.badge && cmd.badge.toLowerCase().includes(s))
 			);
 		}
 		this.totalFiltered = matches.length;
-		if (this.limitResults) {
-			this.filtered = matches.slice(0, this.maxResults);
-		} else {
-			this.filtered = matches;
-		}
+		this.filtered = this.limitResults ? matches.slice(0, this.maxResults) : matches;
 		this.activeIndex = 0;
 	}
 

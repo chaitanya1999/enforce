@@ -57,6 +57,8 @@ export class CustomTypeaheadComponent {
     @Input() inputStyle : string = '';
     @Input() rootStyle : string = '';
 
+    @Input() dark : boolean = false;
+
     get displayListSize(): number {
         return Math.max(2, Math.min(this.maxSelectSize, this.displayList.length));
     }

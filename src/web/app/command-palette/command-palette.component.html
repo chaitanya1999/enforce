@@ -1,27 +1,34 @@
 <div class="command-palette-container" tabindex="0" (keydown)="onKeyDown($event)">
-  <div class="command-palette-input-wrapper" [class.with-arrow]="commandFlag">
-    <input #inputEl class="command-palette-input" [(ngModel)]="search" (input)="onInput()" [placeholder]="placeholder" />
-  </div>
-  @if(limitResults && totalFiltered > maxResults) {
-    <div class="command-palette-info-message" style="padding: 2px 12px; color: #bdbdbd; font-size: 11px; background: #23272e; border-bottom: 1px solid #353a42; margin-bottom: 2px; user-select: none; letter-spacing: 0.1px;">
-      Showing first {{maxResults}} of {{totalFiltered}} results. Please refine your search.
-    </div>
-  }
-  <ul class="command-palette-list">
-    @for (cmd of filtered; track cmd) {
-      <li #cmdListItem class="command-palette-list-item" 
-          [class.active]="$index === activeIndex" 
-          (click)="select(cmd)"
-          [attr.aria-selected]="$index === activeIndex"
-      >
-        <span class="command-label" [title]="cmd.name">{{cmd.name}}</span>
-        @if(cmd.badge) {
-          <span class="command-badge">{{cmd.badge}}</span>
-        }
-      </li>
-    }
-    @if(filtered.length === 0) {
-      <li class="command-palette-list-item disabled"><span>{{emptyMessage}}</span></li>
-    }
-  </ul>
+	<div class="command-palette-input-wrapper" [class.with-arrow]="commandFlag">
+		<input #inputEl class="command-palette-input" [(ngModel)]="search" (input)="onInput()" [placeholder]="placeholder" />
+	</div>
+	@if(limitResults && totalFiltered > maxResults) {
+		<div class="command-palette-info-message" style="padding: 2px 12px; color: #bdbdbd; font-size: 11px; background: #23272e; border-bottom: 1px solid #353a42; margin-bottom: 2px; user-select: none; letter-spacing: 0.1px;">
+			Showing first {{maxResults}} of {{totalFiltered}} results. Please refine your search.
+		</div>
+	}
+	<ul class="command-palette-list">
+		@for (cmd of filtered; track cmd) {
+			<li #cmdListItem class="command-palette-list-item" 
+			[class.active]="$index === activeIndex" 
+			(click)="select(cmd)"
+			[attr.aria-selected]="$index === activeIndex"
+			>
+			<div style="display: flex; flex-direction: column; width: 100%; flex: 1 1 0;">
+				<span class="command-label" [title]="cmd.name">{{cmd.name}}</span>
+				<span class="command-shadow-text">{{cmd.shadowText}}</span>
+				<!-- @if(cmd.shadowText) {
+				} @else {
+					<span class="command-shadow-text">&nbsp;</span>
+				} -->
+			</div>
+			@if(cmd.badge) {
+				<span class="command-badge">{{cmd.badge}}</span>
+			}
+		</li>
+	}
+	@if(filtered.length === 0) {
+		<li class="command-palette-list-item disabled"><span>{{emptyMessage}}</span></li>
+	}
+</ul>
 </div>

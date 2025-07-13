@@ -14,10 +14,13 @@ div.typeaheadRoot input::placeholder {
 
 div.typeaheadRoot input {
     width: 100%;
-    background-color: rgb(40, 40, 40);
     border: none;
+}
+div.typeaheadRoot input.dark {
+    background-color: rgb(40, 40, 40);
     color: white;
 }
+
 
 div.typeaheadRoot div.typeaheadContainer {
     position: relative;
@@ -60,9 +63,14 @@ div.typeahead select::-webkit-scrollbar-thumb {
     padding-left: 10px;
     padding-right: 10px;
 }
+.listOption.dark {
+    background-color: rgb(40,40,40);
+    border: 0.5px solid rgb(80,80,80);
+    color: white;
+}
 
 .listOption.keyboardFocused {
-    background-color: #ACCEF7;
+    background-color: rgb(122, 160, 232);
 }
 
 /* .listOption:focus {
@@ -70,7 +78,7 @@ div.typeahead select::-webkit-scrollbar-thumb {
 } */
 
 .listOption:hover {
-    background-color: skyblue;
+    background-color: cornflowerblue;
 }
 
 /* .form-control,.form-select,select,option{

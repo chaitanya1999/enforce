@@ -15,6 +15,7 @@ const fs = {
 
 import Utils, { EnForceResponse } from '../enforce-utils';
 import { AppConstants } from '../AppConstants';
+import { sfApiVersion } from '../salesforce.service';
 const debug = Utils.debug;
 
 const defTypesSuffixes = {
@@ -162,7 +163,8 @@ export class CodeFetcher {
             }
             debug('To Fetch => ' + JSON.stringify(auraComponents.names));
             debug('Querying Aura Code...');
-            let soqlQuery = `select Id,DefType,source,Format,AuraDefinitionBundle.DeveloperName from AuraDefinition `;
+
+            let soqlQuery = `select Id,DefType,source,Format,AuraDefinitionBundle.DeveloperName, AuraDefinitionBundleId, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix from AuraDefinition `;
             
             if(auraComponents.ids?.length) {
                 debug('AuraDefinition ID MODE');
@@ -200,7 +202,11 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [bundleName+'/'+fileName] : auraRec['Source'],
-                            Id : auraRec.Id
+                            Id : auraRec.Id,
+                            BundleId : auraRec['AuraDefinitionBundleId'],
+                            BundleName : auraRec['AuraDefinitionBundle']['DeveloperName'],
+                            ApiVersion : auraRec['AuraDefinitionBundle']['ApiVersion'],
+                            NamespacePrefix : auraRec['AuraDefinitionBundle']['NamespacePrefix'],
                         });
                         // returnData[bundleName+'/'+fileName] = auraRec['Source'];
                         // returnData.Id = auraRec.Id;
@@ -237,7 +243,7 @@ export class CodeFetcher {
             }
             debug('To Fetch => ' + JSON.stringify(apexClasses.names));
             debug('Querying ApexClass Code...');
-            let soqlQuery = `select Id,Name,Body from ApexClass `;
+            let soqlQuery = `select Id,Name,Body, NamespacePrefix, ApiVersion from ApexClass `;
 
             if(apexClasses.ids?.length) {
                 debug('ApexClass ID MODE');
@@ -264,7 +270,9 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [apexclass['Name']] : apexclass['Body'],
-                            Id : apexclass.Id
+                            Id : apexclass.Id,
+                            NamespacePrefix : apexclass['NamespacePrefix'],
+                            ApiVersion : apexclass['ApiVersion']
                         });
                         // returnData[apexclass['Name']] = apexclass['Body'];
                         // returnData.Id = apexclass.Id;
@@ -299,7 +307,7 @@ export class CodeFetcher {
             }
             debug('To Fetch => ' + JSON.stringify(apexTriggers.names));
             debug('Querying ApexTrigger Code...');
-            let soqlQuery = `select Id,Name,Body from ApexTrigger `;
+            let soqlQuery = `select Id,Name,Body, NamespacePrefix, ApiVersion from ApexTrigger `;
 
             if(apexTriggers.ids?.length) {
                 debug('ApexTrigger ID MODE');
@@ -325,7 +333,9 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [apexTrigger['Name']] : apexTrigger['Body'],
-                            Id : apexTrigger.Id
+                            Id : apexTrigger.Id,
+                            NamespacePrefix : apexTrigger['NamespacePrefix'],
+                            ApiVersion : apexTrigger['ApiVersion']
                         });
                         // returnData[apexTrigger['Name']] = apexTrigger['Body'];
                         // returnData.Id = apexTrigger.Id;
@@ -366,15 +376,15 @@ export class CodeFetcher {
             if(lwcComponents.names?.length) {
                 debug('LWC Bundle name MODE');
                 let cmpNames = Utils.arrayToInClauseRHS(lwcComponents.names, true);
-                soqlQuery = `select id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${cmpNames}`; // and Format IN ${defTypes}
+                soqlQuery = `select id,Format,source,FilePath,LightningComponentBundle.DeveloperName, LightningComponentBundleId, LightningComponentBundle.NamespacePrefix, LightningComponentBundle.ApiVersion from LightningComponentResource where LightningComponentBundle.DeveloperName IN ${cmpNames}`; // and Format IN ${defTypes}
             } else if (lwcComponents.ids?.length) {
                 debug('LWC FilePath MODE');
                 let fileIds = Utils.arrayToInClauseRHS(lwcComponents.ids, true);
-                soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where Id IN ${fileIds}`; // and Format IN ${defTypes}
+                soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName, LightningComponentBundleId, LightningComponentBundle.NamespacePrefix, LightningComponentBundle.ApiVersion from LightningComponentResource where Id IN ${fileIds}`; // and Format IN ${defTypes}
             } else {
                 debug('LWC FilePath MODE');
                 let fileNames = Utils.arrayToInClauseRHS(lwcComponents.fileNames, true);
-                soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName from LightningComponentResource where FilePath IN ${fileNames}`; // and Format IN ${defTypes}
+                soqlQuery = `select Id,Format,source,FilePath,LightningComponentBundle.DeveloperName, LightningComponentBundleId, LightningComponentBundle.NamespacePrefix, LightningComponentBundle.ApiVersion from LightningComponentResource where FilePath IN ${fileNames}`; // and Format IN ${defTypes}
             }
 
             debug('SOQL => ' + soqlQuery);
@@ -405,7 +415,11 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [lwcRec['FilePath']] : lwcRec['Source'],
-                            Id : lwcRec.Id
+                            Id : lwcRec.Id,
+                            BundleId : lwcRec['LightningComponentBundleId'],
+                            BundleName : lwcRec['LightningComponentBundle']['DeveloperName'],
+                            ApiVersion : lwcRec['LightningComponentBundle']['ApiVersion'],
+                            NamespacePrefix : lwcRec['LightningComponentBundle']['NamespacePrefix'],
                         });
                         // returnData[lwcRec['FilePath']] = lwcRec['Source'];
                         // returnData.Id = lwcRec.Id;
@@ -441,7 +455,7 @@ export class CodeFetcher {
             }
             debug('To Fetch => ' + JSON.stringify(vfPages.names));
             debug('Querying Visualforce Pages Code...');
-            let soqlQuery = `select Id,Name,Markup from ApexPage `;
+            let soqlQuery = `select Id,Name,Markup, ApiVersion,NamespacePrefix from ApexPage `;
 
             if(vfPages.ids?.length) {
                 debug('VF Page Id MODE');
@@ -468,7 +482,9 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [vfPage['Name']] : vfPage['Markup'],
-                            Id : vfPage.Id
+                            Id : vfPage.Id,
+                            NamespacePrefix : vfPage['NamespacePrefix'],
+                            ApiVersion : vfPage['ApiVersion']
                         });
                         // returnData[vfPage['Name']] = vfPage['Markup'];
                         // returnData.Id = vfPage.Id;
@@ -504,7 +520,7 @@ export class CodeFetcher {
             }
             debug('To Fetch => ' + JSON.stringify(vfComponents.names));
             debug('Querying Visualforce Component Code...');
-            let soqlQuery = `select Id,Name,Markup from ApexComponent `;
+            let soqlQuery = `select Id,Name,Markup, NamespacePrefix, ApiVersion from ApexComponent `;
 
             if(vfComponents.ids?.length) {
                 debug('VF Component Id MODE');
@@ -531,7 +547,9 @@ export class CodeFetcher {
                     if(this.enForceMode) {
                         returnData.contents.push({
                             [vfCmp['Name']] : vfCmp['Markup'],
-                            Id : vfCmp.Id
+                            Id : vfCmp.Id,
+                            NamespacePrefix : vfCmp['NamespacePrefix'],
+                            ApiVersion : vfCmp['ApiVersion']
                         });
                         // returnData[vfCmp['Name']] = vfCmp['Markup'];
                         // returnData.Id = vfCmp.Id;
@@ -817,7 +835,7 @@ export class CodeFetcher {
             debug('To Fetch => ' + JSON.stringify(staticResources.names));
             debug('Fetching StaticResource ...');
             
-            let res = await conn.query(`SELECT Id, Name, Body, ContentType FROM StaticResource WHERE Name IN ${Utils.arrayToInClauseRHS(staticResources.names, true)}`);
+            let res = await conn.query(`SELECT Id, Name, Body, ContentType, NamespacePrefix FROM StaticResource WHERE Name IN ${Utils.arrayToInClauseRHS(staticResources.names, true)}`);
 
             // let path = `./Fetched_StaticResource/${orgName}/`;
             // let path = `${this.path}/${entityName}/${orgName}/`;
@@ -831,7 +849,9 @@ export class CodeFetcher {
                 if(this.enForceMode) {
                     returnData.contents.push({
                         [staticRes['Name']] : body,
-                        Id : staticRes.Id
+                        Id : staticRes.Id,
+                        mimeType : staticRes['ContentType'],
+                        NamespacePrefix : staticRes['NamespacePrefix'],
                     });
                     // returnData[staticRes['Name']] = body;
                     // returnData.Id = staticRes.Id;

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, OnInit, OnChanges, SimpleChanges, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CodeEntity } from '../AppConstants'; // Adjust the import path as necessary
 
@@ -24,6 +24,8 @@ export class AppTreeViewComponent implements OnInit, OnChanges, AfterViewInit {
 
 	expanded = signal<{ [key: string]: boolean }>({});
 
+	constructor(private cdr: ChangeDetectorRef) {}
+
 	ngOnInit() {
 		this.expandAllNodes();
 	}
@@ -36,7 +38,7 @@ export class AppTreeViewComponent implements OnInit, OnChanges, AfterViewInit {
 	ngOnChanges(changes: SimpleChanges) {
 		// Do NOT expand all nodes on every treeData change
 		// if (changes['treeData'] && !changes['treeData'].firstChange) {
-		// 	this.expandAllNodes();
+		// 	this.forceRefreshView();
 		// }
 		if (changes['activeTabModelId'] && this.activeTabModelId) {
 			this.expandPathToActiveTab();
@@ -197,5 +199,13 @@ export class AppTreeViewComponent implements OnInit, OnChanges, AfterViewInit {
 				el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 			}
 		}, 0);
+	}
+
+	/**
+	 * Call this to force the tree view to refresh when treeData is mutated in-place.
+	 * This will trigger change detection and update the view.
+	 */
+	public forceRefreshView() {
+		this.cdr.detectChanges();
 	}
 }

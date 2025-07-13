@@ -350,6 +350,16 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         if(!this.delayLoad) {
             this.loadMonacoLibrary();
         }
+        this.removeBlueBorderMonaco();
+    }
+
+    removeBlueBorderMonaco() {
+        setTimeout(() => {
+            const monacoEl = document.querySelector('.monaco-editor') as HTMLElement;
+            if (monacoEl) {
+                monacoEl.style.setProperty('--vscode-focusBorder', 'transparent');
+            }
+        }, 200); // Slight delay to ensure Monaco has rendered
     }
 
     loadMonacoLibrary() {
@@ -563,7 +573,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 monaco.editor.setTheme(this.shikiTheme);
 
                 // Add Ctrl+Enter keybinding
-
+                this.removeBlueBorderMonaco();
             })
         });
 

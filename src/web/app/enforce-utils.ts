@@ -25,6 +25,8 @@ export default class Utils {
     }
 
     static async handleLogin(conn : jsforce.Connection, creds : any, useProxy? : boolean) : Promise<any> {
+        //CORS proxy server used for - SOAP login , validating access token using userinfo oauth api
+
         let desktopMode = (<any>window).desktopMode;
         let sessions = Utils.loadSessionsData();
         let result = null;

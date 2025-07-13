@@ -32,6 +32,8 @@ import { AppTreeViewComponent } from '../app-tree-view/app-tree-view.component';
 import { text } from 'express';
 import { firstValueFrom } from 'rxjs';
 import { CommandPaletteDialogData } from '../command-palette/command-palette-dialog-data';
+import { CodeTab } from '../CodeTab';
+import { EditorSession } from '../EditorSession';
 
 // Type for the data inside EnForceResponse for bulk fetch
 type BulkFetchCodeData = {
@@ -39,64 +41,19 @@ type BulkFetchCodeData = {
     contents: Array<{ Id: string; [key:string] : string; }>;
 };
 
-class CodeTab {
-    tabName : string;
-    modelId : string;
-    tabValue : string;
-    icon : string;
-    orgName : string;
-    entityType : string;
-    editorType : string = AppConstants.CODE_EDITOR;
-    recordId? : string;
-    temporary : boolean = false;
-    contentChanged : boolean = false;
-    entityDisplayType : string = '';
-    bundleName : string = '';
-    deploymentInProgess : boolean = false;
-    codeEntity? : NormalizedCodeEntity;
-    bundleDetails? : NormalizedBundleDetails;
-    loadingSpinner : boolean = false;
-    hidden : boolean = false;
-    pinned : boolean = false;
-
-    diffTabModelIds : Set<String> = new Set<String>(); // Used by code editor tab. stores which all DIFF tabs are using model of this tab.
-    model1ForDiff : string | null = null; // Used by DIFF tab.
-    model2ForDiff : string | null = null; // Used by DIFF tab.
-    unloadModel1 : boolean = false; // Used by DIFF tab. When comparing local code with org, this will be used to unload the model for which tab is not created
-    
-    get isAuraApplication(){
-        return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
-    }
-
-    get isCodeEditor() {
-        return this.editorType == AppConstants.CODE_EDITOR;
-    }
-
-    constructor(tabName : string, modelId : string, tabValue : string, icon : string, orgName : string, editorType : string, entityType : string, recordId? : string, temporary? : boolean) {
-        this.tabName = tabName;
-        this.modelId = modelId;
-        this.tabValue = tabValue;
-        this.icon = icon;
-        this.orgName = orgName;
-        this.editorType = editorType;
-        this.entityType = entityType;
-        this.recordId = recordId;
-        this.temporary = !!temporary;
-        this.entityDisplayType = AppConstants.entityTypeVsName[entityType] || entityType;
-    }
-}
-
 class Command {
     name: string;
     uniqueId: string;
     action?: () => void;
     badge?: string;
+    shadowText?: string;
 
-    constructor(name: string, uniqueId: string, action: () => void, badge?: string) {
+    constructor(name: string, uniqueId: string, action: () => void, badge?: string, shadowText?: string) {
         this.name = name;
         this.uniqueId = uniqueId;
         this.action = action;
         this.badge = badge;
+        this.shadowText = shadowText;
     }
 }
 
@@ -339,6 +296,7 @@ export class CodeBrowserComponent {
         return <SelectOption>{label : value, value : value};
     }
 
+    codeBrowserFirstOpenFlag : boolean = false;
     async ngOnInit() {
         this.globalEventsSvc.globalClickEvent.subscribe( (data) => {
             this.showTabRightClickMenu = false;
@@ -373,6 +331,10 @@ export class CodeBrowserComponent {
                 this.toggleSidePanel(null);
             }
             this.isCodeBrowserActive = (x.tab.tabName == 'Code Browser');
+            if(this.isCodeBrowserActive && !this.codeBrowserFirstOpenFlag) {
+                this.codeBrowserFirstOpenFlag = true;
+                this.codeBrowserFirstOpen();
+            }
         });
 
         this.globalEventsSvc.logoClickEvent.subscribe((x:any) => {
@@ -380,6 +342,15 @@ export class CodeBrowserComponent {
                 this.openMainCommandPalette();
             }
         });
+        this.globalEventsSvc.beforeUnloadEvent.subscribe((x:any) => {
+            alert('saving');
+            this.saveEditorSession(true);
+        });
+    }
+
+    codeBrowserFirstOpen() {
+        this.log('codeBrowserFirstOpen');
+        this.loadEditorSession();
     }
 
     addTab(codeTab : CodeTab) {
@@ -395,6 +366,14 @@ export class CodeBrowserComponent {
         this.showSpinner = false;
     }
 
+    closeDefaultTemporaryTab() {
+        if(this.defaultTabOpen) {
+            this.defaultTabOpen = false;
+            this.openTabs = [];
+            this.editorCmp.clearAllModels();
+        }
+    }
+
     async onOrgSelect(value: any, orgProperty : string) {
         try {
             this.log('onOrgSelect | value = ' , value);
@@ -403,11 +382,7 @@ export class CodeBrowserComponent {
             if(value == '--Org--' || !value || value == '--Org 2--') 
                 return;
 
-            if(this.defaultTabOpen) {
-                this.defaultTabOpen = false;
-                this.openTabs = [];
-                this.editorCmp.clearAllModels();
-            }
+            this.closeDefaultTemporaryTab();
             
             if(this.quickDiffModeFlag) {
                 if(this.selectedOrg == this.selectedOrg2 && this.isOrgSelected && this.isOrg2Selected) {
@@ -757,7 +732,7 @@ export class CodeBrowserComponent {
         openInBackground?: boolean,
         openHidden?: boolean,
         ignoreSpinner?: boolean
-    ) : Promise<{[key : string]: CodeTab[]} | null> {
+    ) : Promise<{[orgName : string]: CodeTab[]} | null> {
         if (!ignoreSpinner) this.showSpinner = true;
         try {
             // Find already loaded entities
@@ -832,6 +807,15 @@ export class CodeBrowserComponent {
 
                             const code = contentObj[name];
                             const recordId = contentObj.Id || '';
+
+                            //update codeEntity with latest details
+                            if (contentObj['Id']) codeEntity.Id = contentObj['Id'];
+                            if (contentObj['BundleId']) codeEntity.BundleId = contentObj['BundleId'];
+                            if (contentObj['BundleName']) codeEntity.BundleName = contentObj['BundleName'];
+                            if (contentObj['ApiVersion']) codeEntity.ApiVersion = contentObj['ApiVersion'];
+                            if (contentObj['NamespacePrefix']) codeEntity.NamespacePrefix = contentObj['NamespacePrefix'];
+                            if (contentObj['mimeType']) codeEntity.mimeType = contentObj['mimeType'];
+
 
                             const modelId = this.editorCmp.createCodeEditorModel(code, lang);
                             const tabName = this.getTabName(name, codeEntity.entityType, codeEntity);
@@ -1403,27 +1387,28 @@ export class CodeBrowserComponent {
 
     // Command Palette integration
     private commandPaletteCommands : Command[] = [
-        new Command('Org: Select Primary Org', 'select-org', () => this.selectOrg('selectedOrg')),
-        new Command('Org: Select Secondary Org (for Quick Diff)', 'select-org-2', () => this.selectOrg('selectedOrg2')),
-        new Command('Org: Refresh Org Metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata()),
-        new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType()),
-        new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H'),
-        new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode()),
-        new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true)),
-        new Command('File: Quick Open File Universally', 'universal-quick-open-file', () => this.quickOpenFile(true), 'Ctrl+Shift+U'),
-        new Command('File: Open File from Bundle', 'open-file-from-bundle', () => this.openFileFromBundle(true), 'Ctrl+Shift+B'),
-        new Command('File: Deploy Current File', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S'),
-        new Command('File: Reload Current File from Org', 'reload-current-file', () => this.reloadEntity(true)),
-        new Command('File: Open Files from Package.xml', 'open-bulk-package-xml', () => this.openFromPackageXml()),
-        new Command('Editor: Toggle Word Wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z'),
-        new Command('Editor: Increase Font Size', 'increase-font-size', () => this.changeFontSize(true)),
-        new Command('Editor: Decrease Font Size', 'decrease-font-size', () => this.changeFontSize(false)),
-        new Command('Editor: Select Language Mode', 'select-language-mode', () => { this.selectLanguageMode(); }),
-        new Command('Editor: Toggle Errors Panel', 'toggle-errors-pane', () => this.showErrorsPane()),
-        new Command('Editor: Zen Mode - Show/Hide Quick Actions', 'toggle-quick-actions', () => this.showQuickActions = !this.showQuickActions),
+        new Command('Org: Select Primary Org', 'select-org', () => this.selectOrg('selectedOrg') , '', '/spo'),
+        new Command('Org: Select Secondary Org (for Quick Diff)', 'select-org-2', () => this.selectOrg('selectedOrg2'), '', '/sso'),
+        new Command('Org: Refresh Org Metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata(), '', '/rog'),
+        new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
+        new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
+        new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode(), '' , '/qd'),
+        new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true), '', '/ccfo'),
+        new Command('File: Quick Open File Universally', 'universal-quick-open-file', () => this.quickOpenFile(true), 'Ctrl+Shift+U', '/qo'),
+        new Command('File: Open File from Bundle', 'open-file-from-bundle', () => this.openFileFromBundle(true), 'Ctrl+Shift+B', '/bo'),
+        new Command('File: Deploy Current File', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S', '/deploy'),
+        new Command('File: Reload Current File from Org', 'reload-current-file', () => this.reloadEntity(true), '', '/rcf'),
+        new Command('File: Open Files from Package.xml', 'open-bulk-package-xml', () => this.openFromPackageXml(), '', '/oxml'),
+        new Command('Editor: Toggle Word Wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z', '/ww'),
+        new Command('Editor: Increase Font Size', 'increase-font-size', () => this.changeFontSize(true), '', '/ifs'),
+        new Command('Editor: Decrease Font Size', 'decrease-font-size', () => this.changeFontSize(false), '', '/dfs'),
+        new Command('Editor: Select Language Mode', 'select-language-mode', () => { this.selectLanguageMode(); }, '', '/lang'),
+        new Command('Editor: Toggle Errors Panel', 'toggle-errors-pane', () => this.showErrorsPane(), '', '/err'),
+        new Command('Editor: Zen Mode - Show/Hide Quick Actions', 'toggle-quick-actions', () => this.showQuickActions = !this.showQuickActions, '', '/zen'),
         new Command('Editor: Reload Theme Engine', 'reload-theme-engine', () => this.editorCmp.reloadThemeEngine()),
         new Command('Editor: Change Theme', 'change-editor-theme', () => this.changeEditorTheme()),
         new Command('Window: Launch EnForce in a Dedicated Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
+        new Command('Session: Save Editor Session', 'save-editor-session', () => this.saveEditorSession(false)),
     ];
 
     openFileFromBundle(nested?: boolean) {
@@ -1457,7 +1442,8 @@ export class CodeBrowserComponent {
             return;
         }
         this.openCommandPalette('quickOpenFiles', {
-            commands: this.allEntitiesList.map(selectOption => ({
+            commands: this.allEntitiesList.map(selectOption => (<Command>{
+                uniqueId: selectOption.value,
                 name: selectOption.label,
                 selectOption: selectOption,
                 badge: selectOption.value1, //entity type
@@ -1467,6 +1453,7 @@ export class CodeBrowserComponent {
             wildcardEnabled: true,
             limitResults : true,
             maxResults: 100,
+            searchInBadge: true,
             commonAction: (cmd: any) => {
                 this.log('quickOpenFile | commonAction | cmd = ', cmd);
                 this.onEntitySelect(cmd.selectOption);
@@ -1476,11 +1463,13 @@ export class CodeBrowserComponent {
 
     changeEditorTheme() {
         this.openCommandPalette('changeEditorTheme', {
-            commands: this.editorCmp.getThemesList().map((theme: string) => ({
+            commands: this.editorCmp.getThemesList().map((theme: string) => (<Command>{
+                uniqueId: theme,
                 name: theme
             })),
             placeholder: 'Select a theme...',
             emptyMessage: 'No themes available',
+            wildcardEnabled: true,
             commonAction: (cmd: Command) => {
                 this.log('changeEditorTheme | commonAction | cmd = ', cmd);
                 this.editorCmp.setTheme(cmd.name);
@@ -1490,12 +1479,14 @@ export class CodeBrowserComponent {
 
     selectEntityType() {
         this.openCommandPalette('selectEntityType', {
-            commands: this.entityTypeList.map(entityType => ({
+            commands: this.entityTypeList.map(entityType => (<Command>{
+                uniqueId: entityType.label,
                 name: entityType.label,
                 action: () => this.onEntityTypeSelect(entityType.value)
             })),
             placeholder: 'Select an entity type...',
             emptyMessage: 'No entity types available',
+            wildcardEnabled: true
         }, true);
     }
 
@@ -1507,7 +1498,8 @@ export class CodeBrowserComponent {
         this.openCommandPalette('selectOrg', {
             commands: this.orgCredsList.map((org : OrgCredential) => new Command(org.orgName +'/'+org.username, org.orgName+'/'+org.username, () => this.onOrgSelect(org.orgName, orgProperty), org.authMode)),
             placeholder: 'Select an org...',
-            emptyMessage: 'No orgs available'
+            emptyMessage: 'No orgs available',
+            wildcardEnabled: true
         }, true);
     }
 
@@ -1519,6 +1511,7 @@ export class CodeBrowserComponent {
             })),
             placeholder: 'Select a language mode...',
             emptyMessage: 'No languages available',
+            wildcardEnabled: true,
         }, true);
     }
 
@@ -1527,6 +1520,7 @@ export class CodeBrowserComponent {
             commands: this.commandPaletteCommands,
             commandFlag : true,
             wildcardEnabled: true,
+            searchInShadowText: true,
             commonAction : (cmd : Command) => {
                 if (cmd && cmd.uniqueId) {
                     const idx = this.commandPaletteCommands.findIndex(c => c.uniqueId === cmd.uniqueId);
@@ -1589,10 +1583,12 @@ export class CodeBrowserComponent {
         else if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
             this.openCommandPalette('editorFiles',{
-                commands: this.openTabs.map(tab => ({
+                commands: this.openTabs.map(tab => (<Command>{
+                    uniqueId: tab.orgName + '::' + tab.tabValue,
                     name: tab.tabName,
                     tab : tab,
                     badge: tab.orgName,
+                    shadowText: tab.entityType,
                     action: () => {
                         this.selectTab(tab);
                         this.editorCmp.focus();
@@ -1600,7 +1596,9 @@ export class CodeBrowserComponent {
                 })),
                 placeholder: 'Select a file...',
                 emptyMessage: 'No files open',
-                wildcardEnabled: true
+                wildcardEnabled: true,
+                searchInBadge: true,
+                searchInShadowText: true
             });
         } else if(event.ctrlKey && !event.shiftKey &&  !event.altKey && event.key.toLowerCase() == 'b') {
             event.stopPropagation();
@@ -2541,6 +2539,7 @@ export class CodeBrowserComponent {
     }
 
     openAsPopup() {
+        this.saveEditorSession(true);
         window.open('/', '', 'popup');
     }
 
@@ -2679,6 +2678,251 @@ export class CodeBrowserComponent {
     toggleHiddenTabsTreeView() {
         this.showHiddenTabsSidePanel = !this.showHiddenTabsSidePanel;
     }
+
+    //#region Editor Session Save
+
+    private saveEditorSessionDebounceTimer: any = null;
+    /**
+     * Saves the editor session, with optional debounce.
+     * @param debounce If true, debounce the save by 500ms. If false, save immediately.
+     */
+    saveEditorSession(silent: boolean, debounce: boolean = true) {
+        if (debounce) {
+            if (this.saveEditorSessionDebounceTimer) {
+                clearTimeout(this.saveEditorSessionDebounceTimer);
+            }
+            this.saveEditorSessionDebounceTimer = setTimeout(() => {
+                this.log('saveEditorSession | Saving editor session (debounced)');
+                this.saveEditorSessionImmediate(silent);
+            }, 500);
+        } else {
+            this.saveEditorSessionImmediate(silent);
+        }
+    }
+    
+    /**
+     * Saves the editor session immediately.
+     */
+    async saveEditorSessionImmediate(silent: boolean) {
+        this.log('saveEditorSession | Saving editor session (immediate)');
+        // Only proceed if openTabs is not empty and at least one tab is not temporary
+        if (!this.openTabs.length || !this.openTabs.some(tab => !tab.temporary)) {
+            if(!silent) this.showSnackBar('No open tabs to save in session', null, 2000, 'top');
+            return;
+        }
+        let response = await this._ipc.callMethod('saveEditorSession', <EditorSession>{
+            openTabs: JSON.parse(JSON.stringify(this.openTabs.filter(x => !x.temporary && !x.unloadModel1))),
+            activeTabModelId: this.activeTabModelId,
+            selectedOrg: this.selectedOrg,
+            selectedEntityType: this.selectedEntityType,
+            // selectedOrg2: this.selectedOrg2
+        });
+        if (response.isSuccess) {
+            if(!silent) this.showSnackBar('Editor session saved successfully', null, 2000, 'top');
+        } else {
+            if(!silent) this.showSnackBar('Error saving editor session: ' + response.errors[0].message, null, 5000, 'top');
+        }
+    }
+
+    /**
+     * Clears the saved editor session by sending empty data to the IPC method.
+     */
+    async clearEditorSession() {
+        this.log('clearEditorSession | Clearing saved editor session');
+        let response = await this._ipc.callMethod('saveEditorSession', <EditorSession>{
+            openTabs: [],
+            activeTabModelId: null,
+            selectedOrg: '',
+            selectedEntityType: ''
+        });
+        if (response.isSuccess) {
+            this.log('Editor session cleared successfully');
+        } else {
+            this.log('Error clearing editor session: ' + response.errors[0]?.message);
+        }
+    }
+
+    async loadEditorSession() {
+        let dontTouchSpinner = false;
+        try{
+            let response : EnForceResponse = await this._ipc.callMethod('loadEditorSession');
+            if(response.isSuccess && response.data) {
+                const session: EditorSession = response.data;
+                const dialogRef = this.dialog.open(PromptDialogComponent, {
+                    data: {
+                        text: 'Restore previous session?',
+                        label: 'Restore Session',
+                        isTableRequired: true,
+                        tableData: {
+                            columns: [
+                                { key: '#', label: '#' },
+                                { key: 'Name', label: 'Name' },
+                                { key: 'Org', label: 'Org' },
+                                { key: 'Type', label: 'Type' },
+                                { key: 'Hidden/Pinned', label: 'Hidden/Pinned' }
+                            ],
+                            rows: (session.openTabs || []).filter(t => !t.unloadModel1).map((tab: CodeTab, idx: number) => ({
+                                '#': idx + 1,
+                                Name: tab.tabName,
+                                Org: tab.orgName,
+                                Type: tab.entityType,
+                                "Hidden/Pinned": [
+                                    tab.hidden ? 'Hidden' : '',
+                                    tab.pinned ? 'Pinned' : ''
+                                ].filter(Boolean).join(' , ')
+                            }))
+                        },
+                        isTextFieldRequired: false,
+                        isTextAreaRequired: false,
+                        okButtonText: 'Restore',
+                        cancelButtonText: 'Skip'
+                    },
+                    disableClose: true // Make modal non-dismissable except via buttons
+                });
+                const result = await firstValueFrom(dialogRef.afterClosed());
+
+                
+                if (result) {
+                    // Restore session
+
+                    this.showSpinner = true;
+
+                    this.closeDefaultTemporaryTab();
+
+                    const oldModelIdMap: { [key: string]: string } = {};
+                    const groupedTabs: { [org: string]: CodeTab[] } = {};
+
+                    for (const tab of session.openTabs || []) {
+                        // Group tabs by org only
+                        if (!groupedTabs[tab.orgName]) groupedTabs[tab.orgName] = [];
+                        groupedTabs[tab.orgName].push(tab);
+
+                        // Build the map: orgName + entityType + entityName => modelId
+                        const key = `${tab.orgName}::${tab.entityType}::${tab.tabValue}`;
+                        oldModelIdMap[key] = tab.modelId;
+                    }
+
+                    
+                    
+                    /* load tab for each org using loadEntityBulk method */
+                    this.log('Grouped tabs: ', groupedTabs);
+                    this.log('oldModelIdMap: ', oldModelIdMap);
+                    for(let org of Object.keys(groupedTabs)) {
+                        const tabs = groupedTabs[org].filter(x => x.editorType == AppConstants.CODE_EDITOR);
+                        if(tabs.length > 0) {
+                            const codeEntities: NormalizedCodeEntity[] = tabs.map(tab => tab.codeEntity).filter(ce => !!ce) as NormalizedCodeEntity[];
+                            if (codeEntities.length > 0) {
+                                let loadedTabs = await this.loadEntityBulk(codeEntities, [org], true, false, true);
+                            }                            
+                        }
+                    }
+
+                    /* CREATE DIFF TABS from previous session */
+                    for (const diffTab of (session.openTabs || []).filter(tab => tab.editorType === AppConstants.DIFF_EDITOR && !tab.unloadModel1)) {
+                        // Find the corresponding tabs for model1ForDiff and model2ForDiff
+                        const oldTab1 = session.openTabs.find(t => t.modelId === diffTab.model1ForDiff);
+                        const oldTab2 = session.openTabs.find(t => t.modelId === diffTab.model2ForDiff);
+                        
+                        if(oldTab1 && oldTab2) {
+                            let tab1 = this.openTabs.find(
+                                t => t.orgName === oldTab1.orgName && t.entityType === oldTab1.entityType && t.tabValue === oldTab1.tabValue && t.editorType === AppConstants.CODE_EDITOR
+                            );
+                            let tab2 = this.openTabs.find(
+                                t => t.orgName === oldTab2.orgName && t.entityType === oldTab2.entityType && t.tabValue === oldTab2.tabValue && t.editorType === AppConstants.CODE_EDITOR
+                            );
+                            if(tab1 && tab2)
+                                this.createDiffTab(tab1, tab2, undefined, true);
+                        }
+                    }
+
+
+                    /* select tab from previous session */
+                    if (session.activeTabModelId) {
+                        // Find the key in oldModelIdMap whose value matches session.activeTabModelId
+                        const key = Object.keys(oldModelIdMap).find(k => oldModelIdMap[k] === session.activeTabModelId);
+                        if (key) {
+                            // Find the tab in openTabs whose orgName, entityType, and tabValue match the key
+                            const [orgName, entityType, tabValue] = key.split('::');
+                            let tab : any = this.openTabs.find(
+                                t => t.orgName === orgName && t.entityType === entityType && t.tabValue === tabValue
+                            );
+                            tab = tab || this.openTabs[0];
+                            if(tab) this.selectTab(tab); // Select the found tab or the first tab if not found
+                        }
+                    }
+                    /* Reorder this.openTabs to match the order in session.openTabs */
+                    const reorderedTabs: CodeTab[] = [];
+                    for (const oldTab of session.openTabs || []) {
+                        // Find the corresponding tab in this.openTabs by orgName, entityType, and tabValue
+                        const tab = this.openTabs.find(
+                            t =>
+                                t.orgName === oldTab.orgName &&
+                                t.entityType === oldTab.entityType &&
+                                t.tabValue === oldTab.tabValue &&
+                                t.editorType === oldTab.editorType
+                        );
+                        if (tab) {
+                            tab.pinned = oldTab.pinned; // Restore pinned state
+                            tab.hidden = oldTab.hidden; // Restore hidden state
+                            reorderedTabs.push(tab);
+                        }
+                    }
+                    // Add any tabs that were not in the session (shouldn't happen, but just in case)
+                    for (const tab of this.openTabs) {
+                        if (!reorderedTabs.includes(tab)) {
+                            reorderedTabs.push(tab);
+                        }
+                    }
+
+                    //set tabs list and run change detection
+                    this.openTabs = reorderedTabs;
+                    this.changeDetectorRef.detectChanges();
+                    
+                    //! Pending...TODO multiple orgs
+                    // Sol #1 = validate orgs using username from local storage (SOAP Login) and don't load if org auth config is modified.
+                    // What about rest of the auth modes - AccessToken and ConnectedApp and OAuth ?
+                    // Sol #2 - refresh NormalizedCodeEntity with every fetchCode call - even if Org auth config modified
+                    // it will still load the code and the NCE will be updated with latest org details. no need for org auth config modification check
+                    // FetchClassCmpList also not required for this - FASTER
+                    // Sol #3 - load class cmp list for each org and choose right NCE objects and then perform loadEntityBulk
+                    // Problem - thrashing due to limited class cmp list in cache , too much time to load class cmp list for each org
+                    // Sol #4 - fetch specific NCE , NBD from org at once - QUICK - and then can use the latest NCE NBD object
+
+
+                    /**
+                     * group tabs by org and entity type
+                     * validate Org - if orgs specified in session are not present in orgCredsMap, then show error and load only for valid orgs
+                     * make a map of Orgname+entityType+entityName to old model Id
+                     * open tabs one by one for each org using loadEntityBulk method - DO NOT CONSIDER DIFF TABS MVP1 
+                     * rearrange tabs as per old positioning using the prepared map
+                     * pin/hide tabs as per session.openTabs
+                     * set activeTabModelId based on session.activeTabModelId
+                     */
+
+                    //Start with org selection
+                    this.log('loadEditorSession | session.selectedOrg = ' + session.selectedOrg);
+                    if(session.selectedOrg && this.orgCredsMap.has(session.selectedOrg)) {
+                        await this.onOrgSelect(session.selectedOrg, 'selectedOrg');
+                        // dontTouchSpinner = true;
+                        // setTimeout( () => {
+                        // }, 10);
+                    }
+
+                }
+            }
+
+            //clear saved session if everything was success
+            // await this.clearEditorSession();
+        } catch(err) {
+            console.error('Error loading editor sessions: ', err);
+            this.showSnackBar('Error loading editor sessions: ' + (err as any).message, null, 5000, 'top');
+        } finally {
+            // if(dontTouchSpinner) 
+            this.showSpinner = false;
+        }
+    }
+
+    //#endregion
     
     log(...str: any) {
         if(!str) str = [];

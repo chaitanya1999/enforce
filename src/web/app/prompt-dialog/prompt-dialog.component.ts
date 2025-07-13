@@ -26,6 +26,16 @@ export class PromptDialogOptions {
     checkboxRequired?: boolean;
     checkboxValue?: boolean;
     checkboxLabel?: string;
+
+    isTableRequired?: boolean;
+    tableData?: {
+        columns: { key: string; label: string }[];
+        rows: any[];
+        maxHeight?: string;
+    };
+
+    okButtonText?: string;
+    cancelButtonText?: string;
 }
 
 @Component({
@@ -64,6 +74,12 @@ export class PromptDialogComponent {
     checkboxValue : boolean = false;
     checkboxLabel : string = 'Checkbox'
 
+    isTableRequired: boolean = false;
+    tableData?: { columns: { key: string; label: string }[]; rows: any[]; maxHeight?: string };
+
+    okButtonText: string;
+    cancelButtonText: string;
+
     constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: PromptDialogOptions) {
         this.text = data.text || 'Please enter some input';
         this.placeholder = data.placeholder || 'Input';
@@ -82,6 +98,14 @@ export class PromptDialogComponent {
         this.checkboxRequired = data.checkboxRequired || false;
         this.checkboxValue = data.checkboxValue || false;
         this.checkboxLabel = data.checkboxLabel || '';
+        this.isTableRequired = !!data.isTableRequired;
+        this.okButtonText = data.okButtonText || 'Yes';
+        this.cancelButtonText = data.cancelButtonText || 'No';
+
+        if (this.isTableRequired && data.tableData && Array.isArray(data.tableData.columns) && Array.isArray(data.tableData.rows)) {
+            this.tableData = data.tableData;
+            this.log('Table data initialized:', this.tableData);
+        }
     }
 
     isTextFieldValid(): boolean {
@@ -124,8 +148,7 @@ export class PromptDialogComponent {
             this.dialogRef.close({
                 input: this.inputValue,
                 textArea: this.textAreaValue,
-                dropdownSelection: this.dropdownSelection,
-                checkbox: this.checkboxValue
+                dropdownSelection: this.dropdownSelection
             });
         }
     }
@@ -150,5 +173,12 @@ export class PromptDialogComponent {
 
     dropdownOnSelect(selection : any) {
         this.dropdownSelection = selection;
+    }
+
+    log(...str: any) {
+        if(!str) str = [];
+        str.unshift('prompt-dialog.component |');
+        // console.log('#$#$ ' , str);
+        console.log(...str);
     }
 }
