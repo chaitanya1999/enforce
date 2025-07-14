@@ -35,7 +35,7 @@
         <li>Go to Org Manager tab, click Add + icon.</li>
         <li>For authentication using username, password ( + security token ) choose Auth Mode = SOAP Login and enter the details. </li>
         <li>For authentication using accessToken / session ID choose Auth Mode = Access Token. To obtain Session Id from an existing logged in session follow next step.  </li>
-        <li>Run the below anonymous apex script in developer console to obtain Session ID and Instance URL<br/><br/>
+        <li>Run the below anonymous apex script in developer console to obtain Session ID and Instance URL.<br/><br/>
             <pre>
     String sessionId = userInfo.getSessionId();
     System.debug('Session id '+ UserInfo.getOrganizationId() + UserInfo.getSessionId().substring(15));
@@ -48,14 +48,14 @@
     <h2>Please Note - </h2>
     <ul type="disc">
         <li>When dealing with tabs (save / reload) - the IDE will interact with the org to which the current active tab belongs to.</li>
-        <li>Actions present on the quick actions bar (top of the screen) will interact with the org selected from the dropdown</li>
-        <li>The feature "Load from Selected org" will work with the org selected from the dropdown and attempt to fetch the active class/component from there</li>
+        <li>Actions present on the quick actions bar (top of the screen) will interact with the org selected from the dropdown.</li>
+        <li>The feature "Load from Selected org" will work with the org selected from the dropdown and attempt to fetch the active class/component from there.</li>
     </ul>
 
     <h2>Known Issues -</h2> 
     <ul type="disc">
-        <li>Some issues with keyboard shortcuts due to browser default behavior</li>
-        <li>Code editor : tabs drag and drop doesn't works yet, instead use keyboard shortcuts</li>
+        <li>Some issues with keyboard shortcuts due to browser default behavior. Keyboard shortcuts work better when enforce is launched in a dedicated window using the command.</li>
+        <li>Code editor : tabs drag and drop doesn't works yet, instead use keyboard shortcuts.</li>
     </ul>
 
     <h2>Keyboard Shortcuts - Global</h2> 

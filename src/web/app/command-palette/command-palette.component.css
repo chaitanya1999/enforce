@@ -57,7 +57,7 @@
   padding-left: 25px;
 }
 .command-palette-list {
-  max-height: 200px;
+  max-height: 50vh;
   overflow-y: auto;
   margin: 0;
   padding: 0;

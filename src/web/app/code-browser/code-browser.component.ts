@@ -1391,6 +1391,7 @@ export class CodeBrowserComponent {
         new Command('Org: Select Secondary Org (for Quick Diff)', 'select-org-2', () => this.selectOrg('selectedOrg2'), '', '/sso'),
         new Command('Org: Refresh Org Metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata(), '', '/rog'),
         new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
+        new Command('Component: Create New Component', 'create-new-component', () => this.createNewComponent(), '', '/new'),
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
         new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode(), '' , '/qd'),
         new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true), '', '/ccfo'),
@@ -1410,6 +1411,30 @@ export class CodeBrowserComponent {
         new Command('Window: Launch EnForce in a Dedicated Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
         new Command('Session: Save Editor Session', 'save-editor-session', () => this.saveEditorSession(false)),
     ];
+
+    createNewComponent() {
+        if(!this.isOrgSelected || this.quickDiffModeFlag) return;
+
+        let authorized = !!this.orgCredsMap.get(this.selectedOrg)?.allowCodeModification;
+        if(!authorized) {
+            let dialogRef = this.dialog.open(AlertDialogComponent, {
+                data : {
+                    content : "Code Modification not allowed. Enable it from org manager."
+                }
+            });
+            return;
+        }
+
+        this.openCommandPalette('createNewComponent', {
+            commands : this.entityTypeList_singular.map( (value : SelectOption) => <Command>{uniqueId : value.value, name : value.value, selectOption : value} ),
+            placeholder: 'Select a type',
+            emptyMessage: 'No types available',
+            wildcardEnabled: true,
+            commonAction: (cmd: any) => {
+                this.createNewCode(cmd.selectOption);
+            }
+        }, true);
+    }
 
     openFileFromBundle(nested?: boolean) {
         if(!this.activeTabModelId) return;
@@ -1635,7 +1660,7 @@ export class CodeBrowserComponent {
             evt.preventDefault();
             let tabIndex = this.openTabs.findIndex(x => x.modelId == this.activeTabModelId);
             let newTabIndex = this.findPreviousTab(tabIndex);
-            if(newTabIndex && newTabIndex >= 0)
+            if(newTabIndex != null && newTabIndex != undefined && newTabIndex >= 0)
                 this.selectTab(this.openTabs[newTabIndex]);
         }
         //switch to next tab
@@ -2743,7 +2768,6 @@ export class CodeBrowserComponent {
     }
 
     async loadEditorSession() {
-        let dontTouchSpinner = false;
         try{
             let response : EnForceResponse = await this._ipc.callMethod('loadEditorSession');
             if(response.isSuccess && response.data) {
@@ -2849,7 +2873,10 @@ export class CodeBrowserComponent {
                             tab = tab || this.openTabs[0];
                             if(tab) this.selectTab(tab); // Select the found tab or the first tab if not found
                         }
+                    } else if(this.openTabs.length){
+                        this.selectTab(this.openTabs[0]);
                     }
+
                     /* Reorder this.openTabs to match the order in session.openTabs */
                     const reorderedTabs: CodeTab[] = [];
                     for (const oldTab of session.openTabs || []) {

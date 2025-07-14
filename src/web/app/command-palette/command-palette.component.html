@@ -14,7 +14,7 @@
 			(click)="select(cmd)"
 			[attr.aria-selected]="$index === activeIndex"
 			>
-			<div style="display: flex; flex-direction: column; width: 100%; flex: 1 1 0;">
+			<div style="display: flex; flex-direction: column; width: 100%; flex: 1 1 0; min-width: 0;">
 				<span class="command-label" [title]="cmd.name">{{cmd.name}}</span>
 				<span class="command-shadow-text">{{cmd.shadowText}}</span>
 				<!-- @if(cmd.shadowText) {

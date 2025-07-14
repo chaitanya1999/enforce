@@ -366,14 +366,12 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         if (EditorConfigService.monaco || this.window!.monaco) {
             console.log('#$#$ MONACO FOUND')
             // Wait until monaco editor is available
-            return this.loadPromise = new Promise((resolve, reject) => {resolve(true)}).then(() => {
-                this.initMonaco();
+            return this.loadPromise = Promise.resolve().then(() => {
+                return this.initMonaco();
             });
         } else {
             console.log('#$#$ MONACO NOT FOUND')
-            // this.loadedMonaco = true;
-            // CodeEditorComponent.loadedMonacoGlobal = true;
-            this.loadPromise = new Promise<void>(async (resolve: any) => {;
+            this.loadPromise = new Promise<void>(async (resolve: any) => {
                 if ((typeof ((<any>this.window).monaco) === 'object') || EditorConfigService.monaco) {
                     console.log('MONACO ALREADY LOADED');
                     await this.initMonaco();
@@ -382,14 +380,21 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 }
                 const onMyAmdLoader: any = () => {
                     // Load monaco
-                    (<any>this.window).require.config({ paths: { 'vs': 'assets/monaco/vs' } });
+                    (<any>this.window).require.config({ paths: { 'vs': this.window?.location.origin + '/assets/monaco/vs' } });
 
-                    (<any>this.window).require(['vs/editor/editor.main'], async () => {
-                        console.log('REQUIRE MONACO LOADED');
-                        EditorConfigService.monaco = monaco;
-                        await this.initMonaco();
-                        resolve();
-                    });
+                    (<any>this.window).require(
+                        [
+                            'vs/editor/editor.main'
+                            // Add other languages here if needed
+                        ],
+                        async () => {
+                            console.log('REQUIRE MONACO LOADED');
+                            EditorConfigService.monaco = monaco;
+                            await this.initMonaco();
+                            // setTimeout(() => this.window?.require(['vs/basic-languages/html/html'], ()=>{}) , 1000);
+                            resolve();
+                        }
+                    );
                 };
 
                 // Load AMD loader if necessary
