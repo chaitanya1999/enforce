@@ -619,6 +619,9 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
     setModelLanguage(language: string) {
         if(this.editorActive == AppConstants.CODE_EDITOR) {
             monaco.editor.setModelLanguage(this.codeEditorInstance?.getModel()!, language);
+        } else {
+            monaco.editor.setModelLanguage(this.diffEditorInstance!.getModel()!.modified, language);
+            monaco.editor.setModelLanguage(this.diffEditorInstance!.getModel()!.original, language);
         }
         // this.codeEditorInstance?.getModel().
     }
@@ -717,6 +720,14 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                 enabled: value
             }
         });
+    }
+
+    @Output() moveToLineCol(lineNumber : number , column : number) {
+        if(this.editorActive == this.$codeEditor) {
+            this.codeEditorInstance?.setPosition({lineNumber , column})
+            this.codeEditorInstance?.revealLineInCenter(lineNumber);
+            this.focus();
+        }
     }
 
     log(...str: any) {

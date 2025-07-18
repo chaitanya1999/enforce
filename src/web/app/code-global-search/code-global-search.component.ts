@@ -21,6 +21,8 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
     selectedRowIndex: number | null = null;
     @Output() rowDoubleClicked = new EventEmitter<any>();
     @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
+    @ViewChild('tableContainer') tableContainer? : ElementRef;
+    stateLoaded : boolean = false;
 
     constructor(
         private ipc: IpcService,
@@ -28,7 +30,17 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
         @Inject(MAT_DIALOG_DATA) public data: any
     ) {
         this.orgName = data.orgName;
+        if(this.orgName == data.state?.orgName) {
+            //restore state
+            this.searchText = data.state?.searchText;
+            this.results = data.state?.results;
+            this.error = data.state?.error;
+            this.submitted = data.state?.submitted;
+            this.selectedRowIndex = data.state?.selectedRowIndex;
+            this.stateLoaded = true;
+        }
     }
+
 
     async onSearch() {
         if (!this.searchText) return;
@@ -60,8 +72,17 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
         }
     }
 
-    close() {
-        this.dialogRef.close();
+    close(closeData : any = {}) {
+        this.dialogRef.close({
+            searchText : this.searchText,
+            orgName : this.orgName,
+            results : this.results,
+            error : this.error,
+            submitted : this.submitted,
+            selectedRowIndex : this.selectedRowIndex,
+            tableScroll : this.tableContainer?.nativeElement.scrollTop,
+            ...closeData
+        });
     }
 
     selectRow(row: any, index: number) {
@@ -70,8 +91,9 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
 
     openRow(row: any, index: number) {
         this.selectedRowIndex = index;
+        this.close({row});
         // Emit event to parent (code-browser) to load entity
-        this.rowDoubleClicked.emit(row);
+        // this.rowDoubleClicked.emit(row);
         // Optionally close dialog here if you want:
         // this.close();
     }
@@ -81,6 +103,7 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             if (this.searchInputRef && this.searchInputRef.nativeElement) {
                 this.searchInputRef.nativeElement.focus();
             }
+            if(this.stateLoaded && this.tableContainer && this.data.state?.tableScroll) this.tableContainer.nativeElement.scrollTop = this.data.state?.tableScroll;
         }, 150);
     }
 }

@@ -350,7 +350,7 @@ export class CodeBrowserComponent {
 
     codeBrowserFirstOpen() {
         this.log('codeBrowserFirstOpen');
-        this.loadEditorSession();
+        setTimeout( () => this.loadEditorSession(), 500);
     }
 
     addTab(codeTab : CodeTab) {
@@ -1390,6 +1390,9 @@ export class CodeBrowserComponent {
         new Command('Org: Select Primary Org', 'select-org', () => this.selectOrg('selectedOrg') , '', '/spo'),
         new Command('Org: Select Secondary Org (for Quick Diff)', 'select-org-2', () => this.selectOrg('selectedOrg2'), '', '/sso'),
         new Command('Org: Refresh Org Metadata', 'refresh-org-metadata', () => this.reloadOrgMetadata(), '', '/rog'),
+        new Command('Org: Login Primary Org in Browser', 'login-primary-org', () => {if(this.isOrgSelected) this.openOrg(this.selectedOrg)}, '', '/lpo'),
+        new Command('Org: Login Secondary Org in Browser', 'login-secondary-org', () => {if(this.isOrg2Selected) this.openOrg(this.selectedOrg2)}, '', '/lso'),
+        new Command('Org: Login Active Tab Org in Browser', 'login-tab-org', () => this.openOrg(), '', '/lto'),
         new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
         new Command('Component: Create New Component', 'create-new-component', () => this.createNewComponent(), '', '/new'),
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
@@ -2111,10 +2114,10 @@ export class CodeBrowserComponent {
         this.cursorPosition.column = evt.column;
     }
 
-    async openOrg() {
-        if(!this.activeTab?.orgName) return;
+    async openOrg(orgName? : string) {
+        if(!orgName && !this.activeTab?.orgName) return;
         try {
-            let url = (await this._ipc.callMethod('getOrgLoginUrl', this.activeTab?.orgName));
+            let url = (await this._ipc.callMethod('getOrgLoginUrl', orgName || this.activeTab?.orgName));
             window.open(url);
         } catch(err) {
             console.log(err);
@@ -2631,6 +2634,7 @@ export class CodeBrowserComponent {
 
     }
 
+    globalSearchModalState : any = {};
     globalSearch() {
         if(!this.isOrgSelected) {
             this.showSnackBar('Please select an org first');
@@ -2638,20 +2642,32 @@ export class CodeBrowserComponent {
         }
         let dialogRef = this.dialog.open(CodeGlobalSearchComponent, {
             data : {
-                orgName : this.selectedOrg
+                orgName : this.selectedOrg,
+                state : this.globalSearchModalState
             }
         });
 
         // Listen for double-click row event
-        const sub = dialogRef.componentInstance.rowDoubleClicked.subscribe((row: any) => {
-            if(row && row.NormalizedCodeEntity) {
-                this.loadEntity(row.Name, null, row.Type, this.selectedOrg, row.NormalizedCodeEntity);
-                dialogRef.close();
-            }
-        });
+        // const sub = dialogRef.componentInstance.rowDoubleClicked.subscribe(async (row: any) => {
+        //     if(row && row.NormalizedCodeEntity) {
+        //         dialogRef.close();
+        //         let tab : CodeTab | null | undefined = await this.loadEntity(row.Name, null, row.Type, this.selectedOrg, row.NormalizedCodeEntity);
+        //         if(tab) {
+        //             setTimeout(() => this.editorCmp.moveToLineCol(parseInt(row.LineNo), 1), 100);
+        //         }
+        //     }
+        // });
 
-        dialogRef.afterClosed().subscribe((result: any) => {
-            sub.unsubscribe();
+        dialogRef.afterClosed().subscribe(async (result: any) => {
+            this.globalSearchModalState = result;
+            let row = result.row;
+            if(row && row.NormalizedCodeEntity) {
+                let tab : CodeTab | null | undefined = await this.loadEntity(row.Name, null, row.Type, this.selectedOrg, row.NormalizedCodeEntity);
+                if(tab) {
+                    setTimeout(() => this.editorCmp.moveToLineCol(parseInt(row.LineNo), 1), 100);
+                }
+            }
+            // sub.unsubscribe();
             // Optionally handle after close
         });
     }
