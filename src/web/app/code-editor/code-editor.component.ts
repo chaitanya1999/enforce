@@ -71,6 +71,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
     @Input() loadingSpinner : boolean = false;
 
     @Output() ctrlEnter : EventEmitter<boolean> = new EventEmitter<boolean>();
+    @Output() monacoInitialized : EventEmitter<boolean> = new EventEmitter<boolean>();
 
     ctrlEnterCallback : Function = () => {};
 
@@ -350,16 +351,17 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         if(!this.delayLoad) {
             this.loadMonacoLibrary();
         }
-        this.removeBlueBorderMonaco();
+        this.removeBlueBorderMonaco()
+
     }
 
     removeBlueBorderMonaco() {
         setTimeout(() => {
-            const monacoEl = document.querySelector('.monaco-editor') as HTMLElement;
-            if (monacoEl) {
+            const monacoEls = document.querySelectorAll('.monaco-editor') as NodeListOf<HTMLElement>;
+            monacoEls.forEach(monacoEl => {
                 monacoEl.style.setProperty('--vscode-focusBorder', 'transparent');
-            }
-        }, 200); // Slight delay to ensure Monaco has rendered
+            });
+        }, 500); // Slight delay to ensure Monaco has rendered
     }
 
     loadMonacoLibrary() {
@@ -391,8 +393,12 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                             console.log('REQUIRE MONACO LOADED');
                             EditorConfigService.monaco = monaco;
                             await this.initMonaco();
-                            // setTimeout(() => this.window?.require(['vs/basic-languages/html/html'], ()=>{}) , 1000);
-                            resolve();
+                            // setTimeout(() => {
+                            //     console.log('before html load');
+                            //     this.window?.require(['vs/basic-languages/html/html'], ()=>{console.log('after html load CALLBACK');});
+                            //     console.log('after html load');
+                            // } , 5000);
+                            // resolve();
                         }
                     );
                 };
@@ -579,6 +585,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
                 // Add Ctrl+Enter keybinding
                 this.removeBlueBorderMonaco();
+
+                this.monacoInitialized.emit(true);
             })
         });
 

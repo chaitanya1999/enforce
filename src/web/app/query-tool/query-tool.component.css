@@ -28,7 +28,8 @@ div.topBarCard {
     /* margin: 0.5px; */
     /* background-color: rgb(99, 131, 255); */
     /* background-color: rgb(139, 161, 252); */
-    background-color: lightblue;
+    /* background-color: lightblue; */
+    background-color: rgb(88, 88, 88);
     display: flex;
     flex-direction: column;
     border-radius: 5px;
@@ -91,7 +92,8 @@ div.contents {
     display: flex;
     flex-direction: row;
     justify-content: baseline;
-    color: rgb(36, 36, 36);
+    color: whitesmoke;
+    font-weight: bold;;
     font-family: sans-serif;
 }
 

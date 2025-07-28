@@ -1,5 +1,6 @@
 import { Component, Inject, Output, EventEmitter, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import {MatTooltipModule} from '@angular/material/tooltip';
 import { IpcService } from '../../ipc.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -7,7 +8,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
     selector: 'app-code-global-search',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, MatTooltipModule],
     templateUrl: './code-global-search.component.html',
     styleUrl: './code-global-search.component.css'
 })
@@ -16,10 +17,11 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
     orgName: string = '';
     loading: boolean = false;
     results: any[] = [];
+    displayResults: any[] = [];
     error: string = '';
     submitted: boolean = false;
     selectedRowIndex: number | null = null;
-    @Output() rowDoubleClicked = new EventEmitter<any>();
+    // @Output() rowDoubleClicked = new EventEmitter<any>();
     @ViewChild('searchInput') searchInputRef!: ElementRef<HTMLInputElement>;
     @ViewChild('tableContainer') tableContainer? : ElementRef;
     stateLoaded : boolean = false;
@@ -38,7 +40,14 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             this.submitted = data.state?.submitted;
             this.selectedRowIndex = data.state?.selectedRowIndex;
             this.stateLoaded = true;
+            this.filterTestClasses();
         }
+
+        dialogRef.beforeClosed().subscribe(result => {
+            if (result === undefined) {
+                this.close();
+            }
+        });
     }
 
 
@@ -53,6 +62,8 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             const res = await this.ipc.callMethod('codeGlobalSearch', { orgName: this.orgName, searchText: text });
             if (res && res.isSuccess) {
                 this.results = res.data;
+                this.displayResults = res.data;
+                this.filterTestClasses();
             } else {
                 this.error = res?.errors?.[0]?.message || 'No results or error occurred.';
             }
@@ -105,5 +116,13 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             }
             if(this.stateLoaded && this.tableContainer && this.data.state?.tableScroll) this.tableContainer.nativeElement.scrollTop = this.data.state?.tableScroll;
         }, 150);
+    }
+
+    hideTestClasses : boolean = false;
+    filterTestClasses() {
+        this.displayResults = [];
+        if(!this.hideTestClasses)
+            this.displayResults = this.results;
+        else this.displayResults = this.results.filter((x:any) => !x.isTestClass);
     }
 }

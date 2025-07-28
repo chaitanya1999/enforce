@@ -4,9 +4,6 @@ import { CodeEntity } from './AppConstants';
 
 export default class Utils {
 
-    static AUTH_MODE_SOAP_LOGIN = 'soapLogin';
-    static AUTH_MODE_ACCESS_TOKEN = 'accessToken';
-
     static enableLogging = true;
 
     static aura_suffixMap : any = {
@@ -27,82 +24,60 @@ export default class Utils {
             console.log(new Date().toLocaleString() + ' | ' + x);
     }
 
-    static async handleLogin(conn : jsforce.Connection, creds : any, useProxy : boolean = false) : Promise<any> {
+    static async handleLogin(conn : jsforce.Connection, creds : any, useProxy : boolean = false, forceRefreshSession : boolean = false) : Promise<any> {
         //CORS proxy server used for - SOAP login , validating access token using userinfo oauth api
 
+        let desktopMode = (<any>window).desktopMode;
         let sessions = Utils.loadSessionsData();
         let result = null;
         try {
-            Utils.debug('Auth - ' + creds.authMode);
-            if (sessions[creds.orgName] && creds.authMode == Utils.AUTH_MODE_SOAP_LOGIN) {
+            Utils.debug('Auth - ' + creds.authMode + ' | desktop = ' + desktopMode);
+            if (sessions[creds.orgName] && !forceRefreshSession) {
 
                 let session = sessions[creds.orgName];
                 conn = Utils.newJsforceConnection({
                     loginUrl: creds.loginUrl,
                     instanceUrl: session.instanceUrl,
                     accessToken: session.accessToken,
-                    version: conn.version,
-                    refreshFn: async(conn : jsforce.Connection, callback : any) => {
-                        try {
-                            console.log('#$#$ reAuth');
-                            // re-auth to get a new access token
-
-                            let result;
-                            if(creds.authMode == Utils.AUTH_MODE_SOAP_LOGIN || !creds.authMode) {
-                                ({result, conn} = await Utils.auth_soapLogin(conn, creds, !!(useProxy || creds.corsProxy) ));
-                                let sessions = Utils.loadSessionsData();
-                                sessions[creds.orgName] = {
-                                    instanceUrl: conn.instanceUrl,
-                                    accessToken: conn.accessToken,
-                                    loginResult: result
-                                }
-                                Utils.saveSessionData(sessions);
-                            }
-
-                            if (!conn.accessToken) {
-                                throw new Error('Access token not found after login');
-                            }
-
-                            console.log("#$#$ reAuth Token refreshed")
-
-                            // 1st arg can be an `Error` or null if successful
-                            // 2nd arg should be the valid access token
-                            callback(null, conn.accessToken);
-                        } catch (err) {
-                            if (err instanceof Error) {
-                                callback(err);
-                            } else {
-                                throw err;
-                            }
-                        }
-                    }
+                    version: conn.version
                 }, useProxy || creds.corsProxy);
                 result = session.loginResult;
 
                 Utils.debug("Session reusing");
             } else {
-                throw new Error("Session not found");
+                throw new Error(forceRefreshSession ? "Session not found" : "Session force refresh");
             }
-
         } catch (err : any) {
             // Utils.debug("Invalid session/Session not found. SOAP LOGIN.");
             Utils.debug(err.message);
-            if(creds.authMode == Utils.AUTH_MODE_SOAP_LOGIN || !creds.authMode) {
+            if(creds.authMode == 'soapLogin' || !creds.authMode) {
                     
                 Utils.debug("Proxy SOAP Login");
-                ({result , conn} = await Utils.auth_soapLogin(conn, creds, !!(useProxy || creds.corsProxy) ));
-                
-            } else { //for now only access token authentication
+                ({result , conn} = await Utils.auth_soapLogin(conn, creds, !!useProxy));
 
+            } else { //for now only access token authentication , //! Access Token auth Mode still calls userinfo api for each operation
                 Utils.debug('access token authentication ' , JSON.stringify(creds));
-                ({result , conn} = await Utils.auth_accessToken(conn, creds, !!(useProxy || creds.corsProxy) ));
+                conn = Utils.newJsforceConnection({
+                    // loginUrl: creds.loginUrl,
+                    instanceUrl: creds.instanceUrl,
+                    accessToken: creds.accessToken,
+                    version: conn.version
+                }, useProxy);
+                let session = sessions[creds.orgName];
+
+                let identityResult : any;
+                if(desktopMode && false) {
+                    identityResult = await conn.identity();
+                } else {
+                    identityResult = await conn.requestGet((creds.instanceUrl || conn.instanceUrl) + '/services/oauth2/userinfo', {});
+                }
                 
-                                
-                // result = session?.loginResult || {
-                //     "id": identityResult.user_id,
-                //     "organizationId": identityResult.organization_id,
-                //     "url": `https://test.salesforce.com/id/${identityResult.organization_id}/${identityResult.user_id}`
-                // };
+                result = session?.loginResult || {
+                    "id": identityResult.user_id,
+                    "organizationId": identityResult.organization_id,
+                    "url": `https://test.salesforce.com/id/${identityResult.organization_id}/${identityResult.user_id}`
+                };
+                Utils.debug('New access token - authentication succesful');
             }
             sessions[creds.orgName] = {
                 instanceUrl: conn.instanceUrl,
@@ -114,7 +89,6 @@ export default class Utils {
         return { res: result, conn: conn };
     }
 
-    //Centralized method used to create new jsforce connection object to set proxy URL according to prod/lower env and corsProxy parameter
     static newJsforceConnection(options : any, corsProxy : boolean = false) {
         if(corsProxy) {
             options.proxyUrl = (environment.production ? '/proxy' : `http://${window.location.hostname}/proxy`);
@@ -122,21 +96,12 @@ export default class Utils {
         return new jsforce.Connection(options);
     }
 
-
     static async auth_soapLogin(conn : jsforce.Connection , creds : any, useProxy : boolean) : Promise<{result : any , conn : jsforce.Connection}> {
         let conn1 : jsforce.Connection , result;
         //soap login will not work from browser due to CORS restrictions , so proxy api call required from the server
-
-        Utils.debug('auth_soapLogin - ' + environment.production);
-        conn1 = Utils.newJsforceConnection({
-            loginUrl: creds.loginUrl,
-            version: conn.version,
-        }, true);
-        result = await conn1.login(creds.username, creds.password);
-
-        // ({result, conn1} = await Utils.proxySoapLogin(conn, creds, useProxy));
+        ({result, conn1} = await Utils.proxySoapLogin(conn, creds));
         Utils.debug("SOAP Login Succesful");
-        
+
         if(useProxy) {
             return {result, conn : conn1};
         }
@@ -146,18 +111,39 @@ export default class Utils {
             return {result, conn};
         }
     }
-    static async auth_accessToken(conn : jsforce.Connection , creds : any, useProxy : boolean) : Promise<{result : any , conn : jsforce.Connection}> {
-        conn = Utils.newJsforceConnection({
-            // loginUrl: creds.loginUrl,
-            instanceUrl: creds.instanceUrl,
-            accessToken: creds.accessToken,
-            version: conn.version
-        }, useProxy);
-        let result = {};
-        return {result, conn};
-    }
-    
 
+    static async proxySoapLogin( conn : jsforce.Connection , creds : any ) : Promise<any> {
+        Utils.debug('proxySoapLogin - ' + environment.production);
+        let conn1 = Utils.newJsforceConnection({
+            loginUrl: creds.loginUrl,
+            version: conn.version,
+            refreshFn: async(conn : jsforce.Connection, callback : any) => {
+                try {
+                    // re-auth to get a new access token
+                    //!...PENDING PENDING PENDING - HARD
+                    await Utils.handleLogin(conn, creds, creds.)
+
+                    if (!conn.accessToken) {
+                        throw new Error('Access token not found after login');
+                    }
+
+                    console.log("Token refreshed")
+
+                    // 1st arg can be an `Error` or null if successful
+                    // 2nd arg should be the valid access token
+                    callback(null, conn.accessToken);
+                } catch (err) {
+                    if (err instanceof Error) {
+                        callback(err);
+                    } else {
+                        throw err;
+                    }
+                }
+            }
+        }, true);
+        let result = await conn1.login(creds.username, creds.password);
+        return {result, conn1};
+    }
 
     static loadSessionsData() : any {
         let session = localStorage.getItem('sessionData');

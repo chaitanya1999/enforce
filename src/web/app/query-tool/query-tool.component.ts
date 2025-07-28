@@ -351,6 +351,12 @@ export class QueryToolComponent {
         }
     }
 
+    onMonacoInitialized(event: boolean) {
+        this.log('onMonacoInitialized | event = ' + event);
+        this.queryInputBox.toggleMinimap(false);
+        this.queryInputBox.wordWrap(true);
+    }
+
 
     showSnackBar(message : string, action? : string | null, duration? : number, verticalPosition? : MatSnackBarVerticalPosition) {
         this.snackBar.open(message, action || 'Close', {

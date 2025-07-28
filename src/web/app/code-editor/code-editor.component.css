@@ -41,3 +41,8 @@
     --vscode-focusBorder: #000000 !important;
     outline: 0;
 }
+
+
+.modified-line-gutter {
+  border-left: 3px solid orange;
+}

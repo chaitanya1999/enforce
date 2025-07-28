@@ -9,4 +9,5 @@ export type CommandPaletteDialogData = {
 	commonAction? : any; //function
 	searchInBadge?: boolean;
 	searchInShadowText?: boolean;
+	debounce?: boolean;
 }

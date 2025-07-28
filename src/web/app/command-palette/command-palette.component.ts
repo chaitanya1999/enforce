@@ -27,6 +27,10 @@ export class CommandPaletteComponent implements AfterViewInit {
 
 	searchInBadge : boolean = false;
 	searchInShadowText : boolean = false;
+	debounceInput: boolean = false;
+	private inputDebounceTimer: any;
+	private debounceLimit: number = 5
+	private debounceCount: number = 5;
 
 	constructor(
 		public dialogRef: MatDialogRef<CommandPaletteComponent>,
@@ -46,6 +50,8 @@ export class CommandPaletteComponent implements AfterViewInit {
 		}
 		this.searchInBadge = data.searchInBadge || false;
 		this.searchInShadowText = data.searchInShadowText || false;
+		this.debounceInput = !!data.debounce;
+
 	}
 
 	ngAfterViewInit() {
@@ -53,25 +59,68 @@ export class CommandPaletteComponent implements AfterViewInit {
 	}
 
 	onInput() {
-		const s = this.search.toLowerCase();
-		let matches: any[];
-		if (this.wildcardEnabled && (s.includes('*') || s.includes(' '))) {
-			const regexStr = '' + s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'.*')).join('.*') + '';
-			const regex = new RegExp(regexStr, 'i');
-			matches = this.data.commands!.filter(cmd =>
-				regex.test(cmd.name.toLowerCase()) ||
-				(cmd.shadowText && regex.test(cmd.shadowText.toLowerCase())) || (cmd.badge && regex.test(cmd.badge.toLowerCase()))
-			);
+		if (this.debounceInput) {
+			if (this.inputDebounceTimer) {
+				clearTimeout(this.inputDebounceTimer);
+			}
+			this.debounceCount++;
+			if(this.debounceCount >= this.debounceLimit) {
+				this.debounceCount = 0;
+				this.runInputFilter();
+			} else {
+				this.inputDebounceTimer = setTimeout(() => this.runInputFilter(), 200);
+			}
 		} else {
-			matches = this.data.commands!.filter(cmd =>
-				cmd.name.toLowerCase().includes(s) ||
-				(this.searchInShadowText && cmd.shadowText && cmd.shadowText.toLowerCase().includes(s))
-				|| (this.searchInBadge && cmd.badge && cmd.badge.toLowerCase().includes(s))
-			);
+			this.runInputFilter();
+		}
+	}
+
+	runInputFilter() {
+		const s = this.search.toLowerCase();
+		let matches: any[] = [];
+		const opts = { searchInShadowText: this.searchInShadowText, searchInBadge: this.searchInBadge };
+
+		if (this.wildcardEnabled && (s.includes('*') || s.includes(' '))) {
+			const regexStr = s.split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g,'.*')).join('.*')+'';
+			const regex = new RegExp(regexStr, 'i');
+			const allMatches = this.getRegexMatches(this.data.commands!, regex, opts);
+			const exactMatches = this.getExactMatches(allMatches, s, opts);
+			const partialMatches = allMatches.filter(cmd => !exactMatches.includes(cmd));
+			matches = [...exactMatches, ...partialMatches];
+		} else {
+			const allMatches = this.getPartialMatches(this.data.commands!, s, opts);
+			const exactMatches = this.getExactMatches(this.data.commands!, s, opts);
+			const partialMatches = allMatches.filter(cmd => !exactMatches.includes(cmd));
+			matches = [...exactMatches, ...partialMatches];
 		}
 		this.totalFiltered = matches.length;
 		this.filtered = this.limitResults ? matches.slice(0, this.maxResults) : matches;
 		this.activeIndex = 0;
+	}
+
+
+	private getPartialMatches(commands: any[], s: string, opts: { searchInShadowText: boolean, searchInBadge: boolean }) {
+		return commands.filter(cmd =>
+			(cmd.name.toLowerCase().includes(s) && cmd.name.toLowerCase() !== s) ||
+			(opts.searchInShadowText && cmd.shadowText && cmd.shadowText.toLowerCase().includes(s) && cmd.shadowText.toLowerCase() !== s) ||
+			(opts.searchInBadge && cmd.badge && cmd.badge.toLowerCase().includes(s) && cmd.badge.toLowerCase() !== s)
+		);
+	}
+
+	private getRegexMatches(commands: any[], regex: RegExp, opts: { searchInShadowText: boolean, searchInBadge: boolean }) {
+		return commands.filter(cmd =>
+			regex.test(cmd.name.toLowerCase()) ||
+			(opts.searchInShadowText && cmd.shadowText && regex.test(cmd.shadowText.toLowerCase())) ||
+			(opts.searchInBadge && cmd.badge && regex.test(cmd.badge.toLowerCase()))
+		);
+	}
+
+	private getExactMatches(commands: any[], s: string, opts: { searchInShadowText: boolean, searchInBadge: boolean }) {
+		return commands.filter(cmd =>
+			cmd.name.toLowerCase() === s ||
+			(opts.searchInShadowText && cmd.shadowText && cmd.shadowText.toLowerCase() === s) ||
+			(opts.searchInBadge && cmd.badge && cmd.badge.toLowerCase() === s)
+		);
 	}
 
 	onKeyDown(event: KeyboardEvent) {

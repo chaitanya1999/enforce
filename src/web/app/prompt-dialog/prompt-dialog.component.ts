@@ -148,7 +148,8 @@ export class PromptDialogComponent {
             this.dialogRef.close({
                 input: this.inputValue,
                 textArea: this.textAreaValue,
-                dropdownSelection: this.dropdownSelection
+                dropdownSelection: this.dropdownSelection,
+                checkbox: this.checkboxValue
             });
         }
     }

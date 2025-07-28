@@ -47,6 +47,14 @@
         </div>
     </div>
     }
+    @if(checkboxRequired) {
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="promptCheckbox" [(ngModel)]="checkboxValue">
+        <label class="form-check-label" for="promptCheckbox">
+            {{checkboxLabel}}
+        </label>
+    </div>
+    }
     <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
         <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">{{okButtonText}}</button>
         <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">{{cancelButtonText}}</button>

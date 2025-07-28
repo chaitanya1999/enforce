@@ -624,13 +624,15 @@ export class CodeBrowserComponent {
                     this.showSpinner = false;
                 });
             } else {
+                let codeEntityToLoad, orgToLoad;
+                ([codeEntityToLoad, orgToLoad] = (codeEntity ? [codeEntity , org] : [codeEntity2 , org2]));
                 if(!codeEntity) {
                     this.showSnackBar(`Not Found on Org : ${org} ` + selectOption.label);
                 }
                 if(!codeEntity2) {
                     this.showSnackBar(`Not Found on Org : ${org2} ` + selectOption.label);
                 }
-                this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity);
+                this.loadEntity(codeEntityToLoad.Name, null, entityType, orgToLoad, codeEntityToLoad);
             }
         } else {
             this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity);
@@ -1482,6 +1484,7 @@ export class CodeBrowserComponent {
             limitResults : true,
             maxResults: 100,
             searchInBadge: true,
+            // debounce: true,
             commonAction: (cmd: any) => {
                 this.log('quickOpenFile | commonAction | cmd = ', cmd);
                 this.onEntitySelect(cmd.selectOption);
@@ -1598,7 +1601,7 @@ export class CodeBrowserComponent {
         
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
-            this.openMainCommandPalette();
+            if(!this.showSpinner) this.openMainCommandPalette();
         }
         else if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'u') {
             event.preventDefault();
@@ -1610,7 +1613,7 @@ export class CodeBrowserComponent {
         }
         else if (event.ctrlKey && !event.shiftKey && event.key.toLowerCase() === 'p') {
             event.preventDefault();
-            this.openCommandPalette('editorFiles',{
+            if(!this.showSpinner) this.openCommandPalette('editorFiles',{
                 commands: this.openTabs.map(tab => (<Command>{
                     uniqueId: tab.orgName + '::' + tab.tabValue,
                     name: tab.tabName,

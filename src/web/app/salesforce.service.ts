@@ -86,6 +86,7 @@ export class SalesforceService {
                 version: sfApiVersion
             });
             ({res, conn} = await Utils.handleLogin(conn, org));
+            await conn.query('SELECT Id FROM Organization LIMIT 1');
             debug("Authenticated ==> ");
             // console.log(conn);
             console.log(res);
@@ -466,11 +467,34 @@ export class SalesforceService {
             let resultsTable: any[] = [];
             const searchLower = searchText.toLowerCase();
 
+            function isApexTestClass(code: string): boolean {
+                // Remove single-line and multi-line comments
+                const withoutComments = code.split('\n').slice(0, 100).join('\n') //check only in first 100 lines - Approximate
+                    .replace(/\/\/.*$/gm, '')                            // remove single-line comments
+                    .replace(/\/\*[\s\S]*?\*\//g, '')                    // remove multi-line comments
+
+                    // Remove string literals ('...' or "...")
+                    .replace(/(["'])(?:(?=(\\?))\2.)*?\1/g, '');
+
+                // Regex to detect @isTest on a class declaration
+                // const testClassRegex = /@isTest\s*(public\s+|private\s+|protected\s+|global\s+)?(class|interface)\s+\w+/i;
+                // const testClassRegex = /@isTest(?:\s*\([^)]*\))?\s*(?:@[\w]+\s*)*(?:(public|private|protected|global)\s+)?(class|interface)\s+\w+/i;
+                const testClassRegex = /@isTest(?:\s*\([^)]*\))?[\s\S]*?(?:@[a-zA-Z]+\s*)*(?:public|private|protected|global)?\s*(class|interface)\s+\w+/i;
+
+
+
+                return testClassRegex.test(withoutComments);
+            }
+
+
             function processRecords(records: any[], type: string, displayType : string, bodyField: string) {
                 if (!records) return;
                 for (const rec of records) {
                     const body = rec[bodyField];
                     if (!body) continue;
+                    let isTestClass = (type == CodeEntity.ApexClass && isApexTestClass(body));
+                    if(isTestClass)
+                        console.log("$^$^&%& TEST CLASS " + rec['Name']);
                     const lines = body.split(/\r?\n/);
                     lines.forEach((line: string, idx: number) => {
                         const trimmedLine = line.trim();
@@ -493,7 +517,8 @@ export class SalesforceService {
                                 Type: displayType,
                                 LineNo: idx + 1,
                                 Text: trimmedLine.length > 500 ? trimmedLine.substring(0,500)+'...' : trimmedLine, // Limit to 1000 chars
-                                NormalizedCodeEntity: codeEntity
+                                NormalizedCodeEntity: codeEntity,
+                                isTestClass
                             });
                         }
                     });
