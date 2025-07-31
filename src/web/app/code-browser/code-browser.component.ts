@@ -352,9 +352,27 @@ export class CodeBrowserComponent {
         this.log('codeBrowserFirstOpen');
         setTimeout( () => this.loadEditorSession(), 500);
     }
+    addTab(codeTab: CodeTab) {
+        // Find the index of the active tab
+        let idx = this.openTabs.findIndex(tab => tab.modelId === this.activeTabModelId);
 
-    addTab(codeTab : CodeTab) {
-        this.openTabs.push(codeTab);
+        // Determine if the active tab is pinned
+        let activeTab = this.openTabs[idx];
+        if (activeTab && activeTab.pinned) {
+            // Find the last pinned tab
+            let lastPinnedIdx = -1;
+            for (let i = 0; i < this.openTabs.length; i++) {
+                if (this.openTabs[i].pinned) lastPinnedIdx = i;
+            }
+            // Insert after the last pinned tab
+            this.openTabs.splice(lastPinnedIdx + 1, 0, codeTab);
+        } else if (idx !== -1) {
+            // Insert after the active tab
+            this.openTabs.splice(idx + 1, 0, codeTab);
+        } else {
+            // No active tab, just push
+            this.openTabs.push(codeTab);
+        }
         this.openTabs = [...this.openTabs]; // trigger change detection
         this.changeDetectorRef.detectChanges();
     }

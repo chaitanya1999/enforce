@@ -51,24 +51,26 @@
                 <i class="bi bi-search"></i>
             </button>
         </div>
-        <div class="topBar" style="padding-top: 0px; padding-bottom: 0px;">
+        <div class="topBar" style="padding-top: 0px; padding-bottom: 0px; width: 100%;">
 
             <!-- Salesforce Org dropdown -->
             <select class="form-select topBarItem" aria-label="Salesforce Org"
                 [ngModel]="selectedOrg"
                 (ngModelChange)="onOrgSelect($event)"
-                style="width: 180px; min-width: 120px; max-width: 220px; display: inline-block; font-size: 0.8em;">
+                style="width: 180px; min-width: 120px; max-width: 220px; display: inline-block; font-size: 1em;padding: 4px 5px 4px 16px;">
                 <option>--Org--</option>
                 @for (orgCred of orgCredsList; track orgCred) {
                     <option [value]="orgCred.orgName">{{orgCred.orgName}}</option>
                 }
             </select>
 
-            <div class="filter" style="width: 180px; min-width: 100px; max-width: 220px; display: inline-block; margin-left: 10px;">
-                <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput" style="width: 100%;font-size: 0.8em;"/>
+            <div class="filter" style="width: 280px; min-width: 100px; max-width: 400px; display: inline-block; margin-left: 10px;">
+                <input placeholder="Filter...." [(ngModel)]="filterInput" (ngModelChange)="onInputFilter()" spellcheck="false" class="form-control filterInput" style="width: 100%;font-size: 1em;padding: 4px 5px 4px 30px;"/>
             </div>
 
             {{parseQuerySituation}}
+
+            <span class="records-count" style="justify-self: flex-end;">{{ (tableData.totalSize || tableData.totalSize == 0) ? tableData.totalSize + ' records ' : ''}}</span>
     
         </div>
     </div>
