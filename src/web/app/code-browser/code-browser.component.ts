@@ -933,8 +933,8 @@ export class CodeBrowserComponent {
      * Loads all entities from a Salesforce package.xml string.
      * @param packageXml The package.xml content as a string.
      */
-    async loadEntitiesFromPackageXml(packageXml: string, skipFewAuraFiles : boolean) {
-        this.log('loadEntitiesFromPackageXml | skipFewAuraFiles = ', skipFewAuraFiles);
+    async loadEntitiesFromPackageXml(packageXml: string, skipNonEssentialAuraFiles : boolean) {
+        this.log('loadEntitiesFromPackageXml | skipNonEssentialAuraFiles = ', skipNonEssentialAuraFiles);
         // Parse the XML string
         let parser = new DOMParser();
         let xmlDoc = parser.parseFromString(packageXml, "application/xml");
@@ -973,7 +973,7 @@ export class CodeBrowserComponent {
                 for (let bundleName of members) {
                     let matched : NormalizedCodeEntity[] = codeEntities.filter(e => e.BundleName === bundleName) || [];
                     this.log(`loadEntitiesFromPackageXml | Matching ${normalizedEntityType} by BundleName: ${bundleName} = ` , matched.length);
-                    if(normalizedEntityType === this.$entityTypeAura && skipFewAuraFiles) {
+                    if(normalizedEntityType === this.$entityTypeAura && skipNonEssentialAuraFiles) {
                         matched = matched.filter((x : NormalizedCodeEntity) => {
                             const found = Object.entries(AppConstants.aura_suffixVsDefTypes).find(([suffix, _]) => x.Name.endsWith(suffix));
                             const defType = found ? found[1] as string : 'COMPONENT';
@@ -1025,38 +1025,43 @@ export class CodeBrowserComponent {
                 const tabs1 = orgVsTab[org1] || [];
                 const tabs2 = orgVsTab[org2] || [];
 
-                // Map by tabValue + entityType for unique match
-                const tabMap1 = new Map<string, CodeTab>();
-                const tabMap2 = new Map<string, CodeTab>();
-                tabs1.forEach(tab => tabMap1.set(`${tab.tabValue}::${tab.entityType}`, tab));
-                tabs2.forEach(tab => tabMap2.set(`${tab.tabValue}::${tab.entityType}`, tab));
-
-                // For each entity present in both orgs, create a diff tab
-                for (const [key, tab1] of tabMap1.entries()) {
-                    const tab2 = tabMap2.get(key);
-                    if (tab2) {
-                        // Hide originals, show only diff
-                        if (!tab1.hidden) this.hideShowTab(tab1);
-                        if (!tab2.hidden) this.hideShowTab(tab2);
-                        tabsList.push(this.createDiffTab(tab1, tab2, undefined, true));
-                    } else {
-                        // Only present in org1, do not create diff tab, show original
-                        if (tab1.hidden) this.hideShowTab(tab1);
-                    }
-                }
-                // Also check for entities only in org2 (not in org1)
-                for (const [key, tab2] of tabMap2.entries()) {
-                    if (!tabMap1.has(key)) {
-                        // Only present in org2, do not create diff tab, show original
-                        if (tab2.hidden) this.hideShowTab(tab2);
-                    }
-                }
+                this.bulkCreateDiffTab(tabs1, tabs2, tabsList);
             }
             this.showSpinner = false;
             this.log('loadEntitiesFromPackageXml | Tabs Count after = ' + tabsList.length);
         }
         if(tabsList.length)
             this.selectTab(tabsList.at(-1)!)
+    }
+
+    bulkCreateDiffTab(tabs1 : CodeTab[], tabs2 : CodeTab[], tabsList? : CodeTab[]) {
+        // Map by tabValue + entityType for unique match
+        const tabMap1 = new Map<string, CodeTab>();
+        const tabMap2 = new Map<string, CodeTab>();
+        tabs1.forEach(tab => tabMap1.set(`${tab.tabValue}::${tab.entityType}`, tab));
+        tabs2.forEach(tab => tabMap2.set(`${tab.tabValue}::${tab.entityType}`, tab));
+
+        // For each entity present in both orgs, create a diff tab
+        for (const [key, tab1] of tabMap1.entries()) {
+            const tab2 = tabMap2.get(key);
+            if (tab2) {
+                // Hide originals, show only diff
+                if (!tab1.hidden) this.hideShowTab(tab1);
+                if (!tab2.hidden) this.hideShowTab(tab2);
+                let dt = this.createDiffTab(tab1, tab2, undefined, true)
+                if(tabsList) tabsList.push(dt);
+            } else {
+                // Only present in org1, do not create diff tab, show original
+                if (tab1.hidden) this.hideShowTab(tab1);
+            }
+        }
+        // Also check for entities only in org2 (not in org1)
+        for (const [key, tab2] of tabMap2.entries()) {
+            if (!tabMap1.has(key)) {
+                // Only present in org2, do not create diff tab, show original
+                if (tab2.hidden) this.hideShowTab(tab2);
+            }
+        }
     }
 
     async openFromPackageXml() {
@@ -1413,6 +1418,7 @@ export class CodeBrowserComponent {
         new Command('Org: Login Primary Org in Browser', 'login-primary-org', () => {if(this.isOrgSelected) this.openOrg(this.selectedOrg)}, '', '/lpo'),
         new Command('Org: Login Secondary Org in Browser', 'login-secondary-org', () => {if(this.isOrg2Selected) this.openOrg(this.selectedOrg2)}, '', '/lso'),
         new Command('Org: Login Active Tab Org in Browser', 'login-tab-org', () => this.openOrg(), '', '/lto'),
+        new Command('Org: Load Recent Changes of N days from Org', 'load-recent-changes', () => this.loadRecentChangesFromOrg(), '', '/lrc'),
         new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
         new Command('Component: Create New Component', 'create-new-component', () => this.createNewComponent(), '', '/new'),
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
@@ -1434,6 +1440,124 @@ export class CodeBrowserComponent {
         new Command('Window: Launch EnForce in a Dedicated Window (Popup)', 'open-in-popup', () => this.openAsPopup()),
         new Command('Session: Save Editor Session', 'save-editor-session', () => this.saveEditorSession(false)),
     ];
+
+    async loadRecentChangesFromOrg() {
+        if(!this.isOrgSelected) return;
+        if(this.quickDiffModeFlag && !(this.isOrgSelected && this.isOrg2Selected)) return;
+        let org = this.selectedOrg;
+
+        if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
+            this.openCommandPalette('which-org-for-recent=changes', <CommandPaletteDialogData>{
+                commands : [this.selectedOrg, this.selectedOrg2].map( (x : string) => new Command(x, x, ()=>{}) ),
+                emptyMessage : 'No orgs available',
+                placeholder : 'Choose an org',
+                commonAction : (data : any) => {
+                    this.showRecentCodeChanges(data.name);
+                }
+            }, true);
+        } else {
+            this.showRecentCodeChanges(org);
+        }
+    }
+
+    async showRecentCodeChanges(orgName: string) {
+
+        let diffFlag = this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected;
+
+        let promptData : PromptDialogOptions = {
+            text : `Enter the number of days to check`,
+            placeholder : 'Days',
+            label : 'Days',
+            validationText : 'Enter a valid number',
+            regex : `^[0-9]+$`
+        };
+
+        let dialogRef = this.dialog.open(PromptDialogComponent, { data : promptData });
+        let data = await firstValueFrom(dialogRef.afterClosed());
+        let days = data.input;
+
+        if(!days) return;
+
+        this.showSpinner = true;
+        let response : EnForceResponse = await this._ipc.callMethod('fetchRecentCodeChanges', {
+            orgName : orgName, days : Number(days)
+        } );
+        this.showSpinner = false;
+
+        if(!response.isSuccess) {
+            console.error('ERROR => ' , response.errors);
+            return;
+        }
+        
+        // Flatten all entity arrays into one table
+        const allRows: NormalizedCodeEntity[] = <NormalizedCodeEntity[]> Object.values(response.data).flat();
+
+        // Define table columns
+        const columns = [
+            { key: 'entityType', label: 'Type' },
+            { key: 'Name', label: 'Name' },
+            // { key: 'BundleName', label: 'Bundle' },
+            { key: 'lastModifiedDate', label: 'Last Modified' },
+            { key: 'ApiVersion', label: 'API Version' },
+            { key: 'NamespacePrefix', label: 'Namespace' },
+            // { key: 'Id', label: 'Id' }
+        ];
+
+        if(allRows.length == 0) {
+            this.showSnackBar('No changes found');
+            return;
+        }
+        
+        // Open PromptDialogComponent with checkboxes (all selected by default)
+        const dialogRef1 = this.dialog.open(PromptDialogComponent, {
+            data: <PromptDialogOptions>{
+                text: `Code changed in last ${days} days for org ${orgName}`,
+                isTableRequired: true,
+                tableData: { columns, rows: allRows },
+                isCheckboxInTableRequired: true,
+                okButtonText: 'Open Selected',
+                cancelButtonText: 'Cancel',
+                isTextFieldRequired: false,
+                defaultTableCheckboxState: true,
+                checkboxRequired: diffFlag,
+                checkboxLabel: diffFlag ? "DIFF selected (Quick Diff mode is enabled)" : null,
+                checkboxValue: diffFlag
+            }
+        });
+        
+        dialogRef1.afterClosed().subscribe(async result => {
+            if (result?.tableRows) {
+                let diffSelected = diffFlag ? result.checkbox : false;
+                let orgList = [orgName];
+                // if(diffSelected) alert('DIFF recent changes - yet to be implemented');
+                // Get selected rows
+                const selectedRows : NormalizedCodeEntity[] = result.tableRows.filter((row: any) => row.checked);
+                this.log('showRecentCodeChanges | selectedRows = ' , selectedRows);
+                if(selectedRows.length) {
+                    let selectedRows2 = [];
+                    if(diffSelected) {
+                        if(this.selectedOrg == orgName) {
+                            orgList.push(this.selectedOrg2);
+                        } else {
+                            orgList.push(this.selectedOrg);
+                        }
+                        let entityTypeVsList = (this.selectedOrg == orgName) ? this.entityTypeVsList2 : this.entityTypeVsList;
+                        for(let nce of selectedRows) {
+                            let nce2 = entityTypeVsList[nce.entityType].find( x => x.Name == nce.Name && x.entityType == nce.entityType && (x.BundleName && nce.BundleName && x.BundleName == nce.BundleName || (!x.BundleName && !nce.BundleName) ) );
+                            if(nce2) selectedRows2.push(nce2);
+                        }
+                    }
+                    let finalRows = [...selectedRows , ...selectedRows2];
+                    let orgVsTab = await this.loadEntityBulk(finalRows, orgList) ?? {};
+
+                    let tabsList : CodeTab[] = Object.values(orgVsTab).flat();
+                    this.bulkCreateDiffTab(orgVsTab[orgList[0]] || [], orgVsTab[orgList[1]] || [], tabsList);
+                    if(tabsList.length)
+                        this.selectTab(tabsList.at(-1)!)
+                }
+            }
+        });
+    }
 
     createNewComponent() {
         if(!this.isOrgSelected || this.quickDiffModeFlag) return;
@@ -2835,6 +2959,8 @@ export class CodeBrowserComponent {
                         },
                         isTextFieldRequired: false,
                         isTextAreaRequired: false,
+                        // isCheckboxInTableRequired: true,
+                        // defaultTableCheckboxState : true,
                         okButtonText: 'Restore',
                         cancelButtonText: 'Skip'
                     },

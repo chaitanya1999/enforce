@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import * as jsforce from 'jsforce';
-import Utils, { EnForceResponse, NormalizedBundleDetails, NormalizedBundleItem } from './enforce-utils';
+import Utils, { EnForceResponse, NormalizedBundleDetails, NormalizedBundleItem, NormalizedCodeEntity } from './enforce-utils';
 import {ClassCmpListFetcher} from './salesforce-operations/ClassCmpListFetcher';
 import {CodeFetcher} from './salesforce-operations/FetchCode';
 import { DeployCode } from './salesforce-operations/DeployCode';
@@ -25,9 +25,9 @@ type OrgBundleInfo = {[key: string] : BundleTypeMap};
 })
 export class SalesforceService {
 
-	channelVsFunction : any = {};
-	loadedOrgs : any = [];
-	loadedSessions : any = [];
+    channelVsFunction : any = {};
+    loadedOrgs : any = [];
+    loadedSessions : any = [];
     MAX_ORG_COUNT_FOR_CACHED_COMPONENTS = 5;
     loadedBundleInfo : OrgBundleInfo = {
         // map <orgname , map <keys lwc aura , map<bundlename , NormalizedBundleDetails > > > 
@@ -44,40 +44,40 @@ export class SalesforceService {
 
     constructor() { }
 
-	async send(channel : string, ...args : any[]) {
+    async send(channel : string, ...args : any[]) {
         if(!(<any>this)[channel]) {
             alert("Operation not Implemented or Released yet : " + channel);
             return;
         }
-		let response = await (<any>this)[channel](args);
-		// setTimeout(() => {
+        let response = await (<any>this)[channel](args);
+        // setTimeout(() => {
         //     if(!this.channelVsFunction[channel]) alert("Callback not found for Operation : " + channel);
-		// 	this.channelVsFunction[channel](null, [response]);
-		// },1);
+        // 	this.channelVsFunction[channel](null, [response]);
+        // },1);
         return response;
-	}
-	
-	// on(channel: string, listener: Function) : void {
-	// 	this.channelVsFunction[channel] = listener;
-	// }
-	
-	// once(channel: string, listener: Function) : void {
-	// 	this.channelVsFunction[channel] = listener;
-	// }
+    }
+    
+    // on(channel: string, listener: Function) : void {
+    // 	this.channelVsFunction[channel] = listener;
+    // }
+    
+    // once(channel: string, listener: Function) : void {
+    // 	this.channelVsFunction[channel] = listener;
+    // }
 
-	getSessionData() {
-		return (this.loadedSessions = Utils.loadSessionsData());
-	}
+    getSessionData() {
+        return (this.loadedSessions = Utils.loadSessionsData());
+    }
 
-	getOrgs() {      
-		this.loadedOrgs = Utils.getAllOrgs();
+    getOrgs() {      
+        this.loadedOrgs = Utils.getAllOrgs();
         for(let key in this.loadedOrgs) {
-			this.loadedOrgs[key].orgName = key;
-		}
+            this.loadedOrgs[key].orgName = key;
+        }
         return this.loadedOrgs;
-	}
+    }
 
-	async authenticate(params : any) {
+    async authenticate(params : any) {
         let orgName = params[0];
         try {
             let org = this.loadedOrgs[orgName];
@@ -96,7 +96,7 @@ export class SalesforceService {
             console.error(err);
             return EnForceResponse.failure(err);
         }
-	}
+    }
 
     setCredentials(param : any) {
         let orgCreds = param[0];
@@ -597,6 +597,78 @@ export class SalesforceService {
         } catch (error) {
             debug(`SalesforceService.loadEditorSession | Error loading from localStorage: ${error}`);
             return EnForceResponse.failure(`Error loading editor session: ${error}`);
+        }
+    }
+    /**
+     * Fetches recently modified code entities (ApexClass, AuraComponent, LWC, etc.) in the last N days, grouped by entity type.
+     * @param params [ { orgName: string, days: number } ]
+     * @returns EnForceResponse with { [entityType]: NormalizedCodeEntity[] }
+     */
+    async fetchRecentCodeChanges(params: any): Promise<EnForceResponse> {
+        const { orgName, days } = params[0];
+        const result: { [key: string]: NormalizedCodeEntity[] } = {};
+        try {
+            let org = this.loadedOrgs[orgName];
+            let res: any = null, conn = new jsforce.Connection({
+                loginUrl: 'https://test.salesforce.com',
+                version: sfApiVersion
+            });
+            ({ res, conn } = await Utils.handleLogin(conn, org));
+            debug(`fetchRecentCodeChanges | Authenticated org: ${orgName}`);
+
+            // ApexClass
+            let apexClassRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexClass WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            result[CodeEntity.ApexClass] = (apexClassRes.records || []).map((rec: any) => NormalizedCodeEntity.fromApexClass(rec, orgName));
+
+            // ApexTrigger
+            let apexTriggerRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexTrigger WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            result[CodeEntity.ApexTrigger] = (apexTriggerRes.records || []).map((rec: any) => NormalizedCodeEntity.fromApexTrigger(rec, orgName));
+
+            // VFPage
+            let vfPageRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexPage WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            result[CodeEntity.VFPage] = (vfPageRes.records || []).map((rec: any) => NormalizedCodeEntity.fromVFPage(rec, orgName));
+
+            // VFComponent
+            let vfComponentRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexComponent WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            result[CodeEntity.VFComponent] = (vfComponentRes.records || []).map((rec: any) => NormalizedCodeEntity.fromVFComponent(rec, orgName));
+
+            // Aura: Bundle and Definitions
+            // let auraBundleRes = await conn.tooling.query(`SELECT Id, DeveloperName, NamespacePrefix, ApiVersion, LastModifiedDate FROM AuraDefinitionBundle WHERE LastModifiedDate = LAST_N_DAYS:${days}`);
+            let auraDefRes = await conn.tooling.query(`SELECT Id, AuraDefinitionBundleId, DefType, Source, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, AuraDefinitionBundle.DeveloperName, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix FROM AuraDefinition WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY AuraDefinitionBundle.DeveloperName ASC`);
+            let auraEntities: NormalizedCodeEntity[] = [];
+            // Individual Aura files
+            for (const rec of auraDefRes.records || []) {
+                auraEntities.push(NormalizedCodeEntity.fromAuraDefinition(rec, orgName));
+            }
+            // Bundle-level changes (if not already included)
+            // for (const rec of auraBundleRes.records || []) {
+            //     if (!auraEntities.some(e => e.BundleId === rec['Id'])) {
+            //         auraEntities.push(NormalizedCodeEntity.fromAuraBundle(rec, orgName));
+            //     }
+            // }
+            result[CodeEntity.AuraComponent] = auraEntities;
+
+            // LWC: Bundle and Resources
+            // let lwcBundleRes = await conn.tooling.query(`SELECT Id, DeveloperName, NamespacePrefix, ApiVersion, LastModifiedDate FROM LightningComponentBundle WHERE LastModifiedDate = LAST_N_DAYS:${days}`);
+            let lwcResRes = await conn.tooling.query(`SELECT Id, LightningComponentBundleId, FilePath, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix FROM LightningComponentResource WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY LightningComponentBundle.DeveloperName ASC`);
+            let lwcEntities: NormalizedCodeEntity[] = [];
+            // Individual LWC files
+            for (const rec of lwcResRes.records || []) {
+                lwcEntities.push(NormalizedCodeEntity.fromLWCResource(rec, orgName));
+            }
+            // Bundle-level changes (if not already included)
+            // for (const rec of lwcBundleRes.records || []) {
+            //     if (!lwcEntities.some(e => e.BundleId === rec['Id'])) {
+            //         lwcEntities.push(NormalizedCodeEntity.fromLWCBundle(rec, orgName));
+            //     }
+            // }
+            result[CodeEntity.LWC] = lwcEntities;
+
+            return EnForceResponse.success(result);
+        } catch (err) {
+            debug(`fetchRecentCodeChanges | Error => ${err}`);
+            console.error(err);
+            return EnForceResponse.failure(err);
         }
     }
 }

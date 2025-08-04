@@ -5,16 +5,24 @@
             <table class="table table-sm table-bordered table-striped" style="font-size:0.97em; background: #fff; color: #222; margin-bottom: 0;">
                 <thead style="background-color: lightgray; color: #7c5700;">
                     <tr>
+                        @if(isCheckboxInTableRequired) {
+                            <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;"></th>
+                        }
                         @for(col of tableData!.columns; track col) {
                             <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;">{{col.label}}</th>
                         }
                     </tr>
                 </thead>
                 <tbody>
-                    @for(row of tableData!.rows; track row) {
+                    @for(row of tableData!.rows; let i = $index; track row) {
                         <tr>
+                            @if(isCheckboxInTableRequired) {
+                                <td style="vertical-align: middle;white-space: nowrap;">
+                                    <input type="checkbox" [(ngModel)]="tableCheckboxStates[i]" />
+                                </td>
+                            }
                             @for(col of tableData!.columns; track col) {
-                                <td style="vertical-align: middle;">{{row[col.key]}}</td>
+                                <td style="vertical-align: middle;white-space: nowrap;">{{row[col.key]}}</td>
                             }
                         </tr>
                     }
@@ -56,7 +64,7 @@
     </div>
     }
     <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
-        <button class="btn btn-success" style="width: 100px; margin: 10px;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">{{okButtonText}}</button>
-        <button class="btn btn-danger" style="width: 100px;  margin: 10px;" (click)="close()">{{cancelButtonText}}</button>
+        <button class="btn btn-success" style="width: 100px; margin: 10px; white-space: nowrap;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">{{okButtonText}}</button>
+        <button class="btn btn-danger" style="width: 100px;  margin: 10px; white-space: nowrap;" (click)="close()">{{cancelButtonText}}</button>
     </div>
 </div>

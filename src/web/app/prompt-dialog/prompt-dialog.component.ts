@@ -36,6 +36,8 @@ export class PromptDialogOptions {
 
     okButtonText?: string;
     cancelButtonText?: string;
+    isCheckboxInTableRequired?: boolean;
+    defaultTableCheckboxState?: boolean;
 }
 
 @Component({
@@ -80,6 +82,10 @@ export class PromptDialogComponent {
     okButtonText: string;
     cancelButtonText: string;
 
+    isCheckboxInTableRequired: boolean = false;
+    defaultTableCheckboxState: boolean = false;
+    tableCheckboxStates: boolean[] = [];
+
     constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: PromptDialogOptions) {
         this.text = data.text || 'Please enter some input';
         this.placeholder = data.placeholder || 'Input';
@@ -101,9 +107,11 @@ export class PromptDialogComponent {
         this.isTableRequired = !!data.isTableRequired;
         this.okButtonText = data.okButtonText || 'Yes';
         this.cancelButtonText = data.cancelButtonText || 'No';
-
+        this.isCheckboxInTableRequired = !!data.isCheckboxInTableRequired;
+        this.defaultTableCheckboxState = !!data.defaultTableCheckboxState;
         if (this.isTableRequired && data.tableData && Array.isArray(data.tableData.columns) && Array.isArray(data.tableData.rows)) {
             this.tableData = data.tableData;
+            this.tableCheckboxStates = data.tableData.rows.map(() => this.defaultTableCheckboxState);
             this.log('Table data initialized:', this.tableData);
         }
     }
@@ -145,11 +153,16 @@ export class PromptDialogComponent {
             }
         }
         if (valid) {
+            let tableRowsWithCheckbox = undefined;
+            if (this.isTableRequired && this.isCheckboxInTableRequired && this.tableData?.rows) {
+                tableRowsWithCheckbox = this.tableData.rows.map((row, idx) => ({ ...row, checked: this.tableCheckboxStates[idx] }));
+            }
             this.dialogRef.close({
                 input: this.inputValue,
                 textArea: this.textAreaValue,
                 dropdownSelection: this.dropdownSelection,
-                checkbox: this.checkboxValue
+                checkbox: this.checkboxValue,
+                tableRows: tableRowsWithCheckbox
             });
         }
     }

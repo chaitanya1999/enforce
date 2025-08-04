@@ -1,6 +1,7 @@
 import * as jsforce from 'jsforce';
 import { environment } from './environment';
-import { CodeEntity } from './AppConstants';
+import { AppConstants, CodeEntity } from './AppConstants';
+import { AppComponent } from './app.component';
 
 export default class Utils {
 
@@ -161,10 +162,10 @@ export default class Utils {
 
     static loadSessionsData() : any {
         let session = localStorage.getItem('sessionData');
-		if(!session) {
-			localStorage.setItem('sessionData', session='{}');
-		}
-		return JSON.parse(session);
+        if(!session) {
+            localStorage.setItem('sessionData', session='{}');
+        }
+        return JSON.parse(session);
     }
 
     static saveSessionData(sessions : any) {
@@ -173,14 +174,14 @@ export default class Utils {
 
     static getAllOrgs() {
         let orgs : any = localStorage.getItem('configuredOrgs');
-		if(!orgs) {
-			localStorage.setItem('configuredOrgs', orgs = `{}`);
-		}
-		orgs = JSON.parse(orgs)
-		// for(let key in orgs) {
-		// 	orgs[key].orgName = key;
-		// }
-		return orgs;
+        if(!orgs) {
+            localStorage.setItem('configuredOrgs', orgs = `{}`);
+        }
+        orgs = JSON.parse(orgs)
+        // for(let key in orgs) {
+        // 	orgs[key].orgName = key;
+        // }
+        return orgs;
     }
 
     static setAllOrgs(orgs : any) {
@@ -245,8 +246,9 @@ export class NormalizedCodeEntity {
     NamespacePrefix: string | null;
     OrgName : string;
     mimeType? : string;
+    lastModifiedDate? : string;
 
-    constructor(Id: string,Name: string, entityType: string, BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string) {
+    constructor(Id: string,Name: string, entityType: string, BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string, lastModifiedDate? : string) {
         this.Id = Id;
         this.Name = Name;
         this.entityType = entityType;
@@ -256,6 +258,138 @@ export class NormalizedCodeEntity {
         this.NamespacePrefix = NamespacePrefix;
         this.OrgName = OrgName;
         this.mimeType = mimeType;
+        this.lastModifiedDate = lastModifiedDate;
+    }
+    /**
+     * Converts an ApexClass SOQL row to NormalizedCodeEntity
+     */
+    static fromApexClass(row: any, orgName: string): NormalizedCodeEntity {
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['Name'],
+            CodeEntity.ApexClass,
+            null,
+            null,
+            row['ApiVersion'] || null,
+            row['NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts an ApexTrigger SOQL row to NormalizedCodeEntity
+     */
+    static fromApexTrigger(row: any, orgName: string): NormalizedCodeEntity {
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['Name'],
+            CodeEntity.ApexTrigger,
+            null,
+            null,
+            row['ApiVersion'] || null,
+            row['NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts an AuraDefinition SOQL row to NormalizedCodeEntity (individual Aura file)
+     */
+    static fromAuraDefinition(row: any, orgName: string): NormalizedCodeEntity {
+        // Name: <BundleName>/<BundleName><Suffix>
+        const suffixMap = AppConstants.aura_defTypeVsSuffix;
+        const bundleName = row['AuraDefinitionBundle']?.DeveloperName || row['AuraDefinitionBundle.DeveloperName'] || row['DeveloperName'];
+        const defType = row['DefType'];
+        const name = bundleName + '/' + bundleName + (suffixMap[defType] || '');
+        return new NormalizedCodeEntity(
+            row['Id'],
+            name,
+            CodeEntity.AuraComponent,
+            row['AuraDefinitionBundleId'] || row['AuraDefinitionBundle.Id'] || null,
+            bundleName,
+            row['AuraDefinitionBundle']?.ApiVersion || row['AuraDefinitionBundle.ApiVersion'] || null,
+            row['AuraDefinitionBundle']?.NamespacePrefix || row['AuraDefinitionBundle.NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts a LightningComponentResource SOQL row to NormalizedCodeEntity (individual LWC file)
+     */
+    static fromLWCResource(row: any, orgName: string): NormalizedCodeEntity {
+        const bundleName = row['LightningComponentBundle']?.DeveloperName || row['LightningComponentBundle.DeveloperName'] || row['DeveloperName'];
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['FilePath'],
+            CodeEntity.LWC,
+            row['LightningComponentBundleId'] || row['LightningComponentBundle.Id'] || null,
+            bundleName,
+            row['LightningComponentBundle']?.ApiVersion || row['LightningComponentBundle.ApiVersion'] || null,
+            row['LightningComponentBundle']?.NamespacePrefix || row['LightningComponentBundle.NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts a VFPage SOQL row to NormalizedCodeEntity
+     */
+    static fromVFPage(row: any, orgName: string): NormalizedCodeEntity {
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['Name'],
+            CodeEntity.VFPage,
+            null,
+            null,
+            row['ApiVersion'] || null,
+            row['NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts a VFComponent SOQL row to NormalizedCodeEntity
+     */
+    static fromVFComponent(row: any, orgName: string): NormalizedCodeEntity {
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['Name'],
+            CodeEntity.VFComponent,
+            null,
+            null,
+            row['ApiVersion'] || null,
+            row['NamespacePrefix'] || null,
+            orgName,
+            undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
+    }
+
+    /**
+     * Converts a StaticResource SOQL row to NormalizedCodeEntity
+     */
+    static fromStaticResource(row: any, orgName: string): NormalizedCodeEntity {
+        return new NormalizedCodeEntity(
+            row['Id'],
+            row['Name'],
+            CodeEntity.StaticResource,
+            null,
+            null,
+            null,
+            row['NamespacePrefix'] || null,
+            orgName,
+            row['ContentType'] || undefined,
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+        );
     }
 }
 
