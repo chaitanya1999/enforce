@@ -617,52 +617,32 @@ export class SalesforceService {
             debug(`fetchRecentCodeChanges | Authenticated org: ${orgName}`);
 
             // ApexClass
-            let apexClassRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexClass WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            let apexClassRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LastModifiedBy.Name FROM ApexClass WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
             result[CodeEntity.ApexClass] = (apexClassRes.records || []).map((rec: any) => NormalizedCodeEntity.fromApexClass(rec, orgName));
 
             // ApexTrigger
-            let apexTriggerRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexTrigger WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            let apexTriggerRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LastModifiedBy.Name FROM ApexTrigger WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
             result[CodeEntity.ApexTrigger] = (apexTriggerRes.records || []).map((rec: any) => NormalizedCodeEntity.fromApexTrigger(rec, orgName));
 
             // VFPage
-            let vfPageRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexPage WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            let vfPageRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LastModifiedBy.Name FROM ApexPage WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
             result[CodeEntity.VFPage] = (vfPageRes.records || []).map((rec: any) => NormalizedCodeEntity.fromVFPage(rec, orgName));
 
             // VFComponent
-            let vfComponentRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate FROM ApexComponent WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            let vfComponentRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ApiVersion, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LastModifiedBy.Name FROM ApexComponent WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
             result[CodeEntity.VFComponent] = (vfComponentRes.records || []).map((rec: any) => NormalizedCodeEntity.fromVFComponent(rec, orgName));
 
             // Aura: Bundle and Definitions
-            // let auraBundleRes = await conn.tooling.query(`SELECT Id, DeveloperName, NamespacePrefix, ApiVersion, LastModifiedDate FROM AuraDefinitionBundle WHERE LastModifiedDate = LAST_N_DAYS:${days}`);
-            let auraDefRes = await conn.tooling.query(`SELECT Id, AuraDefinitionBundleId, DefType, Source, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, AuraDefinitionBundle.DeveloperName, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix FROM AuraDefinition WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY AuraDefinitionBundle.DeveloperName ASC`);
-            let auraEntities: NormalizedCodeEntity[] = [];
-            // Individual Aura files
-            for (const rec of auraDefRes.records || []) {
-                auraEntities.push(NormalizedCodeEntity.fromAuraDefinition(rec, orgName));
-            }
-            // Bundle-level changes (if not already included)
-            // for (const rec of auraBundleRes.records || []) {
-            //     if (!auraEntities.some(e => e.BundleId === rec['Id'])) {
-            //         auraEntities.push(NormalizedCodeEntity.fromAuraBundle(rec, orgName));
-            //     }
-            // }
-            result[CodeEntity.AuraComponent] = auraEntities;
+            let auraDefRes = await conn.tooling.query(`SELECT Id, AuraDefinitionBundleId, DefType, Source, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, AuraDefinitionBundle.DeveloperName, AuraDefinitionBundle.ApiVersion, AuraDefinitionBundle.NamespacePrefix, LastModifiedBy.Name FROM AuraDefinition WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY AuraDefinitionBundle.DeveloperName ASC`);
+            result[CodeEntity.AuraComponent] = (auraDefRes.records || []).map((rec: any) => NormalizedCodeEntity.fromAuraDefinition(rec, orgName));
 
             // LWC: Bundle and Resources
-            // let lwcBundleRes = await conn.tooling.query(`SELECT Id, DeveloperName, NamespacePrefix, ApiVersion, LastModifiedDate FROM LightningComponentBundle WHERE LastModifiedDate = LAST_N_DAYS:${days}`);
-            let lwcResRes = await conn.tooling.query(`SELECT Id, LightningComponentBundleId, FilePath, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix FROM LightningComponentResource WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY LightningComponentBundle.DeveloperName ASC`);
-            let lwcEntities: NormalizedCodeEntity[] = [];
-            // Individual LWC files
-            for (const rec of lwcResRes.records || []) {
-                lwcEntities.push(NormalizedCodeEntity.fromLWCResource(rec, orgName));
-            }
-            // Bundle-level changes (if not already included)
-            // for (const rec of lwcBundleRes.records || []) {
-            //     if (!lwcEntities.some(e => e.BundleId === rec['Id'])) {
-            //         lwcEntities.push(NormalizedCodeEntity.fromLWCBundle(rec, orgName));
-            //     }
-            // }
-            result[CodeEntity.LWC] = lwcEntities;
+            let lwcResRes = await conn.tooling.query(`SELECT Id, LightningComponentBundleId, FilePath, Format, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LightningComponentBundle.DeveloperName, LightningComponentBundle.ApiVersion, LightningComponentBundle.NamespacePrefix, LastModifiedBy.Name FROM LightningComponentResource WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY LightningComponentBundle.DeveloperName ASC`);
+            result[CodeEntity.LWC] = (lwcResRes.records || []).map((rec: any) => NormalizedCodeEntity.fromLWCResource(rec, orgName));
+
+            // StaticResource
+            let staticResourceRes = await conn.query(`SELECT Id, Name, NamespacePrefix, ContentType, FORMAT(LastModifiedDate) FormattedLastModifiedDate, LastModifiedBy.Name FROM StaticResource WHERE LastModifiedDate = LAST_N_DAYS:${days} ORDER BY Name ASC`);
+            result[CodeEntity.StaticResource] = (staticResourceRes.records || []).map((rec: any) => NormalizedCodeEntity.fromStaticResource(rec, orgName));
 
             return EnForceResponse.success(result);
         } catch (err) {

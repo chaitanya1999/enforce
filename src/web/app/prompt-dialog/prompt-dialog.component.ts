@@ -8,6 +8,12 @@ export class PromptDialogOptions {
     text?: string;
     label?: string;
     regex?: string; // legacy, fallback
+
+    showTopRightTextbox?: boolean;
+    topRightTextboxPlaceholder?: string;
+    topRightTextboxLabel?: string;
+    topRightTextboxValue?: string;
+    topRightTextboxChangeHandler?: (event: any, cmpInstance : PromptDialogComponent) => void;
     
     dropdownRequired?: boolean;
     dropdownList?: any[];
@@ -86,6 +92,12 @@ export class PromptDialogComponent {
     defaultTableCheckboxState: boolean = false;
     tableCheckboxStates: boolean[] = [];
 
+    showTopRightTextbox: boolean = false;
+    topRightTextboxPlaceholder: string;
+    topRightTextboxLabel: string;
+    topRightTextboxValue: string;
+    topRightTextboxChangeHandler: (event: any, cmpInstance : PromptDialogComponent) => void;
+
     constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: PromptDialogOptions) {
         this.text = data.text || 'Please enter some input';
         this.placeholder = data.placeholder || 'Input';
@@ -110,10 +122,16 @@ export class PromptDialogComponent {
         this.isCheckboxInTableRequired = !!data.isCheckboxInTableRequired;
         this.defaultTableCheckboxState = !!data.defaultTableCheckboxState;
         if (this.isTableRequired && data.tableData && Array.isArray(data.tableData.columns) && Array.isArray(data.tableData.rows)) {
-            this.tableData = data.tableData;
+            this.tableData = JSON.parse(JSON.stringify(data.tableData)); // deep copy
             this.tableCheckboxStates = data.tableData.rows.map(() => this.defaultTableCheckboxState);
             this.log('Table data initialized:', this.tableData);
         }
+        this.showTopRightTextbox = !!data.showTopRightTextbox;
+        this.topRightTextboxPlaceholder = data.topRightTextboxPlaceholder || '';
+        this.topRightTextboxLabel = data.topRightTextboxLabel || '';
+        this.topRightTextboxValue = data.topRightTextboxValue || '';
+        this.topRightTextboxChangeHandler = data.topRightTextboxChangeHandler || ((event: any, cmpInstance: PromptDialogComponent) => {});
+        this.topRightTextboxChangeHandler({target : { value: this.topRightTextboxValue }}, this);
     }
 
     isTextFieldValid(): boolean {
@@ -162,7 +180,8 @@ export class PromptDialogComponent {
                 textArea: this.textAreaValue,
                 dropdownSelection: this.dropdownSelection,
                 checkbox: this.checkboxValue,
-                tableRows: tableRowsWithCheckbox
+                tableRows: tableRowsWithCheckbox,
+                topRightTextboxValue: this.topRightTextboxValue
             });
         }
     }

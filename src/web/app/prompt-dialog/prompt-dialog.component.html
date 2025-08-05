@@ -1,6 +1,18 @@
 <div style="padding: 20px;" class="mainDiv">
-    <p style="font-size: 1em; font-weight: bold;">{{text}}</p><br/>
-    @if(isTableRequired && tableData?.columns?.length && tableData?.rows?.length) {
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 25px;">
+        <span style="font-size: 1em; font-weight: bold;">{{text}}</span><br/>
+        @if(showTopRightTextbox) {
+            <!-- <div class="form-floating" style="width: 180px; margin-right: 10px;"> -->
+            <div style="display: flex; flex-direction: row; align-items: center; gap: 5px; height: 100%;">
+                <label for="topRightTextbox">{{topRightTextboxLabel}}</label>
+                <input type="text" class="form-control" id="topRightTextbox" [placeholder]="topRightTextboxPlaceholder" [(ngModel)]="topRightTextboxValue"
+                    (input)="topRightTextboxChangeHandler($event, this)"
+                    style="width: 120px; min-width: 100px; font-size: 1em;">
+            </div>
+            <!-- </div> -->
+        }
+    </div>
+    @if(isTableRequired && tableData?.columns?.length) {
         <div style="max-height: 220px; overflow-y: auto; margin-bottom: 1em; border-radius: 6px; border: 1px solid #ddd; background: #fff;">
             <table class="table table-sm table-bordered table-striped" style="font-size:0.97em; background: #fff; color: #222; margin-bottom: 0;">
                 <thead style="background-color: lightgray; color: #7c5700;">
@@ -14,16 +26,24 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @for(row of tableData!.rows; let i = $index; track row) {
+                    @if(tableData?.rows?.length) {
+                        @for(row of tableData!.rows; let i = $index; track row) {
+                            <tr>
+                                @if(isCheckboxInTableRequired) {
+                                    <td style="vertical-align: middle;white-space: nowrap;">
+                                        <input type="checkbox" [(ngModel)]="tableCheckboxStates[i]" />
+                                    </td>
+                                }
+                                @for(col of tableData!.columns; track col) {
+                                    <td style="vertical-align: middle;white-space: nowrap;">{{row[col.key]}}</td>
+                                }
+                            </tr>
+                        }
+                    } @else {
                         <tr>
-                            @if(isCheckboxInTableRequired) {
-                                <td style="vertical-align: middle;white-space: nowrap;">
-                                    <input type="checkbox" [(ngModel)]="tableCheckboxStates[i]" />
-                                </td>
-                            }
-                            @for(col of tableData!.columns; track col) {
-                                <td style="vertical-align: middle;white-space: nowrap;">{{row[col.key]}}</td>
-                            }
+                            <td [attr.colspan]="isCheckboxInTableRequired ? tableData!.columns.length + 1 : tableData!.columns.length" style="text-align: center; color: #888;">
+                                No rows
+                            </td>
                         </tr>
                     }
                 </tbody>

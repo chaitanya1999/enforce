@@ -247,8 +247,9 @@ export class NormalizedCodeEntity {
     OrgName : string;
     mimeType? : string;
     lastModifiedDate? : string;
+    lastModifiedBy? : string;
 
-    constructor(Id: string,Name: string, entityType: string, BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string, lastModifiedDate? : string) {
+    constructor(Id: string,Name: string, entityType: string, BundleId: string | null,BundleName: string | null,ApiVersion: string | null,NamespacePrefix: string | null, OrgName : string, mimeType? : string, lastModifiedDate? : string, lastModifiedBy? : string) {
         this.Id = Id;
         this.Name = Name;
         this.entityType = entityType;
@@ -259,6 +260,7 @@ export class NormalizedCodeEntity {
         this.OrgName = OrgName;
         this.mimeType = mimeType;
         this.lastModifiedDate = lastModifiedDate;
+        this.lastModifiedBy = lastModifiedBy;
     }
     /**
      * Converts an ApexClass SOQL row to NormalizedCodeEntity
@@ -274,7 +276,8 @@ export class NormalizedCodeEntity {
             row['NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -292,7 +295,8 @@ export class NormalizedCodeEntity {
             row['NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -315,7 +319,8 @@ export class NormalizedCodeEntity {
             row['AuraDefinitionBundle']?.NamespacePrefix || row['AuraDefinitionBundle.NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -334,7 +339,8 @@ export class NormalizedCodeEntity {
             row['LightningComponentBundle']?.NamespacePrefix || row['LightningComponentBundle.NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -352,7 +358,8 @@ export class NormalizedCodeEntity {
             row['NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -370,7 +377,8 @@ export class NormalizedCodeEntity {
             row['NamespacePrefix'] || null,
             orgName,
             undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 
@@ -388,7 +396,8 @@ export class NormalizedCodeEntity {
             row['NamespacePrefix'] || null,
             orgName,
             row['ContentType'] || undefined,
-            row['FormattedLastModifiedDate'] || row['LastModifiedDate']
+            row['FormattedLastModifiedDate'] || row['LastModifiedDate'],
+            row['LastModifiedBy']?.['Name']
         );
     }
 }

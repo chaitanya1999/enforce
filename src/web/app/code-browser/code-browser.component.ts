@@ -34,6 +34,7 @@ import { firstValueFrom } from 'rxjs';
 import { CommandPaletteDialogData } from '../command-palette/command-palette-dialog-data';
 import { CodeTab } from '../CodeTab';
 import { EditorSession } from '../EditorSession';
+import { StorageKeys, StorageService, StorageType } from '../StorageService';
 
 // Type for the data inside EnForceResponse for bulk fetch
 type BulkFetchCodeData = {
@@ -1497,7 +1498,8 @@ export class CodeBrowserComponent {
             { key: 'entityType', label: 'Type' },
             { key: 'Name', label: 'Name' },
             // { key: 'BundleName', label: 'Bundle' },
-            { key: 'lastModifiedDate', label: 'Last Modified' },
+            { key: 'lastModifiedDate', label: 'Last Modified Date' },
+            { key: 'lastModifiedBy', label: 'Last Modified By' },
             { key: 'ApiVersion', label: 'API Version' },
             { key: 'NamespacePrefix', label: 'Namespace' },
             // { key: 'Id', label: 'Id' }
@@ -1507,6 +1509,9 @@ export class CodeBrowserComponent {
             this.showSnackBar('No changes found');
             return;
         }
+
+        let localStorageService = StorageService.getInstance(StorageType.Local);
+        let userFilterValue = localStorageService.get(StorageKeys.RECENT_CODE_CHANGES_USER_FILTER) || '';
         
         // Open PromptDialogComponent with checkboxes (all selected by default)
         const dialogRef1 = this.dialog.open(PromptDialogComponent, {
@@ -1521,7 +1526,20 @@ export class CodeBrowserComponent {
                 defaultTableCheckboxState: true,
                 checkboxRequired: diffFlag,
                 checkboxLabel: diffFlag ? "DIFF selected (Quick Diff mode is enabled)" : null,
-                checkboxValue: diffFlag
+                checkboxValue: diffFlag,
+
+                showTopRightTextbox : true,
+                topRightTextboxPlaceholder : 'Name to exclude',
+                topRightTextboxLabel : "Exclude User",
+                topRightTextboxValue : userFilterValue, 
+                topRightTextboxChangeHandler : (event : InputEvent, cmpInstance: PromptDialogComponent) => {
+                    cmpInstance.topRightTextboxValue = (event.target as HTMLInputElement).value.trim();
+                    // Filter rows based on the exclude user input
+                    let excludeUser = cmpInstance.topRightTextboxValue.toLowerCase();
+                    if(cmpInstance.data.tableData) cmpInstance.tableData!.rows = cmpInstance.data.tableData?.rows?.filter((row: NormalizedCodeEntity) => {
+                        return (row.lastModifiedBy ?? '').toLowerCase() != excludeUser;
+                    }) || [];
+                }
             }
         });
         
@@ -1533,13 +1551,19 @@ export class CodeBrowserComponent {
                 // Get selected rows
                 const selectedRows : NormalizedCodeEntity[] = result.tableRows.filter((row: any) => row.checked);
                 this.log('showRecentCodeChanges | selectedRows = ' , selectedRows);
+                if(result.topRightTextboxValue != userFilterValue) {
+                    // Save the new user filter value to localStorage
+                    localStorageService.set(StorageKeys.RECENT_CODE_CHANGES_USER_FILTER, result.topRightTextboxValue);
+                }
                 if(selectedRows.length) {
+
+                                        
                     let selectedRows2 = [];
                     if(diffSelected) {
                         if(this.selectedOrg == orgName) {
                             orgList.push(this.selectedOrg2);
                         } else {
-                            orgList.push(this.selectedOrg);
+                            orgList.unshift(this.selectedOrg);
                         }
                         let entityTypeVsList = (this.selectedOrg == orgName) ? this.entityTypeVsList2 : this.entityTypeVsList;
                         for(let nce of selectedRows) {
