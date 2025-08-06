@@ -393,6 +393,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
                             console.log('REQUIRE MONACO LOADED');
                             EditorConfigService.monaco = monaco;
                             await this.initMonaco();
+                            resolve();
                             // setTimeout(() => {
                             //     console.log('before html load');
                             //     this.window?.require(['vs/basic-languages/html/html'], ()=>{console.log('after html load CALLBACK');});

@@ -634,6 +634,20 @@ div.tabHeading span {
     /* text-wrap: nowrap; */
 }
 
+.tabRightClickMenu *{
+    user-select: none;
+}
+.tabRightClickMenu hr{
+    background-color:  rgb(85, 85, 85);
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+.tabRightClickMenu ul{
+    background-color: rgb(41, 41, 41);
+    border: 1px solid rgb(85, 85, 85);
+    font-size: 0.9em;
+    color: whitesmoke;
+}
 .tabRightClickMenu {
     position: fixed;
     width: 200px;

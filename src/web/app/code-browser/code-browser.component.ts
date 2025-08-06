@@ -1186,7 +1186,7 @@ export class CodeBrowserComponent {
         } else if(entityType == CodeEntity.LWC) {
             lang = <string>Object.entries(AppConstants.lwcSuffixVsLanguage).find(([suffix, lang]) => name.endsWith(suffix))![1] || 'javascript';
         } else if(entityType == CodeEntity.VFPage || entityType == CodeEntity.VFComponent) {
-            lang = 'xml';
+            lang = 'html';
         } else if(entityType == CodeEntity.StaticResource) {
             lang = AppConstants.staticResMimeVsLanguage[mimeType || 'text/plain'] || 'text';
         }
