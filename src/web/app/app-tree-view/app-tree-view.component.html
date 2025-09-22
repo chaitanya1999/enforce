@@ -1,84 +1,102 @@
 <div class="tree-root">
-  <ul class="tree-list tree-lines">
-    @for(orgName of getKeys(tree); track orgName) {
-      <li>
-        <div class="tree-node" (click)="toggle(orgName)">
-          <i class="bi" [ngClass]="isExpanded(orgName) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'" style="margin-right: 2px; color:#bbb;"></i>
-          <i class="bi bi-folder-fill" style="color:#ffd966; margin-right: 4px;"></i>
-          @if(showOrgName) {
-            <span class="tree-label">{{orgName}}</span>
-          }
-        </div>
-        @if(isExpanded(orgName)) {
-          <ul class="tree-list tree-lines">
-            @for(entityType of getKeys(tree[orgName]); track entityType) {
-              <li>
-                <div class="tree-node" (click)="toggle(orgName + '-' + entityType); $event.stopPropagation();">
-                  <i class="bi" [ngClass]="isExpanded(orgName + '-' + entityType) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'" style="margin-right: 2px; color:#bbb;"></i>
-                  <i class="bi bi-folder2-open" style="color:#b3b3b3; margin-right: 4px;"></i>
-                  <span class="tree-label">{{entityType}}</span>
-                </div>
-                @if(isExpanded(orgName + '-' + entityType)) {
-                  <ul class="tree-list tree-lines">
-                    @if(entityType == CodeEntity.AuraComponent || entityType == CodeEntity.LWC) {
-                      @for(bundle of getKeys(tree[orgName][entityType]); track bundle) {
-                        <li>
-                          <div class="tree-node" (click)="toggle(orgName + '-' + entityType + '-' + bundle); $event.stopPropagation();">
-                            <i class="bi" [ngClass]="isExpanded(orgName + '-' + entityType + '-' + bundle) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'" style="margin-right: 2px; color:#bbb;"></i>
-                            <i class="bi bi-folder2" style="color:#888; margin-right: 4px;"></i>
-                            <span class="tree-label">{{bundle}}</span>
-                          </div>
-                          @if(isExpanded(orgName + '-' + entityType + '-' + bundle)) {
-                            <ul class="tree-list tree-lines">
-                              @for(tab of tree[orgName][entityType][bundle]; track tab) {
-                                <li>
-                                  <div class="tree-leaf tab-leaf"
-                                    [class.active-leaf]="tab.modelId === activeTabModelId"
-                                    [class.tab-pinned]="isTabPinned(tab)"
-                                    [class.tab-hidden]="isTabHidden(tab)"
-                                    (click)="handleNodeClick(tab, $event)"
-                                    (contextmenu)="handleNodeContextMenu(tab, $event)"
-                                    (mouseup)="handleNodeMouseUp(tab, $event)">
-                                    <img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16" style="margin-right: 4px;" />
-                                    <span class="tree-label">{{getDisplayTabName(tab)}}</span>
-                                    @if(isTabPinned(tab)) {
-                                      <span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill" style="color:#ffd966;"></i></span>
-                                    }
-                                    <span class="close-icon" (click)="$event.stopPropagation(); closeTab.emit(tab)"><i class="bi bi-x"></i></span>
-                                  </div>
-                                </li>
-                              }
-                            </ul>
-                          }
-                        </li>
-                      }
-                    } @else {
-                      @for(tab of tree[orgName][entityType]['_tabs']; track tab) {
-                        <li>
-                          <div class="tree-leaf tab-leaf"
-                            [class.active-leaf]="tab.modelId === activeTabModelId"
-                            [class.tab-pinned]="isTabPinned(tab)"
-                            [class.tab-hidden]="isTabHidden(tab)"
-                            (click)="handleNodeClick(tab, $event)"
-                            (contextmenu)="handleNodeContextMenu(tab, $event)"
-                            (mouseup)="handleNodeMouseUp(tab, $event)">
-                            <img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16" style="margin-right: 4px;" />
-                            <span class="tree-label">{{getDisplayTabName(tab)}}</span>
-                            @if(isTabPinned(tab)) {
-                              <span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill" style="color:#ffd966;"></i></span>
-                            }
-                            <span class="close-icon" (click)="$event.stopPropagation(); closeTab.emit(tab)"><i class="bi bi-x"></i></span>
-                          </div>
-                        </li>
-                      }
-                    }
-                  </ul>
-                }
-              </li>
-            }
-          </ul>
-        }
-      </li>
-    }
-  </ul>
+	<ul class="tree-list tree-lines">
+		@for(orgName of getKeys(tree); track orgName) {
+		<li>
+			<div class="tree-node" (click)="toggle(orgName)" (contextmenu)="onOrgContextMenu($event, orgName)">
+				<i class="bi" [ngClass]="isExpanded(orgName) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"
+					style="margin-right: 2px; color:#bbb;"></i>
+				<i class="bi bi-folder-fill" style="color:#ffd966; margin-right: 4px;"></i>
+				@if(showOrgName) {
+				<span class="tree-label">{{orgName}}</span>
+				}
+			</div>
+			<!-- Org context menu -->
+			@if(orgContextMenuVisible && orgContextMenuOrg === orgName) {
+			<div class="org-context-menu" [style.top.px]="orgContextMenuY" [style.left.px]="orgContextMenuX">
+				<div class="org-context-menu-item" (click)="handleOrgMenuAction('hide', orgName)">Hide all</div>
+				<div class="org-context-menu-item" (click)="handleOrgMenuAction('show', orgName)">Show all</div>
+			</div>
+			}
+
+			@if(isExpanded(orgName)) {
+			<ul class="tree-list tree-lines">
+				@for(entityType of getKeys(tree[orgName]); track entityType) {
+				<li>
+					<div class="tree-node" (click)="toggle(orgName + '-' + entityType); $event.stopPropagation();">
+						<i class="bi"
+							[ngClass]="isExpanded(orgName + '-' + entityType) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"
+							style="margin-right: 2px; color:#bbb;"></i>
+						<i class="bi bi-folder2-open" style="color:#b3b3b3; margin-right: 4px;"></i>
+						<span class="tree-label">{{entityType}}</span>
+					</div>
+					@if(isExpanded(orgName + '-' + entityType)) {
+					<ul class="tree-list tree-lines">
+						@if(entityType == CodeEntity.AuraComponent || entityType == CodeEntity.LWC) {
+						@for(bundle of getKeys(tree[orgName][entityType]); track bundle) {
+						<li>
+							<div class="tree-node"
+								(click)="toggle(orgName + '-' + entityType + '-' + bundle); $event.stopPropagation();">
+								<i class="bi"
+									[ngClass]="isExpanded(orgName + '-' + entityType + '-' + bundle) ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"
+									style="margin-right: 2px; color:#bbb;"></i>
+								<i class="bi bi-folder2" style="color:#888; margin-right: 4px;"></i>
+								<span class="tree-label">{{bundle}}</span>
+							</div>
+							@if(isExpanded(orgName + '-' + entityType + '-' + bundle)) {
+							<ul class="tree-list tree-lines">
+								@for(tab of tree[orgName][entityType][bundle]; track tab) {
+								<li>
+									<div class="tree-leaf tab-leaf"
+										[class.active-leaf]="tab.modelId === activeTabModelId"
+										[class.tab-pinned]="isTabPinned(tab)" [class.tab-hidden]="isTabHidden(tab)"
+										(click)="handleNodeClick(tab, $event)"
+										(contextmenu)="handleNodeContextMenu(tab, $event)"
+										(mouseup)="handleNodeMouseUp(tab, $event)">
+										<img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16"
+											style="margin-right: 4px;" />
+										<span class="tree-label">{{getDisplayTabName(tab)}}</span>
+										@if(isTabPinned(tab)) {
+										<span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill"
+												style="color:#ffd966;"></i></span>
+										}
+										<span class="close-icon"
+											(click)="$event.stopPropagation(); closeTab.emit(tab)"><i
+												class="bi bi-x"></i></span>
+									</div>
+								</li>
+								}
+							</ul>
+							}
+						</li>
+						}
+						} @else {
+						@for(tab of tree[orgName][entityType]['_tabs']; track tab) {
+						<li>
+							<div class="tree-leaf tab-leaf" [class.active-leaf]="tab.modelId === activeTabModelId"
+								[class.tab-pinned]="isTabPinned(tab)" [class.tab-hidden]="isTabHidden(tab)"
+								(click)="handleNodeClick(tab, $event)"
+								(contextmenu)="handleNodeContextMenu(tab, $event)"
+								(mouseup)="handleNodeMouseUp(tab, $event)">
+								<img *ngIf="tab.icon" [src]="tab.icon" width="16" height="16"
+									style="margin-right: 4px;" />
+								<span class="tree-label">{{getDisplayTabName(tab)}}</span>
+								@if(isTabPinned(tab)) {
+								<span class="pin-icon" title="Pinned"><i class="bi bi-pin-fill"
+										style="color:#ffd966;"></i></span>
+								}
+								<span class="close-icon" (click)="$event.stopPropagation(); closeTab.emit(tab)"><i
+										class="bi bi-x"></i></span>
+							</div>
+						</li>
+						}
+						}
+					</ul>
+					}
+				</li>
+				}
+			</ul>
+			}
+		</li>
+		}
+	</ul>
 </div>

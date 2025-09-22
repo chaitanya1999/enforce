@@ -14,18 +14,19 @@ export class CodeTab {
     contentChanged : boolean = false;
     entityDisplayType : string = '';
     bundleName : string = '';
-    deploymentInProgess : boolean = false;
     codeEntity? : NormalizedCodeEntity;
     bundleDetails? : NormalizedBundleDetails;
     loadingSpinner : boolean = false;
     hidden : boolean = false;
     pinned : boolean = false;
-
+    
     diffTabModelIds : Set<String> = new Set<String>(); // Used by code editor tab. stores which all DIFF tabs are using model of this tab.
     model1ForDiff : string | null = null; // Used by DIFF tab.
     model2ForDiff : string | null = null; // Used by DIFF tab.
     unloadModel1 : boolean = false; // Used by DIFF tab. When comparing local code with org, this will be used to unload the model for which tab is not created
-    
+
+    deploymentInProgress : boolean = false;
+
     get isAuraApplication(){
         return this.bundleDetails?.entityType == CodeEntity.AuraComponent && this.bundleDetails?.contents.some(x => x.label == 'APPLICATION');
     }

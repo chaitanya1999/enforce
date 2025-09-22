@@ -18,7 +18,9 @@
             <ul class="nav" style="height: 100%;">
                 @for(tab of navTabs; track tab) {
                     <li class="tab" [attr.data-active]="tab.active" (click)="selectTab(tab)">
-                        @if(tab.icon != null) {
+                        @if(tab.bsIcon != null) {
+                            <i [class]="tab.active ? tab.bsIconActive : tab.bsIcon" style="font-size:32px; margin:auto;" [matTooltip]="tab.tabName" matTooltipPosition="right"></i>
+                        } @else if(tab.icon != null) {
                             <img [src]="tab.active ? tab.iconActive : tab.icon" style="width:32px; height: 32px; margin:auto;" [matTooltip]="tab.tabName" matTooltipPosition="right">
                         } @else {
                             <p [innerHTML]="tab.tabName"></p>

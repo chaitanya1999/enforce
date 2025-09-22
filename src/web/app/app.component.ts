@@ -34,6 +34,8 @@ class NavTab {
     template : string = '';
     active : boolean = false;
     icon? : string;
+    bsIcon? : string;
+    bsIconActive? : string;
     iconActive? : string;
 }
 
@@ -88,11 +90,11 @@ export class AppComponent {
         // { tabName : '&#128269; Query<br/>Tool' , active : false , template : 'queryTool'},
         // { tabName : '&#128295; Anon<br/>Apex' , active : false , template : 'anonApex'},
         // { tabName : '&#63; Help' , active : true , template : 'help'},
-        { tabName : 'Org Manager' , active : false , template : 'credentialsManager', icon : '../assets/tab-icon-org-manager.png', iconActive : '../assets/tab-icon-org-manager-active.png' },
-        { tabName : 'Code Browser' , active : false , template : 'codeBrowser', icon : '../assets/tab-icon-code-browser.png', iconActive : '../assets/tab-icon-code-browser-active.png' },
-        { tabName : 'Query Tool' , active : false , template : 'queryTool', icon : '../assets/tab-icon-query-tool.png', iconActive : '../assets/tab-icon-query-tool-active.png' },
-        { tabName : 'Anonymous Apex' , active : false , template : 'anonApex', icon : '../assets/tab-icon-anonymous-apex.png', iconActive : '../assets/tab-icon-anonymous-apex-active.png' },
-        { tabName : 'Help' , active : true , template : 'help', icon : '../assets/tab-icon-help.png', iconActive : '../assets/tab-icon-help-active.png' },
+        { tabName : 'Org Manager' , active : false , template : 'credentialsManager', icon : '../assets/tab-icon-org-manager.png', iconActive : '../assets/tab-icon-org-manager-active.png', bsIcon : 'bi bi-people', bsIconActive : 'bi bi-people-fill' },
+        { tabName : 'Code Browser' , active : false , template : 'codeBrowser', icon : '../assets/tab-icon-code-browser.png', iconActive : '../assets/tab-icon-code-browser-active.png', bsIcon : 'bi bi-file-earmark-code', bsIconActive : 'bi bi-file-earmark-code-fill' },
+        { tabName : 'Query Tool' , active : false , template : 'queryTool', icon : '../assets/tab-icon-query-tool.png', iconActive : '../assets/tab-icon-query-tool-active.png', bsIcon : 'bi bi-database', bsIconActive : 'bi bi-database-fill' },
+        { tabName : 'Anonymous Apex' , active : false , template : 'anonApex', icon : '../assets/tab-icon-anonymous-apex.png', iconActive : '../assets/tab-icon-anonymous-apex-active.png', bsIcon : 'bi bi-shield-lock', bsIconActive : 'bi bi-shield-lock-fill' },
+        { tabName : 'Help' , active : true , template : 'help', icon : '../assets/tab-icon-help.png', iconActive : '../assets/tab-icon-help-active.png', bsIcon : 'bi bi-question-circle', bsIconActive : 'bi bi-question-circle-fill' },
     ]
 
     getTab(tabTemplate : string) : NavTab | undefined {

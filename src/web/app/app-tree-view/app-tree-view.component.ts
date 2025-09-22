@@ -208,4 +208,36 @@ export class AppTreeViewComponent implements OnInit, OnChanges, AfterViewInit {
 	public forceRefreshView() {
 		this.cdr.detectChanges();
 	}
+
+
+	orgContextMenuVisible: boolean = false;
+	orgContextMenuX: number = 0;
+	orgContextMenuY: number = 0;
+	orgContextMenuOrg: string | null = null;
+
+	@Output() orgMenuAction = new EventEmitter<{action: 'hide'|'show', orgName: string}>();
+
+	onOrgContextMenu(event: MouseEvent, orgName: string) {
+		event.preventDefault();
+		event.stopPropagation();
+		this.orgContextMenuVisible = true;
+		this.orgContextMenuX = event.clientX;
+		this.orgContextMenuY = event.clientY;
+		this.orgContextMenuOrg = orgName;
+		// Listen for click outside to close
+		setTimeout(() => {
+			const closeMenu = (e: MouseEvent) => {
+				this.orgContextMenuVisible = false;
+				this.orgContextMenuOrg = null;
+				window.removeEventListener('click', closeMenu);
+			};
+			window.addEventListener('click', closeMenu);
+		}, 0);
+	}
+
+	handleOrgMenuAction(action: 'hide'|'show', orgName: string) {
+		this.orgContextMenuVisible = false;
+		this.orgContextMenuOrg = null;
+		this.orgMenuAction.emit({action, orgName});
+	}
 }

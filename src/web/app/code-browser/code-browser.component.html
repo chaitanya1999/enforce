@@ -130,7 +130,8 @@
                     [showHiddenNodes]="showHiddenTabsSidePanel"
                     [showPinnedNodes]="true"
                     [showTemporaryNodes]="true"
-                    [showOrgName]="true"></app-tree-view>
+                    [showOrgName]="true"
+                    (orgMenuAction)="onOrgMenuAction($event)"></app-tree-view>
             </div>
             <div [hidden]="treeViewMode">
                 @for(tab of openTabs; track tab) {
@@ -283,7 +284,13 @@
                         @if(tab.pinned) {
                             <span class="tabPin" (click)="pinUnpinTab($event, tab)"><i class="bi-pin-fill"></i></span>
                         } @else {
-                            <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
+                            @if(tab.deploymentInProgress) {
+                                <div class="spinner-border text-light" role="status" style="width: 16px; height: 16px; margin: 2px;">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            } @else {
+                                <span class="tabCross" (click)="onTabClose(tab)"><img src="assets/crossIcon.png" width="10px" height="10px"/></span>
+                            }
                         }
                     </div>
                 }
@@ -301,7 +308,7 @@
             <span class="">{{activeTab?.tabName}}</span>
         </div>
         <div class="codeEditor" #editorContainer (keyup)="onKeyUp($event)" (focusout)="onFocusOut($event)">
-            <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)"
+            <app-code-editor #editor [(code)]="code" defaultLanguage="yaml" (codeChange)="onCodeChanged($event)" (onCursorPositionChange)="cursorPositionChange($event)" (monacoInitialized)="onMonacoInitialized($event)"
                 [delayLoad]="false"></app-code-editor>
                 <!-- [loadingSpinner]="activeTab?.loadingSpinner || false" -->
         </div>

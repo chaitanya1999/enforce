@@ -349,9 +349,18 @@ export class CodeBrowserComponent {
         });
     }
 
+    monacoInitFlag : boolean = false;
+    onMonacoInitialized(evt : any) {
+        this.monacoInitFlag = true;
+        if(this.isCodeBrowserActive && this.codeBrowserFirstOpenFlag) {
+            this.loadEditorSession();
+        }
+    }
+
     codeBrowserFirstOpen() {
         this.log('codeBrowserFirstOpen');
-        setTimeout( () => this.loadEditorSession(), 500);
+        // setTimeout( () => this.loadEditorSession(), 500);
+        if(this.monacoInitFlag) this.loadEditorSession();
     }
     addTab(codeTab: CodeTab) {
         // Find the index of the active tab
@@ -1234,6 +1243,8 @@ export class CodeBrowserComponent {
         // this.languageSelector.setSearchQuery(this.selectedLanguage);
         // console.log(Date.now() + ' #$#$ FOCUS DEBUG ' , document.activeElement);
         this.ignoreUnfocus = false;
+
+        this.editorCmp.setReadOnly(tab.deploymentInProgress);
         
         if(tab.isCodeEditor)
             this.fetchOrgDetails(tab);
@@ -1420,7 +1431,7 @@ export class CodeBrowserComponent {
         new Command('Org: Login Secondary Org in Browser', 'login-secondary-org', () => {if(this.isOrg2Selected) this.openOrg(this.selectedOrg2)}, '', '/lso'),
         new Command('Org: Login Active Tab Org in Browser', 'login-tab-org', () => this.openOrg(), '', '/lto'),
         new Command('Org: Load Recent Changes of N days from Org', 'load-recent-changes', () => this.loadRecentChangesFromOrg(), '', '/lrc'),
-        new Command('Component: Select Component Type', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
+        new Command('Component: Select Component Type & Open', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
         new Command('Component: Create New Component', 'create-new-component', () => this.createNewComponent(), '', '/new'),
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
         new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode(), '' , '/qd'),
@@ -1632,13 +1643,17 @@ export class CodeBrowserComponent {
         }
     }
 
-    quickOpenFile(nested?: boolean) {
+    quickOpenFile(nested?: boolean, onlySelectedEntityType?: boolean) {
         if(!this.isOrgSelected) {
             this.showSnackBar('Please select an org first');
             return;
         }
+        let entitiesList = this.allEntitiesList;
+        if(onlySelectedEntityType ) {
+            entitiesList = this.entityList;
+        }
         this.openCommandPalette('quickOpenFiles', {
-            commands: this.allEntitiesList.map(selectOption => (<Command>{
+            commands: entitiesList.map(selectOption => (<Command>{
                 uniqueId: selectOption.value,
                 name: selectOption.label,
                 selectOption: selectOption,
@@ -1675,11 +1690,18 @@ export class CodeBrowserComponent {
     }
 
     selectEntityType() {
+        if(!this.isOrgSelected) {
+            this.showSnackBar('Please select an org first');
+            return;
+        }
         this.openCommandPalette('selectEntityType', {
             commands: this.entityTypeList.map(entityType => (<Command>{
                 uniqueId: entityType.label,
                 name: entityType.label,
-                action: () => this.onEntityTypeSelect(entityType.value)
+                action: () => {
+                    this.onEntityTypeSelect(entityType.value)
+                    this.quickOpenFile(true, true);
+                }
             })),
             placeholder: 'Select an entity type...',
             emptyMessage: 'No entity types available',
@@ -1718,6 +1740,8 @@ export class CodeBrowserComponent {
             commandFlag : true,
             wildcardEnabled: true,
             searchInShadowText: true,
+            debounce: true,
+            
             commonAction : (cmd : Command) => {
                 if (cmd && cmd.uniqueId) {
                     const idx = this.commandPaletteCommands.findIndex(c => c.uniqueId === cmd.uniqueId);
@@ -2163,7 +2187,11 @@ export class CodeBrowserComponent {
             this.showSnackBar('No valid tab selected');
             return;
         }
-        if(tab?.editorType == AppConstants.CODE_EDITOR && !tab.temporary && !tab.deploymentInProgess && !this.quickDiffModeFlag) {
+        if(this.quickDiffModeFlag) {
+            this.showSnackBar('Please turn off quick diff mode to enable save functionality');
+            return;
+        }
+        if(tab?.editorType == AppConstants.CODE_EDITOR && !tab.temporary && !tab.deploymentInProgress && !this.quickDiffModeFlag) {
             let authorized = !!this.orgCredsMap.get(tab.orgName)?.allowCodeModification;
 
             if(authorized) {
@@ -2192,8 +2220,10 @@ export class CodeBrowserComponent {
 
     async saveCode(tab : CodeTab) {
         try {
-            this.showSpinner = true;
-            tab.deploymentInProgess = true;
+            // this.showSpinner = true;
+            tab.deploymentInProgress = true;
+            this.editorCmp.setReadOnly(true);
+            
             let body = this.editorCmp.getContent(tab.modelId);
 
             if(tab.entityType == CodeEntity.StaticResource) {
@@ -2208,14 +2238,16 @@ export class CodeBrowserComponent {
                 mimeType : tab.codeEntity?.mimeType
             });
 
-            let dialogRef = this.dialog.open(AlertDialogComponent, {
-                // height: '400px',
-                // width: '600px',
-                data : {
-                    // content : JSON.stringify(deployResponse, null, 4)
-                    content : deployResponse.isSuccess ? 'Deployment Success.' : 'Deployment Failed. Please check the errors pane.'
-                }
-            });
+            // let dialogRef = this.dialog.open(AlertDialogComponent, {
+            //     // height: '400px',
+            //     // width: '600px',
+            //     data : {
+            //         // content : JSON.stringify(deployResponse, null, 4)
+            //         content : deployResponse.isSuccess ? 'Deployment Success.' : 'Deployment Failed. Please check the errors pane.'
+            //     }
+            // });
+
+            this.showSnackBar(deployResponse.isSuccess ? 'Deployment Success.' : 'Deployment Failed. Please check the errors pane.', null, 3000);
 
             let deployErrors : any[] = [];
 
@@ -2253,8 +2285,10 @@ export class CodeBrowserComponent {
             console.error(err);
         }
         finally {
-            this.showSpinner = false;
-            tab.deploymentInProgess = false;
+            // this.showSpinner = false;
+            tab.deploymentInProgress = false;
+            if(this.activeTabModelId == tab.modelId)
+                this.editorCmp.setReadOnly(false);
         }
     }
 
@@ -3137,7 +3171,26 @@ export class CodeBrowserComponent {
     }
 
     //#endregion
-    
+
+    onOrgMenuAction(event: any) {
+        this.log('onOrgMenuAction | event = ', event);
+        const orgName = event?.orgName;
+        const action = event?.action;
+        if (!orgName || !action) return;
+
+        // Find all tabs for the org
+        this.openTabs
+            .filter(tab => tab.orgName === orgName && (
+            (action === 'show' && tab.hidden) ||
+            (action === 'hide' && !tab.hidden)
+            ))
+            .forEach(tab => {
+            this.hideShowTab(tab);
+            });
+
+        this.changeDetectorRef.detectChanges();
+    }
+
     log(...str: any) {
         if(!str) str = [];
         str.unshift('code-browser.component |');

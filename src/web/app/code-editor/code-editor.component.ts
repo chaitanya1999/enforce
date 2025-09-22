@@ -75,6 +75,9 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
     ctrlEnterCallback : Function = () => {};
 
+    readOnly : boolean = false;
+    // @Output() readOnlyEditAttempt: EventEmitter<boolean> = new EventEmitter<boolean>();
+
     shikiHighlighter: any;
     shikiTheme: string = 'dark-plus';
     themesList: string[] = ['vitesse-dark','vitesse-light','slack-dark',
@@ -421,11 +424,7 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
     async initMonaco() : Promise<void> {
         // CodeEditorComponent.globalMonaco = monaco;
-        let monaco = EditorConfigService.monaco;
-        // configure the monaco editor to understand custom language - customLang
-        // monaco.languages.register(this.configService.getCustomLangExtensionPoint());
-        // monaco.languages.setMonarchTokensProvider('CustomLang', this.configService.getCustomLangTokenProviders());
-        // monaco.editor.defineTheme('customTheme', this.configService.getCustomLangTheme());   // add your custom theme here
+        let monaco = EditorConfigService.monaco;        
 
         //---------------------- SHIKI --------------------------------------
         // Create the highlighter, it can be reused
@@ -458,41 +457,8 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
         monaco.languages.register({ id: 'svg' })
         monaco.languages.register({ id: 'sql' })
         
-        // Register the themes from Shiki, and provide syntax highlighting for Monaco.
-        // await AppConstants.sleep(2000);
-        // shikiToMonaco(highlighter, monaco)
-
-        // let theme = 'vitesse-dark';
         let theme = 'vs-dark';
-        // let theme = 'default';
-        // let theme = 'my-dark-plus';
 
-        //----------------------MONACO EDITOR TEXTMATE--------------------------------------
-        // let onigasmContent = await this._ipc.callMethod('getOnigASM');
-        // let onigasmContent = (await fetch(''));
-        // await loadWASM('/assets/onigasm.wasm'); // See https://www.npmjs.com/package/onigasm#light-it-up
-
-        // const registry = new Registry({
-        //     getGrammarDefinition: async (scopeName) => {
-        //         // let cnt = <string>(await this._ipc.callMethod('getTMgrammer', scopeName));
-        //         return {
-        //             format: 'json',
-        //             // content: cnt
-        //             content: await (await fetch('/assets/java.tmLanguage.json')).text()
-        //         }
-        //     }
-        // })
-
-        // // map of monaco "language id's" to TextMate scopeNames
-        // const grammars = new Map()
-        // grammars.set('css', 'source.css')
-        // grammars.set('html', 'text.html.basic')
-        // // grammars.set('typescript', 'source.ts')
-        // grammars.set('java', 'source.java')
-        // grammars.set('apex', 'source.apex')
-        // grammars.set('javascript', 'source.js')
-
-        // let theme = 'vs-dark';
         let that = this;
         this.zone.runOutsideAngular(() => {
             let codeEditorInstance = monaco.editor.create(this._editorContainer!.nativeElement, {
@@ -540,34 +506,15 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
 
                 this.codeEditorModels.push(this.codeEditorInstance!.getModel()!);
                 this.setModelLanguage(this.defaultLanguage);
-                // Register Monaco command for Ctrl+Enter
-                // that.codeEditorInstance!.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, that.ctrlEnterCallback.bind(that));
-                // Add native keydown fallback for Ctrl+Enter
-                // const editorDomNode = that.codeEditorInstance!.getDomNode();
-                // if (editorDomNode) {
-                //     editorDomNode.addEventListener('keydown', function nativeCtrlEnterListener(e: KeyboardEvent) {
-                //         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                //             that.ctrlEnterCallback();
-                //         }
-                //     });
-                //     // Store for cleanup
-                //     (that as any)._nativeCtrlEnterListener = function(e: KeyboardEvent) {
-                //         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                //             that.ctrlEnterCallback();
-                //         }
-                //     };
-                //     (that as any)._nativeCtrlEnterDomNode = editorDomNode;
-                // }
 
-                // --- Fix: Ensure editor is focused and command is registered after a delay ---
-                // setTimeout(() => {
-                //     this.codeEditorInstance!.focus();
-                //     // Remove any previous command if needed (Monaco doesn't support removing, so just re-add)
-                //     that.codeEditorInstance!.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, that.ctrlEnterCallback.bind(that));
-                // }, 100);
+                // Listen for attempts to edit in read-only mode
+                // codeEditorInstance.onDidAttemptReadOnlyEdit(() => {
+                //     if(this.readOnly)
+                //         this.readOnlyEditAttempt.emit();
+                // });
+                
 
                 // --- Fallback: Listen for Ctrl+Enter on the editor container ---
-                // this._editorContainer?.nativeElement.addEventListener('keydown', (event: KeyboardEvent) => {
                 this.codeEditorInstance!.getDomNode()!.addEventListener('keydown', (event: KeyboardEvent) => {
                     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
                         event.preventDefault();
@@ -591,10 +538,6 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             })
         });
 
-
-        // await AppConstants.sleep(2000);
-        // await wireTmGrammars(<any>monaco, registry, grammars, <any>this.codeEditorInstance);
-        // await wireTmGrammars(<any>monaco, registry, grammars, <any>this.diffEditorInstance);
     }
 
     @Output()
@@ -738,6 +681,18 @@ export class CodeEditorComponent implements AfterViewInit, OnChanges {
             this.focus();
         }
     }
+
+    /**
+     * Sets the editor's read-only state.
+     * @param readOnly If true, disables editing.
+     */
+    public setReadOnly(readOnly: boolean) {
+        this.readOnly = readOnly;
+        if (this.codeEditorInstance) {
+            this.codeEditorInstance.updateOptions({ readOnly });
+        }
+    }
+
 
     log(...str: any) {
         if(!str) str = [];

@@ -27,7 +27,8 @@ div.rootRoot div.sidePanel {
     width: max(15%, 200px);
     height: 100%;
     max-height: 100%;
-    background-color: rgb(25, 25, 25);
+    /* background-color: rgb(25, 25, 25); */
+    background-color: #1E1E2E;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -44,7 +45,8 @@ div.rootRoot div.sidePanel {
 }
 
 div.sidePanelToggle {
-    background-color: rgb(25, 25, 25);
+    /* background-color: rgb(25, 25, 25); */
+    background-color: #1E1E2E;
     /* border-right: 1px solid #313131; */
     height: 100%;
     max-height: 100%;
@@ -366,7 +368,8 @@ div.topBar {
     /* background-color: lightblue; */
     /* background-color: rgba(60, 60, 60, 255); */
     /* background-color: rgba(37, 37, 38, 255); */
-    background-color: rgb(61, 61, 61);
+    /* background-color: rgb(61, 61, 61); */
+    background-color: #23233a;
     padding-right: 5px;
     /* padding: 5px; */
     /* flex-wrap: wrap; */
@@ -479,7 +482,8 @@ button.wrapActive {
     overflow-x: overlay;
     height: 35px;
     min-width: 100%;
-    background-color: rgba(60, 60, 60, 255);
+    /* background-color: rgba(60, 60, 60, 255); */
+    background-color: #23233a;
     /* background-color: rgba(37, 37, 38, 255); */
     display: flex;
     flex-direction: row;
@@ -535,7 +539,8 @@ button.wrapActive {
     /* border-color: rgba(50, 50, 50, 255);
     border-style: solid; */
     /* background-color: rgba(50, 50, 50, 255); */
-    background-color: rgba(44, 44, 44, 255);
+    /* background-color: rgba(44, 44, 44, 255); */
+    background-color: #2e2e46;
     /* -webkit-box-sizing: border-box; */
     display: flex;
     justify-content: center;
