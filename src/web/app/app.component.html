@@ -68,6 +68,7 @@
                             <br/>
     
                             <button class="btn btn-primary" (click)="authenticate(orgCred)" [disabled]="authentication || orgCred.edit">Authenticate</button>
+                            <button class="btn btn-success" (click)="openOrgInBrowser(orgCred)" [disabled]="authentication || orgCred.edit">Open Org in Browser</button>
                             <button class="btn btn-danger" (click)="deleteOrg(orgCred)" [disabled]="authentication || orgCred.edit">Delete</button>
                             <br/><br/>
                             <b>Auth Status</b> : <span [class]="orgCred.authenticated == 'Success' ? 'badge text-bg-success' : 'badge text-bg-danger'">{{orgCred.authenticated}}</span>

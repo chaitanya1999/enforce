@@ -196,8 +196,10 @@ export class AppComponent {
                     verticalPosition : 'top'
                 });
             }
+            return response;
         } catch(err) { 
             console.error(err);
+            return null;
         } finally {
             this.authentication = false;
         }
@@ -279,7 +281,7 @@ export class AppComponent {
         let text = (this.credsSearch?.nativeElement?.value || '').toLowerCase();
         console.log('onCredentialSearch | ' + text);
         this.filteredCredsList = this.orgCredsList.filter(x => (x.orgName.toLowerCase().includes(text)/* || x.username.toLowerCase().includes(text)*/));
-        this.filteredCredsList.push(...this.orgCredsList.filter(x => (x.username.toLowerCase().includes(text) && !this.filteredCredsList.includes(x))));
+        this.filteredCredsList.push(...this.orgCredsList.filter(x => ((x.username || '').toLowerCase().includes(text) && !this.filteredCredsList.includes(x))));
         console.log('onCredentialSearch | ' + this.filteredCredsList.length);
     }
 
@@ -291,18 +293,54 @@ export class AppComponent {
     addNewOrg() {
         this.dialog.open(NewOrgDialogComponent, {
             data : this.orgCredsMap
-        }).afterClosed().subscribe((result) => {
+        }).afterClosed().subscribe(async (result) => {
             if(result) {
                 result = <OrgCredential> result;
                 this.orgCredsList.push(result);
                 this.orgCredsList = this.orgCredsList;
-                this.saveOrgCreds();
+                await this.saveOrgCreds();
+                this.searchText = result.username || result.orgName;
+                if(this.credsSearch) this.credsSearch.nativeElement.value = this.searchText;
+                this.onCredentialSearch();
             }
         });
     }
 
     logoClick() {
         this.globalEventsSvc.logoClickEvent.emit();
+    }
+
+    async openOrgInBrowser(orgCred: OrgCredential) {
+        try {
+            //1. Check if authenticated & access token valid - by executing SOQL on Account limit 1
+            let resp : EnForceResponse = await this._ipc.callMethod('executeQuery', orgCred.orgName, 'SELECT Id FROM Account LIMIT 1');
+            let authResp = null;
+
+            //2. If not, authenticate and obtain new token (for soap login only)
+            console.log('app.component | openOrgInBrowser | isSuccess = ' + resp.isSuccess + ' | authMode = ' + orgCred.authMode);
+            if(!resp.isSuccess) {
+                console.log('app.component | openOrgInBrowser | need to authenticate');
+                authResp = await this.authenticate(orgCred);
+            }
+            //3. Open org in browser using access token
+            if(authResp?.isSuccess) {
+                console.log('app.component | openOrgInBrowser | authentication successful');
+                this.openOrg(orgCred);
+            }
+        } catch(err) {
+            console.log(err);
+        }
+
+    }
+
+    async openOrg(orgCred: OrgCredential) {
+        if(!orgCred?.orgName) return;
+        try {
+            let url = (await this._ipc.callMethod('getOrgLoginUrl', orgCred.orgName));
+            window.open(url);
+        } catch(err) {
+            console.log(err);
+        }
     }
 
 }
