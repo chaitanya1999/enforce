@@ -217,16 +217,31 @@
             <button class="btn btn-success topBarItem connectedButton-left" (click)="handleSave()" matTooltip="Save" matTooltipPosition="below" [disabled]="!isOrgSelected || quickDiffModeFlag"><i class="bi bi-floppy"></i></button>
     
             <!-- Create new button -->
-            <div class="btn-group">
-                <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-mid" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected || quickDiffModeFlag"  matTooltip="Create New" matTooltipPosition="below" >
-                    <i class="bi bi-plus-circle"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
-                    @for(entity of entityTypeList_singular; track entity) {
-                        <li><a class="dropdown-item" draggable=false (click)="createNewCode(entity)" role="menuitem" >{{entity.label}}</a></li>
-                    }
-                </ul>
-            </div>
+            @if(!isOrgSelected || quickDiffModeFlag) {
+                <div class="btn-group">
+                    <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-mid" data-bs-toggle="dropdown" aria-expanded="false"  matTooltip="Create New" matTooltipPosition="below" >
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
+                        <li><a class="dropdown-item" draggable=false (click)="createEmptyEditor('codeEditor')" role="menuitem" >Empty Tab</a></li>
+                        <li><a class="dropdown-item" draggable=false (click)="createEmptyEditor('diffEditor')" role="menuitem" >Empty Diff Tab</a></li>
+                    </ul>
+                </div>
+            }
+            @else {
+                <div class="btn-group">
+                    <button id="dropdownMenuButton" type="button" class="btn btn-success topBarItem dropdown-toggle connectedButton-mid" data-bs-toggle="dropdown" aria-expanded="false" [disabled]="!isOrgSelected || quickDiffModeFlag"  matTooltip="Create New" matTooltipPosition="below" >
+                        <i class="bi bi-plus-circle"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="dropdownMenuButton" role="menu">
+                        @for(entity of entityTypeList_singular; track entity) {
+                            <li><a class="dropdown-item" draggable=false (click)="createNewCode(entity)" role="menuitem" >{{entity.label}}</a></li>
+                        }
+                        <li><a class="dropdown-item" draggable=false (click)="createEmptyEditor('codeEditor')" role="menuitem" >Empty Tab</a></li>
+                        <li><a class="dropdown-item" draggable=false (click)="createEmptyEditor('diffEditor')" role="menuitem" >Empty Diff Tab</a></li>
+                    </ul>
+                </div>
+            }
 
             <!-- Global search button -->
             <button class="btn btn-light topBarItem connectedButton-right" style="flex-shrink:0;" (click)="globalSearch()" matTooltipPosition="below" matTooltip="Global Search in Code" [disabled]="!isOrgSelected"><i class="bi bi-search"></i></button>
@@ -297,13 +312,15 @@
             }
         </div>
         <div class="pathBar">
-            <span class="">{{activeTab?.orgName}}</span>
-            <span><i class="bi bi-caret-right-fill"></i></span>
-            <span class="">{{activeTab?.entityDisplayType}}</span>
-            <span><i class="bi bi-caret-right-fill"></i></span>
-            @if(!!activeTab?.bundleName) {
-                <span class="">{{activeTab?.bundleName}}</span>
+            @if(!activeTab?.temporary) {
+                <span class="">{{activeTab?.orgName}}</span>
                 <span><i class="bi bi-caret-right-fill"></i></span>
+                <span class="">{{activeTab?.entityDisplayType}}</span>
+                <span><i class="bi bi-caret-right-fill"></i></span>
+                @if(!!activeTab?.bundleName) {
+                    <span class="">{{activeTab?.bundleName}}</span>
+                    <span><i class="bi bi-caret-right-fill"></i></span>
+                }
             }
             <span class="">{{activeTab?.tabName}}</span>
         </div>

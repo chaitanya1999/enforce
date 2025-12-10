@@ -10,6 +10,7 @@ export class CodeTab {
     entityType : string;
     editorType : string = AppConstants.CODE_EDITOR;
     recordId? : string;
+    welcomeTab: boolean = false;
     temporary : boolean = false;
     contentChanged : boolean = false;
     entityDisplayType : string = '';

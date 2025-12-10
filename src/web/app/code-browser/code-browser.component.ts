@@ -152,7 +152,7 @@ export class CodeBrowserComponent {
 
 
     openTabs : CodeTab[] = [
-        new CodeTab("Welcome" , 'codeEditor_-1' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
+        new CodeTab("Welcome" , 'codeEditor_0' , 'welcome' , 'assets/cloudIcon.png' , 'Welcome', AppConstants.CODE_EDITOR, 'Welcome', '', true),
         // new CodeTab("Apple Apple" , 'codeEditor_-10' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg', AppConstants.CODE_EDITOR, '', '', true),
         // new CodeTab("Apple Apple" , 'codeEditor_-11' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg1', AppConstants.CODE_EDITOR, '', '', true),
         // new CodeTab("Apple Apple Apple Apple" , 'codeEditor_-12' , 'Temp' , 'assets/cloudIcon.png' , 'dummyOrg22', AppConstants.CODE_EDITOR, '', '', true),
@@ -165,7 +165,7 @@ export class CodeBrowserComponent {
         // new CodeTab("Temp" , 'codeEditor_-18' , 'Temp' , 'assets/cloudIcon.png' , '', AppConstants.CODE_EDITOR, '', '', true),
     ];
     defaultTabOpen : boolean = true;
-    _activeTabModelId : string | null = 'codeEditor_-1';
+    _activeTabModelId : string | null = 'codeEditor_0';
     set activeTabModelId(x) {
         this._activeTabModelId = x;
         this.activeTab = this.openTabs.filter(y => y.modelId == x)[0] ?? null;
@@ -254,6 +254,7 @@ export class CodeBrowserComponent {
         this.createOption('css'),
         this.createOption('typescript'),
         this.createOption('sql'),
+        this.createOption('plaintext')
     ]
     selectedLanguage : string = 'apex';
 
@@ -315,6 +316,7 @@ export class CodeBrowserComponent {
             // e.preventDefault();
         })
         this.activeTab = this.openTabs[0];
+        this.activeTab.welcomeTab = true;
         // this.openTabs[0].entityType = 'AuraComponent';
         // this.openTabs[0].tabValue = 'asdf';
         // this.openTabs[0].bundleDetails = new NormalizedBundleDetails(
@@ -1272,7 +1274,7 @@ export class CodeBrowserComponent {
             this.showSnackBar('Cannot close parent tab when DIFF is open', null, 1500);
             return;
         }
-        if (tab.editorType == AppConstants.CODE_EDITOR && tab.contentChanged) {
+        if (!tab.temporary && tab.editorType == AppConstants.CODE_EDITOR && tab.contentChanged) {
             const dialogRef = this.dialog.open(ConfirmDialogComponent, {
                 data: {
                     text: `${tab.tabName} [${tab.orgName}]<br/>You may have some unsaved changes.<br/>Are you sure to close the tab without saving ?`
@@ -1295,11 +1297,11 @@ export class CodeBrowserComponent {
             if(tab2Diff) tab2Diff.diffTabModelIds.delete(tab.modelId);
         }
 
-        if(!tab.temporary) this.editorCmp.clearModel(tab.modelId);
+        if(!tab.welcomeTab) this.editorCmp.clearModel(tab.modelId);
         else this.editorCmp.clearModel();
         if(tab.unloadModel1) this.editorCmp.clearModel(tab.model1ForDiff!);
         
-        if(!tab.temporary && tab.modelId == this.activeTab?.modelId) {
+        if(!tab.welcomeTab && tab.modelId == this.activeTab?.modelId) {
             this.switchTabAfterClosingHiding(tab);
         }
         this.openTabs = this.openTabs.filter(x => x.modelId != tab.modelId);
@@ -1397,7 +1399,7 @@ export class CodeBrowserComponent {
     onCodeChanged(evt : any) { 
         this.log('onCodeChanged | ' + evt.modelId + " " + evt.canUndo);
         let tab = this.openTabs.filter(x => x.modelId == evt.modelId);
-        if(tab.length) tab[0].contentChanged = evt.canUndo;
+        if(tab.length && !tab[0].temporary) tab[0].contentChanged = evt.canUndo;
     }
 
     onKeyDown(evt : KeyboardEvent){
@@ -1441,6 +1443,9 @@ export class CodeBrowserComponent {
         new Command('File: Deploy Current File', 'deploy-current-file', () => this.handleSave(), 'Ctrl+S', '/deploy'),
         new Command('File: Reload Current File from Org', 'reload-current-file', () => this.reloadEntity(true), '', '/rcf'),
         new Command('File: Open Files from Package.xml', 'open-bulk-package-xml', () => this.openFromPackageXml(), '', '/oxml'),
+        new Command('File: New Empty Tab', 'new-empty-tab', () => this.createEmptyEditor('codeEditor'), '', '/newtab'),
+        new Command('File: New Empty Diff Tab', 'new-empty-diff-tab', () => this.createEmptyEditor('diffEditor'), '', '/newtabdiff'),
+        new Command('File: Download Current File', 'download-current-file', () => this.downloadCurrentFile(), '', '/dl'),
         new Command('Editor: Toggle Word Wrap', 'toggle-word-wrap', () => this.toggleWordWrap(), 'Alt+Z', '/ww'),
         new Command('Editor: Increase Font Size', 'increase-font-size', () => this.changeFontSize(true), '', '/ifs'),
         new Command('Editor: Decrease Font Size', 'decrease-font-size', () => this.changeFontSize(false), '', '/dfs'),
@@ -1993,7 +1998,7 @@ export class CodeBrowserComponent {
     onTabContextMenu(tab : CodeTab, event: any) {
 
         event.preventDefault(); 
-        if(tab.temporary) return;
+        if(tab.welcomeTab) return;
         // if(tab.editorType == AppConstants.DIFF_EDITOR) return;
 
         this.tabForContextMenu = tab;
@@ -2184,7 +2189,7 @@ export class CodeBrowserComponent {
     handleSave() {
         let tab : CodeTab | null | undefined = this.activeTab;
         if(!tab || tab.temporary) {
-            this.showSnackBar('No valid tab selected');
+            // this.showSnackBar('Tab not associated with any org');
             return;
         }
         if(this.quickDiffModeFlag) {
@@ -2743,7 +2748,7 @@ export class CodeBrowserComponent {
         if(!tab) tab = this.tabForContextMenu;
         if(tab){ 
             tab.hidden = !tab.hidden;
-            if(!tab.temporary && tab.hidden && tab.modelId == this.activeTab?.modelId) {
+            if(!tab.welcomeTab && tab.hidden && tab.modelId == this.activeTab?.modelId) {
                 this.switchTabAfterClosingHiding(tab);
             }
             if(!tab.hidden) {
@@ -2882,8 +2887,8 @@ export class CodeBrowserComponent {
 
     async closeAllTabs(keepCurrentTab : boolean) {
         const tabsToClose = keepCurrentTab
-            ? this.openTabs.filter(tab => tab !== this.activeTab && !tab.temporary)
-            : this.openTabs.filter(tab => !tab.temporary);
+            ? this.openTabs.filter(tab => tab !== this.activeTab && !tab.welcomeTab)
+            : this.openTabs.filter(tab => !tab.welcomeTab);
 
         if (tabsToClose.length === 0) {
             // this.showSnackBar('No tabs to close');
@@ -3189,6 +3194,62 @@ export class CodeBrowserComponent {
             });
 
         this.changeDetectorRef.detectChanges();
+    }
+
+    blankTabCounter: number = 0;
+    createEmptyEditor(type: string) {
+        if(this.defaultTabOpen) {
+            this.closeDefaultTemporaryTab();
+        }
+        if(type == 'codeEditor') {
+            this.createEmptyCodeEditor();
+        } else {
+            let tab1 = this.createEmptyCodeEditor();
+            let tab2 = this.createEmptyCodeEditor();
+            let diffTab = this.createDiffTab(tab1, tab2);
+            diffTab.temporary = true;
+        }
+    }
+
+    createEmptyCodeEditor() {
+        //create model
+        let modelId = this.editorCmp.createCodeEditorModel('', 'plaintext');
+
+        //decide tab name
+        let tabName = 'Untitled-' + (++this.blankTabCounter);
+
+        //decide icon
+        let icon = 'assets/log icon.png';
+
+        //create tab
+        let codeTab = new CodeTab(tabName , modelId , tabName , icon , '', AppConstants.CODE_EDITOR, '' , '', true);
+        codeTab.temporary = true;
+        this.addTab(codeTab);
+        
+        this.selectedLanguage = this.editorCmp.getModelLanguage();
+
+        this.selectTab(codeTab)
+
+        return codeTab;
+    }
+
+    downloadCurrentFile() {
+        if(this.activeTab) this.downloadFile(this.activeTab);
+    }
+
+    downloadFile(tab: CodeTab) {
+        let contents = this.editorCmp.getContent(tab.modelId);
+        let filename = tab.tabName || 'file';
+        if(!filename.includes('.')) filename += '.txt';
+        const blob = new Blob([contents]);
+        const url = window.URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+
+        window.URL.revokeObjectURL(url);
     }
 
     log(...str: any) {
