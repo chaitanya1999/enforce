@@ -27,6 +27,7 @@ import { EnForceResponse } from './enforce-utils';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
 import { environment } from './environment';
+import { StorageKeys, StorageService, StorageType } from './StorageService';
 
 
 class NavTab {
@@ -227,6 +228,31 @@ export class AppComponent {
         });
         // Push a dummy state to history to intercept back/forward
         history.pushState({ enforceDummy: true }, '', window.location.href);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        // const isStandaloneWindow = urlParams.has('s') && urlParams.get('s') === '1';
+        let storageService = StorageService.getInstance(StorageType.Session);
+        const dialogShownThisSession = storageService.get(StorageKeys.ENFORCE_WINDOW_DIALOG_SHOWN) === 'true';
+        
+        if(!window.opener && !dialogShownThisSession) {
+            storageService.set(StorageKeys.ENFORCE_WINDOW_DIALOG_SHOWN, 'true');
+            //suggest user to open enforce in a standalone window for better experience
+            this.dialog.open(ConfirmDialogComponent, {
+                data : {
+                    text : "For a better experience, please use EnForce in a standalone window. Do you want to open EnForce in a new window now?"
+                }
+            }).afterClosed().subscribe(result => {
+                if(result) {
+                    window.open('/', '', 'popup');
+                    this.dialog.open(AlertDialogComponent, {
+                        disableClose : true,
+                        data : {
+                            content : "EnForce has been opened in a new window. You can close this window now."
+                        }
+                    });
+                }
+            });
+        }
     }
 
     selectTab(tab : NavTab) {

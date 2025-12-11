@@ -13,6 +13,7 @@ export class StorageKeys {
     static readonly USER_TOKEN = 'USER_TOKEN';
     static readonly USER_PROFILE = 'USER_PROFILE';
     static readonly RECENT_CODE_CHANGES_USER_FILTER = 'recentCodeChangesUserFilter';
+    static readonly ENFORCE_WINDOW_DIALOG_SHOWN = 'enforceWindowDialogShown';
     // Add more keys as needed
 }
 
