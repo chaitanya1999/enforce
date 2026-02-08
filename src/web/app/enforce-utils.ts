@@ -404,9 +404,11 @@ export class NormalizedCodeEntity {
 
 export class NormalizedBundleDetails {
     bundleId : string;
+    bundleId2? : string; //for diff view
     bundleName : string;
     contents : NormalizedBundleItem[];
     apiVersion : string;
+    apiVersion2? : string; //for diff view
     entityType : string;
     namespacePrefix : string;
     constructor(bundleId : string , bundleName : string , contents : any , apiVersion : string, entityType : string, namespacePrefix : string) {
@@ -421,12 +423,16 @@ export class NormalizedBundleDetails {
 
 export class NormalizedBundleItem {
     label: string;
+    label2?: string;
     value?: string;
+    value2?: string;
     id?: string;
+    id2?: string; //for diff view
     toBeCreated?: boolean;
-    constructor(label: string, value: string, id: string) {
+    constructor(label: string, value: string, id: string, id2?: string) {
         this.label = label;
         this.value = value;
         this.id = id;
+        this.id2 = id2;
     }
 }

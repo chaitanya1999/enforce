@@ -1,4 +1,4 @@
-import { ApplicationConfig, CUSTOM_ELEMENTS_SCHEMA, ChangeDetectorRef, Component, ElementRef, HostListener, Injector, Input, NgZone, SchemaMetadata, ViewChild, afterNextRender, importProvidersFrom, viewChild } from '@angular/core';
+import { ApplicationConfig, CUSTOM_ELEMENTS_SCHEMA, ChangeDetectorRef, Component, ElementRef, HostListener, Injector, Input, NgZone, Output, SchemaMetadata, ViewChild, afterNextRender, importProvidersFrom, viewChild, EventEmitter } from '@angular/core';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -365,6 +365,11 @@ export class CodeBrowserComponent {
         if(this.monacoInitFlag) this.loadEditorSession();
     }
     addTab(codeTab: CodeTab) {
+        // console.log('%^%^ ORDER DEBUG - new tab - ' , codeTab.tabName);
+        this.addTabBulk([codeTab]);
+    }
+    addTabBulk(codeTabs : CodeTab[]) {
+        // console.log('%^%^ ORDER DEBUG - new tab - ' , codeTab.tabName);
         // Find the index of the active tab
         let idx = this.openTabs.findIndex(tab => tab.modelId === this.activeTabModelId);
 
@@ -377,13 +382,13 @@ export class CodeBrowserComponent {
                 if (this.openTabs[i].pinned) lastPinnedIdx = i;
             }
             // Insert after the last pinned tab
-            this.openTabs.splice(lastPinnedIdx + 1, 0, codeTab);
+            this.openTabs.splice(lastPinnedIdx + 1, 0, ...codeTabs);
         } else if (idx !== -1) {
             // Insert after the active tab
-            this.openTabs.splice(idx + 1, 0, codeTab);
+            this.openTabs.splice(idx + 1, 0, ...codeTabs);
         } else {
             // No active tab, just push
-            this.openTabs.push(codeTab);
+            this.openTabs.push(...codeTabs);
         }
         this.openTabs = [...this.openTabs]; // trigger change detection
         this.changeDetectorRef.detectChanges();
@@ -622,7 +627,8 @@ export class CodeBrowserComponent {
     onFocused(evt: any) {
 
     }
-    onEntitySelect(selectOption: SelectOption) {
+    
+    async onEntitySelect(selectOption: SelectOption) {
         this.log('onEntitySelect');
         let id = selectOption.value;
         let id2 = selectOption.value2;
@@ -635,24 +641,8 @@ export class CodeBrowserComponent {
 
         if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
             if(codeEntity && codeEntity2) {
-                this.showSpinner = true;
-                Promise.all(
-                    [this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity, true, false, true, true, true),
-                    this.loadEntity(codeEntity2.Name, null, entityType, org2, codeEntity2, true, false, true, true, true)]
-                ).then((result) => {
-                    let tab1 = result[0] , tab2 = result[1];
-                    if(tab1 && tab2) {
-                        if(!tab1.hidden) this.hideShowTab(tab1);
-                        if(!tab2.hidden) this.hideShowTab(tab2);
-                        this.createDiffTab(tab1, tab2);
-                    } else {
-                        if(tab1 && tab1.hidden) this.hideShowTab(tab1); 
-                        if(tab2 && tab2.hidden) this.hideShowTab(tab2);
-                    }
-                    this.showSpinner = false;
-                }).catch((err) => {
-                    this.showSpinner = false;
-                });
+                // diffTab will be the created diff tab or null if unsuccessful
+                const diffTab = await this.loadDiffEntity(codeEntity, codeEntity2, org, org2, entityType);
             } else {
                 let codeEntityToLoad, orgToLoad;
                 ([codeEntityToLoad, orgToLoad] = (codeEntity ? [codeEntity , org] : [codeEntity2 , org2]));
@@ -666,6 +656,35 @@ export class CodeBrowserComponent {
             }
         } else {
             this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity);
+        }
+    }
+
+    async loadDiffEntity(codeEntity: NormalizedCodeEntity, codeEntity2: NormalizedCodeEntity, org: string, org2: string, entityType: string): Promise<CodeTab | null> {
+        this.showSpinner = true;
+        
+        try {
+            const result = await Promise.all([
+                this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity, true, false, true, true, true),
+                this.loadEntity(codeEntity2.Name, null, entityType, org2, codeEntity2, true, false, true, true, true)
+            ]);
+            
+            let tab1 = result[0];
+            let tab2 = result[1];
+            
+            if (tab1 && tab2) {
+                if (!tab1.hidden) this.hideShowTab(tab1);
+                if (!tab2.hidden) this.hideShowTab(tab2);
+                return this.createDiffTab(tab1, tab2);
+            } else {
+                if (tab1 && tab1.hidden) this.hideShowTab(tab1);
+                if (tab2 && tab2.hidden) this.hideShowTab(tab2);
+                return null;
+            }
+        } catch (err) {
+            console.error('Error in loadDiffEntity:', err);
+            return null;
+        } finally {
+            this.showSpinner = false;
         }
     }
 
@@ -808,7 +827,7 @@ export class CodeBrowserComponent {
             // Bulk fetch code for all entityType groups at once
             if (Object.keys(entityTypeGroups).length > 0) {
                 // Fetch code for all entities in one call using the original codeEntities array
-                const response: EnForceResponse = await this.fetchCode(codeEntities, org);
+                const response: EnForceResponse = await this.fetchCode(codeEntities, org); //! TODO - to check why codeEntities is used instead of toFetchEntities
                 // The response is an object: { [org]: { [entityType]: EnForceResponse } }
                 // for (const orgName of org) {
                     for (const entityType of Object.keys(entityTypeGroups)) {
@@ -856,7 +875,7 @@ export class CodeBrowserComponent {
                             codeTab.bundleName = codeEntity.BundleName!;
                             codeTab.codeEntity = codeEntity;
                             codeTab.hidden = !!openHidden;
-                            this.addTab(codeTab);
+                            // this.addTab(codeTab); //! Because need to add tab in bulk - else causes ordering issues
                             createdTabs.push(codeTab);
                             loadedNames.push(tabName);
 
@@ -865,6 +884,8 @@ export class CodeBrowserComponent {
                     }
                 // }
             }
+
+            this.addTabBulk(createdTabs);
 
 
             // Bundle Details loading logic START
@@ -1549,13 +1570,61 @@ export class CodeBrowserComponent {
                 topRightTextboxLabel : "Exclude User",
                 topRightTextboxValue : userFilterValue, 
                 topRightTextboxChangeHandler : (event : InputEvent, cmpInstance: PromptDialogComponent) => {
-                    cmpInstance.topRightTextboxValue = (event.target as HTMLInputElement).value.trim();
+                    cmpInstance.data.topRightTextboxValue = (event.target as HTMLInputElement).value.trim();
                     // Filter rows based on the exclude user input
-                    let excludeUser = cmpInstance.topRightTextboxValue.toLowerCase();
-                    if(cmpInstance.data.tableData) cmpInstance.tableData!.rows = cmpInstance.data.tableData?.rows?.filter((row: NormalizedCodeEntity) => {
-                        return (row.lastModifiedBy ?? '').toLowerCase() != excludeUser;
-                    }) || [];
-                }
+                    let excludeUser = cmpInstance.data.topRightTextboxValue.toLowerCase();
+                    if(cmpInstance.data.tableData) {
+                        cmpInstance.tableData!.rows = cmpInstance.data.tableData?.rows?.filter((row: NormalizedCodeEntity) => {
+                            return (row.lastModifiedBy ?? '').toLowerCase() != excludeUser;
+                        }) || [];
+                        cmpInstance.tableCheckboxStates = cmpInstance.tableData!.rows.map(() => cmpInstance.data.defaultTableCheckboxState!);
+                    }
+                    cmpInstance.updateMasterState();
+                },
+
+                helperBtn1Required: true,
+                helperBtn1Text: 'Copy Table',
+                helperBtn1_onclick : (event : any, cmpInstance: PromptDialogComponent) => {
+                    if(cmpInstance.tableData?.rows && cmpInstance.tableElement) {
+                        navigator.clipboard.writeText(cmpInstance.tableElement.nativeElement.innerText).then(()=>{
+                            this.showSnackBar("Table copied succesfully");
+                        }).catch((e) => {
+                            this.showSnackBar("Some error occurred");
+                            this.log('helperBtn1_onclick | ERROR ' , e);
+                        });
+                    }
+                },
+
+                helperBtn2Required: true,
+                helperBtn2Text: 'Copy Package.xml (selected)',
+                helperBtn2_onclick : (event : any, cmpInstance: PromptDialogComponent) => {
+                    if(cmpInstance.tableData?.rows && cmpInstance.tableElement) {
+                        let content = '';
+                        let entityTypeVsName : any = {};
+                        let i = 0;
+                        for(let row of cmpInstance.tableData?.rows as NormalizedCodeEntity[]) {
+                            if(!cmpInstance.tableCheckboxStates[i++])
+                                continue;
+                            let sfEntityType = AppConstants.enforceEntityTypeToPackageXmlType[row.entityType];
+                            if(!entityTypeVsName[sfEntityType])
+                                entityTypeVsName[sfEntityType] = new Set();
+                            entityTypeVsName[sfEntityType].add(row.BundleName ?? row.Name);
+                        }
+
+                        for(let key in entityTypeVsName) {
+                            content += '\t<types>\n' + Array.from(entityTypeVsName[key] ?? []).map(x => '\t\t<members>' + x + '</members>').join('\n') + '\n\t\t<name>' + key + '</name>\n' + '\t</types>\n';
+                        }
+
+                        let packageXml = `<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n` + content + `\t<version>${sfApiVersion}</version>\n</Package>`
+
+                        navigator.clipboard.writeText(packageXml).then(()=>{
+                            this.showSnackBar("Package.xml copied succesfully");
+                        }).catch((e) => {
+                            this.showSnackBar("Some error occurred");
+                            this.log('helperBtn1_onclick | ERROR ' , e);
+                        });
+                    }
+                },
             }
         });
         
@@ -2087,6 +2156,39 @@ export class CodeBrowserComponent {
             this.selectTab(tab);
         }
 
+        // if(this.isBundle(diffEntityType)) {
+        //     if(!tab1) {
+        //         this.loadBundleDetails([tab], diffEntityType, false, tab2.orgName);
+        //     } else {
+        //         this.loadBundleDetails([tab], diffEntityType, false, tab1.orgName);
+        //         let bundleDetails1 = tab.bundleDetails;
+        //         this.loadBundleDetails([tab], diffEntityType, false, tab2.orgName);
+        //         if(tab.bundleDetails) {
+        //             tab.bundleDetails.bundleId2 = bundleDetails1?.bundleId;
+        //             tab.bundleDetails.apiVersion2 = bundleDetails1?.apiVersion;
+        //             if (tab.bundleDetails && bundleDetails1 && tab.bundleDetails.contents && bundleDetails1.contents) {
+        //                 // Create a map from bundleDetails1.contents for quick lookup by value
+        //                 const bundleMap = new Map<string, NormalizedBundleItem>();
+        //                 for (const item of bundleDetails1.contents) {
+        //                     bundleMap.set(item.value!, item);
+        //                 }
+        //                 for (const item of tab.bundleDetails.contents) {
+        //                     if(item.value && bundleMap.has(item.value)) {
+        //                         let match = bundleMap.get(item.value);
+        //                         match!.id2 = item.id;
+        //                         match!.value2 = item.value;
+        //                         match!.label2 = item.label;
+        //                     } else {
+        //                         bundleMap.set(item.value!, item);
+        //                     }
+        //                 }
+        //                 // Merge contents: for each item in tab.bundleDetails.contents, if a match exists by value, set id2 from the matching item
+        //                 tab.bundleDetails.contents = Array.from(bundleMap.values());
+        //             }
+        //         }
+        //     }
+        // }
+
         return tab;
     }
     compareWithSelected() {
@@ -2322,14 +2424,16 @@ export class CodeBrowserComponent {
         this.cursorPosition.column = evt.column;
     }
 
+    @Output() openOrgEvent = new EventEmitter<any>();
     async openOrg(orgName? : string) {
         if(!orgName && !this.activeTab?.orgName) return;
-        try {
-            let url = (await this._ipc.callMethod('getOrgLoginUrl', orgName || this.activeTab?.orgName));
-            window.open(url);
-        } catch(err) {
-            console.log(err);
-        }
+        this.openOrgEvent.emit(orgName || this.activeTab?.orgName);
+        // try {
+        //     let url = (await this._ipc.callMethod('getOrgLoginUrl', orgName || this.activeTab?.orgName));
+        //     window.open(url);
+        // } catch(err) {
+        //     console.log(err);
+        // }
     }
 
     async createNewCode(entity : SelectOption) {
@@ -2637,11 +2741,23 @@ export class CodeBrowserComponent {
         // ]
     }
 
-    clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
-        if(bundleDetails) { 
+    async clickBundleItem(bundleItem : NormalizedBundleItem, bundleDetails : NormalizedBundleDetails | undefined | null) {
+
+        if(!bundleDetails) return;
+
+        // if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected && bundleItem.id && bundleItem.id2 && bundleItem.value && bundleItem.value2) {
+        //     let id = bundleItem.value;
+        //     let org = this.selectedOrg;
+        //     let org2 = this.selectedOrg2;
+        //     let codeEntity = this.entityIdVsObjectMap[org + ':' + id];
+        //     let codeEntity2 = this.entityIdVsObjectMap[org2 + ':' + id];
+        //     const diffTab = await this.loadDiffEntity(codeEntity, codeEntity2, org, org2, entityType);
+
+        // } else {
             this.loadEntity(bundleItem.value!, null, bundleDetails.entityType, this.activeTab!.orgName,
                 new NormalizedCodeEntity(bundleItem.id!, bundleItem.value!, bundleDetails.entityType, bundleDetails.bundleId, bundleDetails.bundleName, bundleDetails.apiVersion, bundleDetails.namespacePrefix, this.activeTab!.orgName));
-        }
+
+        // }
     }
 
     scrollToTab(tab : CodeTab) {
@@ -2709,35 +2825,34 @@ export class CodeBrowserComponent {
     }
 
     reloadingBundleDetails : boolean = false
-    async loadBundleDetails(codeTabs : CodeTab[], entityType : string, reload : boolean, orgName : string) {
-        // let orgName = this.selectedOrg;
-        if(this.reloadingBundleDetails) return;
+    async loadBundleDetails(codeTabs: CodeTab[], entityType: string, reload: boolean, orgName: string) {
+        if (this.reloadingBundleDetails) return;
 
         this.reloadingBundleDetails = reload;
-        this._ipc.callMethod('getBundleDetails', {
-            orgName : orgName,
-            bundleName : Array.from(new Set(codeTabs.map((x:CodeTab) => x.bundleName))),
-            entityType : entityType,
-            ignoreCache : reload
-        }).then( (x:EnForceResponse) => {
+        try {
+            const x: EnForceResponse = await this._ipc.callMethod('getBundleDetails', {
+                orgName: orgName,
+                bundleName: Array.from(new Set(codeTabs.map((x: CodeTab) => x.bundleName))),
+                entityType: entityType,
+                ignoreCache: reload
+            });
             this.reloadingBundleDetails = false;
-            if(x.isSuccess) {
-                this.log('loadEntity | getBundleDetails | Success = ' , x);
-                for(let codeTab of codeTabs) {
-                    if(codeTab.bundleName && x.data[codeTab.bundleName]) {
+            if (x.isSuccess) {
+                this.log('loadEntity | getBundleDetails | Success = ', x);
+                for (let codeTab of codeTabs) {
+                    if (codeTab.bundleName && x.data[codeTab.bundleName]) {
                         codeTab.bundleDetails = x.data[codeTab.bundleName];
                     }
                 }
             } else {
-                this.log('loadEntity | getBundleDetails | ERROR = ' , x);
+                this.log('loadEntity | getBundleDetails | ERROR = ', x);
                 this.showSnackBar('ERROR occuring while fetching bundle details ');
             }
-
-        }).catch( (x:any) => {
+        } catch (x: any) {
             this.reloadingBundleDetails = false;
-            this.log('loadEntity | getBundleDetails | ERROR = ' , x);
+            this.log('loadEntity | getBundleDetails | ERROR = ', x);
             this.showSnackBar('ERROR occuring while fetching bundle details ');
-        });
+        }
     }
 
     changeFontSize(increment : boolean) {

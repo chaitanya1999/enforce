@@ -77,7 +77,7 @@
                 }
             </div>
     
-            <app-code-browser [isComponentActive]="getTab('codeBrowser')!.active" [hidden]="selectedTabTemplate != 'codeBrowser'" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap"></app-code-browser>   
+            <app-code-browser [isComponentActive]="getTab('codeBrowser')!.active" [hidden]="selectedTabTemplate != 'codeBrowser'" style="flex-grow:1;" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" (openOrgEvent)="openOrgEvent($event)"></app-code-browser>   
             
             <app-query-tool [isComponentActive]="getTab('queryTool')!.active" [orgCredsList]="orgCredsList" [orgCredsMap]="orgCredsMap" [hidden]="selectedTabTemplate != 'queryTool'" ></app-query-tool>
     

@@ -39,6 +39,7 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             this.error = data.state?.error;
             this.submitted = data.state?.submitted;
             this.selectedRowIndex = data.state?.selectedRowIndex;
+            this.hideTestClasses = data.state?.hideTestClasses;
             this.stateLoaded = true;
             this.filterTestClasses();
         }
@@ -92,6 +93,7 @@ export class CodeGlobalSearchComponent implements AfterViewInit {
             submitted : this.submitted,
             selectedRowIndex : this.selectedRowIndex,
             tableScroll : this.tableContainer?.nativeElement.scrollTop,
+            hideTestClasses : this.hideTestClasses,
             ...closeData
         });
     }

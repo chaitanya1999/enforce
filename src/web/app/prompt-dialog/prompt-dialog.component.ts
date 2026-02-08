@@ -1,4 +1,4 @@
-import { Component, Inject, ViewChild } from '@angular/core';
+import { Component, ElementRef, Inject, ViewChild } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog.component';
 import { FormsModule } from '@angular/forms';
@@ -43,7 +43,14 @@ export class PromptDialogOptions {
     okButtonText?: string;
     cancelButtonText?: string;
     isCheckboxInTableRequired?: boolean;
-    defaultTableCheckboxState?: boolean;
+    defaultTableCheckboxState?: boolean = false;
+
+    helperBtn1Required?: boolean;
+    helperBtn1Text?: string;
+    helperBtn1_onclick? : (event: any, cmpInstance: PromptDialogComponent) => void;
+    helperBtn2Required?: boolean;
+    helperBtn2Text?: string;
+    helperBtn2_onclick? : (event: any, cmpInstance: PromptDialogComponent) => void;
 }
 
 @Component({
@@ -54,93 +61,73 @@ export class PromptDialogOptions {
     styleUrl: './prompt-dialog.component.css'
 })
 export class PromptDialogComponent {
-    text: string;
-    placeholder: string;
-    label: string;
-    regex?: string;
-    inputValue?: string;
     @ViewChild('formInput') inputField: any;
-    validationText: string;
-    dropdownRequired: boolean;
-    dropdownList: any;
-    dropdownPlaceholder: string;
+    
     dropdownSelection? : string;
-    typeaheadRootStyle: string = '';
     maxListSize : number = 10000;
-    isTextAreaRequired: boolean;
-    isTextFieldRequired: boolean;
-    textAreaValue?: string;
+    
     @ViewChild('formTextArea') textAreaField: any;
-
+    
+    typeaheadRootStyle: string = '';
     @ViewChild('typeaheadParent') typeaheadParent : any;
     @ViewChild('typeahead') typeahead : any;
 
-    textFieldRegex?: string;
-    textAreaRegex?: string;
-
-    checkboxRequired :  boolean = false;
-    checkboxValue : boolean = false;
-    checkboxLabel : string = 'Checkbox'
-
-    isTableRequired: boolean = false;
     tableData?: { columns: { key: string; label: string }[]; rows: any[]; maxHeight?: string };
-
-    okButtonText: string;
-    cancelButtonText: string;
-
-    isCheckboxInTableRequired: boolean = false;
-    defaultTableCheckboxState: boolean = false;
     tableCheckboxStates: boolean[] = [];
+    @ViewChild('tableElement') tableElement?: ElementRef;
 
-    showTopRightTextbox: boolean = false;
-    topRightTextboxPlaceholder: string;
-    topRightTextboxLabel: string;
-    topRightTextboxValue: string;
-    topRightTextboxChangeHandler: (event: any, cmpInstance : PromptDialogComponent) => void;
-
+    //! TODO - Duplicate properties as PromptDialogOptions , must use options direct
     constructor(public dialogRef: MatDialogRef<ConfirmDialogComponent>, @Inject(MAT_DIALOG_DATA) public data: PromptDialogOptions) {
-        this.text = data.text || 'Please enter some input';
-        this.placeholder = data.placeholder || 'Input';
-        this.label = data.label || 'Input';
-        this.regex = data.regex; // legacy, fallback
-        this.textFieldRegex = data.textFieldRegex || this.regex;
-        this.textAreaRegex = data.textAreaRegex || this.regex;
-        this.validationText = data.validationText || 'Please enter a valid input';
-        this.dropdownRequired = !!data.dropdownRequired;
-        this.dropdownList = data.dropdownList;
-        this.dropdownPlaceholder = data.dropdownPlaceholder || '';
-        this.isTextAreaRequired = !!data.isTextAreaRequired;
-        this.isTextFieldRequired = data.isTextFieldRequired !== false; // default true
-        this.textAreaValue = data.textAreaValue || '';
-        this.inputValue = data.inputValue || '';
-        this.checkboxRequired = data.checkboxRequired || false;
-        this.checkboxValue = data.checkboxValue || false;
-        this.checkboxLabel = data.checkboxLabel || '';
-        this.isTableRequired = !!data.isTableRequired;
-        this.okButtonText = data.okButtonText || 'Yes';
-        this.cancelButtonText = data.cancelButtonText || 'No';
-        this.isCheckboxInTableRequired = !!data.isCheckboxInTableRequired;
-        this.defaultTableCheckboxState = !!data.defaultTableCheckboxState;
-        if (this.isTableRequired && data.tableData && Array.isArray(data.tableData.columns) && Array.isArray(data.tableData.rows)) {
+        data.text = data.text || 'Please enter some input';
+        data.placeholder = data.placeholder || 'Input';
+        data.label = data.label || 'Input';
+        // this.regex = data.regex; // legacy, fallback
+        data.textFieldRegex = data.textFieldRegex || data.regex;
+        data.textAreaRegex = data.textAreaRegex || data.regex;
+        data.validationText = data.validationText || 'Please enter a valid input';
+        data.dropdownRequired = !!data.dropdownRequired;
+        data.dropdownList = data.dropdownList;
+        data.dropdownPlaceholder = data.dropdownPlaceholder || '';
+        data.isTextAreaRequired = !!data.isTextAreaRequired;
+        data.isTextFieldRequired = data.isTextFieldRequired !== false; // default true
+        data.textAreaValue = data.textAreaValue || '';
+        data.inputValue = data.inputValue || '';
+        data.checkboxRequired = data.checkboxRequired || false;
+        data.checkboxValue = data.checkboxValue || false;
+        data.checkboxLabel = data.checkboxLabel || '';
+        data.isTableRequired = !!data.isTableRequired;
+        data.okButtonText = data.okButtonText || 'Yes';
+        data.cancelButtonText = data.cancelButtonText || 'No';
+        data.isCheckboxInTableRequired = !!data.isCheckboxInTableRequired;
+        data.defaultTableCheckboxState = !!data.defaultTableCheckboxState;
+
+        if (data.isTableRequired && data.tableData && Array.isArray(data.tableData.columns) && Array.isArray(data.tableData.rows)) {
             this.tableData = JSON.parse(JSON.stringify(data.tableData)); // deep copy
-            this.tableCheckboxStates = data.tableData.rows.map(() => this.defaultTableCheckboxState);
+            this.tableCheckboxStates = data.tableData.rows.map(() => this.data.defaultTableCheckboxState!);
             this.log('Table data initialized:', this.tableData);
         }
-        this.showTopRightTextbox = !!data.showTopRightTextbox;
-        this.topRightTextboxPlaceholder = data.topRightTextboxPlaceholder || '';
-        this.topRightTextboxLabel = data.topRightTextboxLabel || '';
-        this.topRightTextboxValue = data.topRightTextboxValue || '';
-        this.topRightTextboxChangeHandler = data.topRightTextboxChangeHandler || ((event: any, cmpInstance: PromptDialogComponent) => {});
-        this.topRightTextboxChangeHandler({target : { value: this.topRightTextboxValue }}, this);
+        data.showTopRightTextbox = !!data.showTopRightTextbox;
+        data.topRightTextboxPlaceholder = data.topRightTextboxPlaceholder || '';
+        data.topRightTextboxLabel = data.topRightTextboxLabel || '';
+        data.topRightTextboxValue = data.topRightTextboxValue || '';
+        data.topRightTextboxChangeHandler = data.topRightTextboxChangeHandler || ((event: any, cmpInstance: PromptDialogComponent) => {});
+        data.topRightTextboxChangeHandler({target : { value: data.topRightTextboxValue }}, this);
+
+        data.helperBtn1Required = !!data.helperBtn1Required;
+        data.helperBtn1Text = data.helperBtn1Text || 'Button 1';
+        data.helperBtn1_onclick = data.helperBtn1_onclick ?? ((event: any, cmpInstance: PromptDialogComponent) => {});
+        data.helperBtn2Required = !!data.helperBtn2Required;
+        data.helperBtn2Text = data.helperBtn2Text || 'Button 2';
+        data.helperBtn2_onclick = data.helperBtn2_onclick ?? ((event: any, cmpInstance: PromptDialogComponent) => {});
     }
 
     isTextFieldValid(): boolean {
-        if (!this.isTextFieldRequired) return true;
-        return !!this.inputValue && (!this.textFieldRegex || !!this.inputValue.match(this.textFieldRegex));
+        if (!this.data.isTextFieldRequired) return true;
+        return !!this.data.inputValue && (!this.data.textFieldRegex || !!this.data.inputValue.match(this.data.textFieldRegex));
     }
     isTextAreaValid(): boolean {
-        if (!this.isTextAreaRequired) return true;
-        return !!this.textAreaValue && (!this.textAreaRegex || !!this.textAreaValue.match(this.textAreaRegex));
+        if (!this.data.isTextAreaRequired) return true;
+        return !!this.data.textAreaValue && (!this.data.textAreaRegex || !!this.data.textAreaValue.match(this.data.textAreaRegex));
     }
     isInputValid(): boolean {
         return this.isTextFieldValid() && this.isTextAreaValid();
@@ -172,18 +159,25 @@ export class PromptDialogComponent {
         }
         if (valid) {
             let tableRowsWithCheckbox = undefined;
-            if (this.isTableRequired && this.isCheckboxInTableRequired && this.tableData?.rows) {
+            if (this.data.isTableRequired && this.data.isCheckboxInTableRequired && this.tableData?.rows) {
                 tableRowsWithCheckbox = this.tableData.rows.map((row, idx) => ({ ...row, checked: this.tableCheckboxStates[idx] }));
             }
             this.dialogRef.close({
-                input: this.inputValue,
-                textArea: this.textAreaValue,
+                input: this.data.inputValue,
+                textArea: this.data.textAreaValue,
                 dropdownSelection: this.dropdownSelection,
-                checkbox: this.checkboxValue,
+                checkbox: this.data.checkboxValue,
                 tableRows: tableRowsWithCheckbox,
-                topRightTextboxValue: this.topRightTextboxValue
+                topRightTextboxValue: this.data.topRightTextboxValue
             });
         }
+    }
+
+    helperBtn1Click(event : any) {
+        this.data.helperBtn1_onclick!(event, this);
+    }
+    helperBtn2Click(event : any) {
+        this.data.helperBtn2_onclick!(event, this);
     }
 
     close() {
@@ -198,7 +192,7 @@ export class PromptDialogComponent {
 
     onTextAreaKeyDown(evt: KeyboardEvent) {
         if (evt.key === 'Enter' && (evt.ctrlKey || evt.metaKey)) {
-            if (this.isInputValid() && !(this.dropdownRequired && !this.dropdownSelection)) {
+            if (this.isInputValid() && !(this.data.dropdownRequired && !this.dropdownSelection)) {
                 this.confirm();
             }
         }
@@ -206,6 +200,28 @@ export class PromptDialogComponent {
 
     dropdownOnSelect(selection : any) {
         this.dropdownSelection = selection;
+    }
+
+    masterChecked = false;
+    masterIndeterminate = false;
+    toggleAllCheckboxes(event: Event) {
+        const checked = (event.target as HTMLInputElement).checked;
+
+        this.tableCheckboxStates = this.tableCheckboxStates.map(() => checked);
+
+        this.masterChecked = checked;
+        this.masterIndeterminate = false;
+    }
+    updateMasterState() {
+        const total = this.tableCheckboxStates.length;
+        const selected = this.tableCheckboxStates.filter(v => v).length;
+
+        this.masterChecked = selected === total && total > 0;
+        this.masterIndeterminate = selected > 0 && selected < total;
+    }
+
+    onRowCheckboxChange() {
+        this.updateMasterState();
     }
 
     log(...str: any) {

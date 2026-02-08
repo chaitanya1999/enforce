@@ -1,24 +1,26 @@
 <div style="padding: 20px;" class="mainDiv">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 25px;">
-        <span style="font-size: 1em; font-weight: bold;">{{text}}</span><br/>
-        @if(showTopRightTextbox) {
+        <span style="font-size: 1em; font-weight: bold;">{{data.text}}</span><br/>
+        @if(data.showTopRightTextbox) {
             <!-- <div class="form-floating" style="width: 180px; margin-right: 10px;"> -->
             <div style="display: flex; flex-direction: row; align-items: center; gap: 5px; height: 100%;">
-                <label for="topRightTextbox">{{topRightTextboxLabel}}</label>
-                <input type="text" class="form-control" id="topRightTextbox" [placeholder]="topRightTextboxPlaceholder" [(ngModel)]="topRightTextboxValue"
-                    (input)="topRightTextboxChangeHandler($event, this)"
+                <label for="topRightTextbox">{{data.topRightTextboxLabel}}</label>
+                <input type="text" class="form-control" id="topRightTextbox" [placeholder]="data.topRightTextboxPlaceholder" [(ngModel)]="data.topRightTextboxValue"
+                    (input)="data.topRightTextboxChangeHandler!($event, this)"
                     style="width: 120px; min-width: 100px; font-size: 1em;">
             </div>
             <!-- </div> -->
         }
     </div>
-    @if(isTableRequired && tableData?.columns?.length) {
+    @if(data.isTableRequired && tableData?.columns?.length) {
         <div style="max-height: 220px; overflow-y: auto; margin-bottom: 1em; border-radius: 6px; border: 1px solid #ddd; background: #fff;">
-            <table class="table table-sm table-bordered table-striped" style="font-size:0.97em; background: #fff; color: #222; margin-bottom: 0;">
+            <table #tableElement class="table table-sm table-bordered table-striped" style="font-size:0.97em; background: #fff; color: #222; margin-bottom: 0;">
                 <thead style="background-color: lightgray; color: #7c5700;">
                     <tr>
-                        @if(isCheckboxInTableRequired) {
-                            <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;"></th>
+                        @if(data.isCheckboxInTableRequired) {
+                            <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;">
+                                <input type="checkbox" (click)="toggleAllCheckboxes($event)" [checked]="masterChecked" [indeterminate]="masterIndeterminate" />
+                            </th>
                         }
                         @for(col of tableData!.columns; track col) {
                             <th style="position: sticky; top: 0; background-color: lightgray; z-index: 2;">{{col.label}}</th>
@@ -29,9 +31,9 @@
                     @if(tableData?.rows?.length) {
                         @for(row of tableData!.rows; let i = $index; track row) {
                             <tr>
-                                @if(isCheckboxInTableRequired) {
+                                @if(data.isCheckboxInTableRequired) {
                                     <td style="vertical-align: middle;white-space: nowrap;">
-                                        <input type="checkbox" [(ngModel)]="tableCheckboxStates[i]" />
+                                        <input type="checkbox" [(ngModel)]="tableCheckboxStates[i]" (change)="onRowCheckboxChange()"/>
                                     </td>
                                 }
                                 @for(col of tableData!.columns; track col) {
@@ -41,7 +43,7 @@
                         }
                     } @else {
                         <tr>
-                            <td [attr.colspan]="isCheckboxInTableRequired ? tableData!.columns.length + 1 : tableData!.columns.length" style="text-align: center; color: #888;">
+                            <td [attr.colspan]="data.isCheckboxInTableRequired ? tableData!.columns.length + 1 : tableData!.columns.length" style="text-align: center; color: #888;">
                                 No rows
                             </td>
                         </tr>
@@ -50,41 +52,47 @@
             </table>
         </div>
     }
-    @if(dropdownRequired) {
+    @if(data.dropdownRequired) {
         <div #typeaheadParent style="width: 100%">
-            <app-custom-typeahead [rootStyle]="typeaheadRootStyle" style="height: 100%;" [dataset]="dropdownList" (onSelect)="dropdownOnSelect($event)" [placeholder]="dropdownPlaceholder" 
+            <app-custom-typeahead [rootStyle]="typeaheadRootStyle" style="height: 100%;" [dataset]="data.dropdownList!" (onSelect)="dropdownOnSelect($event)" [placeholder]="data.dropdownPlaceholder!" 
             [maxListSize]="maxListSize" [maxSelectSize]="5"></app-custom-typeahead>
         </div>
         <br/>
     }
-    @if(isTextFieldRequired) {
+    @if(data.isTextFieldRequired) {
     <div class="form-floating mb-3">
-        <input #formInput type="input" class="form-control" id="promptInput" [placeholder]="placeholder" [(ngModel)]="inputValue" required="true" (keydown)="onKeyDown($event)">
-        <label for="promptInput">{{label}}</label>
+        <input #formInput type="input" class="form-control" id="promptInput" [placeholder]="data.placeholder" [(ngModel)]="data.inputValue" required="true" (keydown)="onKeyDown($event)">
+        <label for="promptInput">{{data.label}}</label>
         <div class="invalid-feedback">
-            {{validationText}}
+            {{data.validationText}}
         </div>
     </div>
     }
-    @if(isTextAreaRequired) {
+    @if(data.isTextAreaRequired) {
     <div class="form-floating mb-3">
-        <textarea #formTextArea class="form-control" id="promptTextArea" [placeholder]="placeholder" [(ngModel)]="textAreaValue" rows="4" required="true" (keydown)="onTextAreaKeyDown($event)"></textarea>
-        <label for="promptTextArea">{{label}}</label>
+        <textarea #formTextArea class="form-control" id="promptTextArea" [placeholder]="data.placeholder" [(ngModel)]="data.textAreaValue" rows="4" required="true" (keydown)="onTextAreaKeyDown($event)"></textarea>
+        <label for="promptTextArea">{{data.label}}</label>
         <div class="invalid-feedback">
-            {{validationText}}
+            {{data.validationText}}
         </div>
     </div>
     }
-    @if(checkboxRequired) {
+    @if(data.checkboxRequired) {
     <div class="form-check mb-3">
-        <input class="form-check-input" type="checkbox" id="promptCheckbox" [(ngModel)]="checkboxValue">
+        <input class="form-check-input" type="checkbox" id="promptCheckbox" [(ngModel)]="data.checkboxValue">
         <label class="form-check-label" for="promptCheckbox">
-            {{checkboxLabel}}
+            {{data.checkboxLabel}}
         </label>
     </div>
     }
     <div style="display: flex; flex-direction: row; justify-content: center; align-items: center;">
-        <button class="btn btn-success" style="width: 100px; margin: 10px; white-space: nowrap;" (click)="confirm()" [disabled]="(dropdownRequired && !dropdownSelection) || !isInputValid()">{{okButtonText}}</button>
-        <button class="btn btn-danger" style="width: 100px;  margin: 10px; white-space: nowrap;" (click)="close()">{{cancelButtonText}}</button>
+        <button class="btn btn-success" style="min-width: 100px; margin: 10px; white-space: nowrap;" (click)="confirm()" [disabled]="(data.dropdownRequired && !dropdownSelection) || !isInputValid()">{{data.okButtonText}}</button>
+        @if(data.helperBtn1Required) {
+            <button class="btn btn-secondary" style="min-width: 100px; margin: 10px; white-space: nowrap;" (click)="helperBtn1Click($event)">{{data.helperBtn1Text}}</button>
+        }
+        @if(data.helperBtn2Required) {
+            <button class="btn btn-secondary" style="min-width: 100px; margin: 10px; white-space: nowrap;" (click)="helperBtn2Click($event)">{{data.helperBtn2Text}}</button>
+        }
+        <button class="btn btn-danger" style="min-width: 100px;  margin: 10px; white-space: nowrap;" (click)="close()">{{data.cancelButtonText}}</button>
     </div>
 </div>

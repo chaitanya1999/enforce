@@ -40,6 +40,24 @@ export class AppConstants {
         'DESIGN' : '.design',
         'SVG' : '.svg'
     };
+    static aura_defTypeVsSortOrder : any = {
+        'COMPONENT' : 1,
+        'APPLICATION' : 1,
+        'CONTROLLER' : 2,
+        'HELPER' : 3,
+        'STYLE' : 4,
+        'RENDERER' : 5,
+        'EVENT' : 6,
+        'DOCUMENTATION' : 7,
+        'DESIGN' : 8,
+        'SVG' : 9
+    };
+    static lwc_typeVsSortOrder : any = {
+        'html' : 1,
+        'js' : 2,
+        'css' : 3,
+        'js-meta.xml' : 4
+    };
     static defTypeVsLanguage : any = {
         'COMPONENT' : 'html',
         'APPLICATION' : 'html',
@@ -106,6 +124,15 @@ export class AppConstants {
         'StaticResource' : CodeEntity.StaticResource,
         'ApexPage' : CodeEntity.VFPage,
         'ApexComponent' : CodeEntity.VFComponent,
+    }
+    static enforceEntityTypeToPackageXmlType : any = {
+        [CodeEntity.ApexClass] : 'ApexClass',
+        [CodeEntity.ApexTrigger] : 'ApexTrigger',
+        [CodeEntity.AuraComponent] : 'AuraDefinitionBundle',
+        [CodeEntity.LWC] : 'LightningComponentBundle',
+        [CodeEntity.StaticResource] : 'StaticResource',
+        [CodeEntity.VFPage] : 'ApexPage',
+        [CodeEntity.VFComponent] : 'ApexComponent'
     }
 
     static defaultCode : any = {

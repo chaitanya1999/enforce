@@ -369,6 +369,13 @@ export class AppComponent {
         }
     }
 
+    openOrgEvent(orgName: string) {
+        console.log('app.component | openOrgEvent | orgName = ' + orgName);
+        let cred = this.orgCredsMap.get(orgName);
+        if(cred)
+            this.openOrgInBrowser(cred);
+    }
+
 }
 
 // bootstrapApplication(CodeBrowserComponent, {

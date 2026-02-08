@@ -85,7 +85,14 @@ export class ClassCmpListFetcher {
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_aura.txt`;
             let suffix = Utils.aura_suffixMap;
-            let auraList = Array.from(auraRecords).filter((y:any) => y['DefType'] in suffix).map((x:any) => {
+            let auraList = Array.from(auraRecords)
+            .sort((x : any,y : any) => {
+                
+                let bundleCompare = x['AuraDefinitionBundle']['DeveloperName'].localeCompare(y['AuraDefinitionBundle']['DeveloperName']);
+                if(bundleCompare !== 0) return bundleCompare;
+                return AppConstants.aura_defTypeVsSortOrder[ x['DefType'] ] - AppConstants.aura_defTypeVsSortOrder[ y['DefType'] ];
+
+            }).filter((y:any) => y['DefType'] in suffix).map((x:any) => {
                 let name = x['AuraDefinitionBundle'].DeveloperName + '/' + x['AuraDefinitionBundle'].DeveloperName + suffix[x['DefType']];
                 return new NormalizedCodeEntity(x['Id'], name, CodeEntity.AuraComponent, x['AuraDefinitionBundleId'], x['AuraDefinitionBundle']['DeveloperName'], x['AuraDefinitionBundle']['ApiVersion'], x['AuraDefinitionBundle']['NamespacePrefix'], orgName)
             })
@@ -182,7 +189,17 @@ export class ClassCmpListFetcher {
             // let outputFile = `../FetchedClassCmpList/`;
             // fs?.mkdirSync(outputFile, { recursive: true });
             // outputFile += `${orgName}_lwc.txt`;
-            let lwcList = Array.from(lwcRecords).map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], CodeEntity.LWC, x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
+            let lwcList = Array.from(lwcRecords)
+            .sort((x : any, y : any)=>{
+                let bundleCompare = x['LightningComponentBundle']['DeveloperName'].localeCompare(y['LightningComponentBundle']['DeveloperName']);
+                if(bundleCompare !== 0) return bundleCompare;
+                function afterFirst(str : string, char : string) {
+                    const i = str.indexOf(char);
+                    return i === -1 ? '' : str.slice(i + 1);
+                }
+                return AppConstants.lwc_typeVsSortOrder[ afterFirst(x['FilePath'], '.') ] - AppConstants.lwc_typeVsSortOrder[ afterFirst(y['FilePath'], '.') ];
+            })
+            .map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], CodeEntity.LWC, x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
             // let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`, '');
             // debug('Pushing to file => ' + outputFile);
             // fs?.writeFileSync(outputFile, lwcListStr);
