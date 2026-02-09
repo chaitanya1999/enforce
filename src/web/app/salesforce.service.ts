@@ -322,6 +322,22 @@ export class SalesforceService {
     
                     bundleVsDetails[bundleName].contents.push({label : name , value : record['FilePath'], id : record['Id']});
                 }
+
+                
+                function afterFirst(str : string, char : string) {
+                    const i = str.indexOf(char);
+                    return i === -1 ? '' : str.slice(i + 1);
+                }
+                for(let bundleDetails of Object.values(bundleVsDetails)) {
+                    bundleDetails.contents = bundleDetails.contents.sort((x:any, y:any) => {
+                        let order = AppConstants.lwc_typeVsSortOrder[ afterFirst(x.value, '.') ] - AppConstants.lwc_typeVsSortOrder[ afterFirst(y.value, '.') ];
+                        if(order == 0)
+                            return x.value.localeCompare(y.value);
+                        else return order;
+                    });
+                    bundleContents.push(...bundleDetails.contents);
+                }
+
             }
         }
 

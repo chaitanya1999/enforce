@@ -1,0 +1,21 @@
+loadEntity - loads and creates new tab
+	fetchCode
+	creates tab on the spot
+
+loadEntityBulk - loads and creates tabs in bulk
+	fetchCode
+	creates tab on the spot
+
+loadDiffEntity - loads and creates new tab from two orgs + DIFFs both
+	loadEntity x 2
+	createDiffTab
+		creates tab on the spot
+
+bulk load diff entity - achieved via loadEntityBulk + bulkCreateDiffTab
+	loadEntityBulk
+		fetchCode
+		creates tab on the spot
+	bulkCreateDiffTab
+		createDiffTab
+			creates tab on the spot
+	

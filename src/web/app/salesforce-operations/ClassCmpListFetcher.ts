@@ -197,7 +197,10 @@ export class ClassCmpListFetcher {
                     const i = str.indexOf(char);
                     return i === -1 ? '' : str.slice(i + 1);
                 }
-                return AppConstants.lwc_typeVsSortOrder[ afterFirst(x['FilePath'], '.') ] - AppConstants.lwc_typeVsSortOrder[ afterFirst(y['FilePath'], '.') ];
+                let typeCompare = AppConstants.lwc_typeVsSortOrder[ afterFirst(x['FilePath'], '.') ] - AppConstants.lwc_typeVsSortOrder[ afterFirst(y['FilePath'], '.') ];
+                if(typeCompare !== 0) return typeCompare;
+
+                return x['FilePath'].localeCompare(y['FilePath']);
             })
             .map((x:any) => new NormalizedCodeEntity(x['Id'], x['FilePath'], CodeEntity.LWC, x['LightningComponentBundleId'], x['LightningComponentBundle']['DeveloperName'] , x['LightningComponentBundle']['ApiVersion'], x['LightningComponentBundle']['NamespacePrefix'], orgName));
             // let lwcListStr = lwcList.reduce( (x,y) => `${x}\n${y}`, '');

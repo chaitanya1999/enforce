@@ -212,6 +212,16 @@ export default class Utils {
         return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     }
 
+    static generatePackageXml(entityTypeVsName : any, apiVersion : string) {
+        let content = ''
+        for(let key in entityTypeVsName) {
+            content += '\t<types>\n' + Array.from(entityTypeVsName[key] ?? []).map(x => '\t\t<members>' + x + '</members>').join('\n') + '\n\t\t<name>' + key + '</name>\n' + '\t</types>\n';
+        }
+
+        let packageXml = `<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n` + content + `\t<version>${apiVersion}</version>\n</Package>`
+        return packageXml;
+    }
+
 }
 
 export class EnForceResponse {

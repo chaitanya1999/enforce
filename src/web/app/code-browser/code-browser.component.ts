@@ -35,6 +35,8 @@ import { CommandPaletteDialogData } from '../command-palette/command-palette-dia
 import { CodeTab } from '../CodeTab';
 import { EditorSession } from '../EditorSession';
 import { StorageKeys, StorageService, StorageType } from '../StorageService';
+import JSZip from 'jszip';
+
 
 // Type for the data inside EnForceResponse for bulk fetch
 type BulkFetchCodeData = {
@@ -642,7 +644,7 @@ export class CodeBrowserComponent {
         if(this.quickDiffModeFlag && this.isOrgSelected && this.isOrg2Selected) {
             if(codeEntity && codeEntity2) {
                 // diffTab will be the created diff tab or null if unsuccessful
-                const diffTab = await this.loadDiffEntity(codeEntity, codeEntity2, org, org2, entityType);
+                const diffTab = await this.loadDiffEntity(codeEntity, codeEntity2, org, org2, entityType, true);
             } else {
                 let codeEntityToLoad, orgToLoad;
                 ([codeEntityToLoad, orgToLoad] = (codeEntity ? [codeEntity , org] : [codeEntity2 , org2]));
@@ -659,10 +661,11 @@ export class CodeBrowserComponent {
         }
     }
 
-    async loadDiffEntity(codeEntity: NormalizedCodeEntity, codeEntity2: NormalizedCodeEntity, org: string, org2: string, entityType: string): Promise<CodeTab | null> {
+    async loadDiffEntity(codeEntity: NormalizedCodeEntity, codeEntity2: NormalizedCodeEntity, org: string, org2: string, entityType: string, dontHideExistingTabs? : boolean): Promise<CodeTab | null> {
         this.showSpinner = true;
         
         try {
+            let existingModelIds = this.openTabs.filter(t => t.editorType == this.$codeEditor).map(t => t.modelId);
             const result = await Promise.all([
                 this.loadEntity(codeEntity.Name, null, entityType, org, codeEntity, true, false, true, true, true),
                 this.loadEntity(codeEntity2.Name, null, entityType, org2, codeEntity2, true, false, true, true, true)
@@ -672,8 +675,10 @@ export class CodeBrowserComponent {
             let tab2 = result[1];
             
             if (tab1 && tab2) {
-                if (!tab1.hidden) this.hideShowTab(tab1);
-                if (!tab2.hidden) this.hideShowTab(tab2);
+                let hideTab1 = !(dontHideExistingTabs && existingModelIds.includes(tab1.modelId)); //hide only if tab is not already loaded , logic based on dontHideExistingTabs
+                let hideTab2 = !(dontHideExistingTabs && existingModelIds.includes(tab2.modelId)); //hide only if tab is not already loaded , logic based on dontHideExistingTabs
+                if (!tab1.hidden && hideTab1) this.hideShowTab(tab1);
+                if (!tab2.hidden && hideTab2) this.hideShowTab(tab2);
                 return this.createDiffTab(tab1, tab2);
             } else {
                 if (tab1 && tab1.hidden) this.hideShowTab(tab1);
@@ -1041,6 +1046,8 @@ export class CodeBrowserComponent {
             return;
         }
 
+        let existingModelIds = this.openTabs.filter(t => t.editorType == this.$codeEditor).map(t => t.modelId);
+
 
         let orgVsTab = await this.loadEntityBulk(entitiesToLoad, orgs, diffFlag == true);
         let tabsList : CodeTab[] = Object.values(orgVsTab || {}).flat();
@@ -1058,7 +1065,7 @@ export class CodeBrowserComponent {
                 const tabs1 = orgVsTab[org1] || [];
                 const tabs2 = orgVsTab[org2] || [];
 
-                this.bulkCreateDiffTab(tabs1, tabs2, tabsList);
+                this.bulkCreateDiffTab(tabs1, tabs2, true, existingModelIds, tabsList);
             }
             this.showSpinner = false;
             this.log('loadEntitiesFromPackageXml | Tabs Count after = ' + tabsList.length);
@@ -1067,27 +1074,35 @@ export class CodeBrowserComponent {
             this.selectTab(tabsList.at(-1)!)
     }
 
-    bulkCreateDiffTab(tabs1 : CodeTab[], tabs2 : CodeTab[], tabsList? : CodeTab[]) {
+    bulkCreateDiffTab(tabs1 : CodeTab[], tabs2 : CodeTab[], dontHideExistingTabs : boolean, existingModelIds : string[], tabsList? : CodeTab[]) {
         // Map by tabValue + entityType for unique match
         const tabMap1 = new Map<string, CodeTab>();
         const tabMap2 = new Map<string, CodeTab>();
         tabs1.forEach(tab => tabMap1.set(`${tab.tabValue}::${tab.entityType}`, tab));
         tabs2.forEach(tab => tabMap2.set(`${tab.tabValue}::${tab.entityType}`, tab));
 
+        let createdDiffTabs : CodeTab[] = [];
+
         // For each entity present in both orgs, create a diff tab
         for (const [key, tab1] of tabMap1.entries()) {
             const tab2 = tabMap2.get(key);
             if (tab2) {
+                let hideTab1 = !(dontHideExistingTabs && existingModelIds?.includes(tab1.modelId)); //hide only if tab is not already loaded , logic based on dontHideExistingTabs
+                let hideTab2 = !(dontHideExistingTabs && existingModelIds?.includes(tab2.modelId)); //hide only if tab is not already loaded , logic based on dontHideExistingTabs
                 // Hide originals, show only diff
-                if (!tab1.hidden) this.hideShowTab(tab1);
-                if (!tab2.hidden) this.hideShowTab(tab2);
-                let dt = this.createDiffTab(tab1, tab2, undefined, true)
+                if (!tab1.hidden && hideTab1) this.hideShowTab(tab1);
+                if (!tab2.hidden && hideTab2) this.hideShowTab(tab2);
+                let dt = this.createDiffTab(tab1, tab2, undefined, true, true);
+                createdDiffTabs.push(dt);
                 if(tabsList) tabsList.push(dt);
             } else {
                 // Only present in org1, do not create diff tab, show original
                 if (tab1.hidden) this.hideShowTab(tab1);
             }
         }
+
+        this.addTabBulk(createdDiffTabs);
+
         // Also check for entities only in org2 (not in org1)
         for (const [key, tab2] of tabMap2.entries()) {
             if (!tabMap1.has(key)) {
@@ -1457,6 +1472,8 @@ export class CodeBrowserComponent {
         new Command('Component: Select Component Type & Open', 'select-entity-type', () => this.selectEntityType(), '', '/sct'),
         new Command('Component: Create New Component', 'create-new-component', () => this.createNewComponent(), '', '/new'),
         new Command('Code: Search in Codebase (Global Search)', 'global-search', () => this.globalSearch(), 'Ctrl+Shift+H', '/gsc'),
+        new Command('Workspace: Generate & Copy Package.xml for Open Files','generate-package-for-open-files', () => this.generatePackageFromOpenFiles(), '', '/pkgcopy'),
+        new Command('Workspace: Download Snapshot (ZIP) of Open Files','download-workspace-snapshot', () => this.downloadWorkspaceSnapshot(), '', '/pkgcopy'),
         new Command('Diff: Toggle Quick Diff Mode', 'toggle-quick-diff', () => this.quickDiffMode(), '' , '/qd'),
         new Command('Diff: Compare Current File with Org copy', 'compare-current-file-with-org', () => this.diffWithOrg(true), '', '/ccfo'),
         new Command('File: Quick Open File Universally', 'universal-quick-open-file', () => this.quickOpenFile(true), 'Ctrl+Shift+U', '/qo'),
@@ -1599,7 +1616,7 @@ export class CodeBrowserComponent {
                 helperBtn2Text: 'Copy Package.xml (selected)',
                 helperBtn2_onclick : (event : any, cmpInstance: PromptDialogComponent) => {
                     if(cmpInstance.tableData?.rows && cmpInstance.tableElement) {
-                        let content = '';
+                        // let content = '';
                         let entityTypeVsName : any = {};
                         let i = 0;
                         for(let row of cmpInstance.tableData?.rows as NormalizedCodeEntity[]) {
@@ -1611,12 +1628,8 @@ export class CodeBrowserComponent {
                             entityTypeVsName[sfEntityType].add(row.BundleName ?? row.Name);
                         }
 
-                        for(let key in entityTypeVsName) {
-                            content += '\t<types>\n' + Array.from(entityTypeVsName[key] ?? []).map(x => '\t\t<members>' + x + '</members>').join('\n') + '\n\t\t<name>' + key + '</name>\n' + '\t</types>\n';
-                        }
-
-                        let packageXml = `<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n` + content + `\t<version>${sfApiVersion}</version>\n</Package>`
-
+                        let packageXml = Utils.generatePackageXml(entityTypeVsName, sfApiVersion);
+                        
                         navigator.clipboard.writeText(packageXml).then(()=>{
                             this.showSnackBar("Package.xml copied succesfully");
                         }).catch((e) => {
@@ -1656,11 +1669,15 @@ export class CodeBrowserComponent {
                             if(nce2) selectedRows2.push(nce2);
                         }
                     }
+
+                    let existingModelIds = this.openTabs.filter(t => t.editorType == this.$codeEditor).map(t => t.modelId);
+
                     let finalRows = [...selectedRows , ...selectedRows2];
                     let orgVsTab = await this.loadEntityBulk(finalRows, orgList) ?? {};
 
                     let tabsList : CodeTab[] = Object.values(orgVsTab).flat();
-                    this.bulkCreateDiffTab(orgVsTab[orgList[0]] || [], orgVsTab[orgList[1]] || [], tabsList);
+                    if(diffSelected)
+                        this.bulkCreateDiffTab(orgVsTab[orgList[0]] || [], orgVsTab[orgList[1]] || [], true, existingModelIds, tabsList);
                     if(tabsList.length)
                         this.selectTab(tabsList.at(-1)!)
                 }
@@ -2096,7 +2113,8 @@ export class CodeBrowserComponent {
         tab1: CodeTab | null,
         tab2: CodeTab,
         modelId1?: string,
-        createInBackground: boolean = false
+        createInBackground: boolean = false,
+        doNotAddTab : boolean = false
     ): CodeTab {
         //check for existing tab
         let diffTabName = this.getDiffTabValueString(tab1 || tab2, tab2);
@@ -2150,7 +2168,7 @@ export class CodeBrowserComponent {
 
         if (tab1) tab1.diffTabModelIds.add(diffModelId);
         tab2.diffTabModelIds.add(diffModelId);
-        this.addTab(tab);
+        if(!doNotAddTab) this.addTab(tab);
 
         if (!createInBackground) {
             this.selectTab(tab);
@@ -3365,6 +3383,106 @@ export class CodeBrowserComponent {
         a.click();
 
         window.URL.revokeObjectURL(url);
+    }
+
+    async createWorkspaceZip(data: any): Promise<Blob> {
+        const zip = new JSZip();
+        for (const orgName of Object.keys(data)) {
+            const orgFolder = zip.folder(orgName);
+            if (!orgFolder) continue;
+
+            const entityMap = data[orgName];
+
+            for (const entityType of Object.keys(entityMap)) {
+                const entityFolder = orgFolder.folder(entityType);
+                if (!entityFolder) continue;
+
+                const files = entityMap[entityType];
+
+                for (const fileName of Object.keys(files)) {
+                    const content = files[fileName];
+                    entityFolder.file(fileName, content);
+                }
+            }
+        }
+
+        return zip.generateAsync({ type: 'blob' });
+    }
+
+
+    async downloadWorkspaceSnapshot() {
+        try {
+            this.showSpinner = true;
+            let zipData : any = {} //orgName VS entityType VS fileName VS content
+            let editorTabs = this.openTabs.filter(t => t.editorType == this.$codeEditor);
+            for (const tab of editorTabs) {
+                if (!zipData[tab.orgName]) {
+                    zipData[tab.orgName] = {};
+                }
+                if (!zipData[tab.orgName][tab.entityType]) {
+                    zipData[tab.orgName][tab.entityType] = {};
+                }
+                
+                const content = this.editorCmp.getContent(tab.modelId);
+                zipData[tab.orgName][tab.entityType][tab.tabName] = content;
+            }
+
+            const blob = await this.createWorkspaceZip(zipData);
+            const filename = `enforce-workspace-snapshot-${new Date().getTime()}.zip`;
+            const url = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+
+            window.URL.revokeObjectURL(url);            
+
+        } catch(err) {
+            console.error(err);
+            this.log('downloadWorkspaceSnapshot | error -> ' , err);
+        } finally {
+            this.showSpinner = false;
+        }
+    }
+
+
+    generatePackageFromOpenFiles() {
+        let orgs = Array.from(new Set(this.openTabs.filter(t => t.editorType == AppConstants.CODE_EDITOR).map(t => t.orgName) || []));
+        if(!orgs.length) return;
+        if(orgs.length > 1) {
+            this.openCommandPalette('org-selector', {
+                commands : orgs.map( (orgName : string) => <Command>{uniqueId : orgName, name : orgName} ),
+                placeholder: 'Select an org',
+                emptyMessage: 'No orgs available',
+                wildcardEnabled: true,
+                commonAction: (cmd: any) => {
+                    this.generatePackageXmlFromOpenFilesForOrg(cmd.name);
+                }
+            }, true);
+        } else {
+            this.generatePackageXmlFromOpenFilesForOrg(orgs[0]);
+        }
+    }
+
+    generatePackageXmlFromOpenFilesForOrg(orgName : string) {
+        let tabs = this.openTabs.filter(t => t.orgName == orgName && t.editorType == AppConstants.CODE_EDITOR);
+        let entityTypeVsName : any = {};
+        tabs.forEach(t => {
+            let sfEntityType = AppConstants.enforceEntityTypeToPackageXmlType[t.entityType];
+            entityTypeVsName[sfEntityType] = entityTypeVsName[sfEntityType] || [];
+            entityTypeVsName[sfEntityType].push(t.codeEntity?.BundleName || t.codeEntity?.Name);
+        });
+
+        let packageXml = Utils.generatePackageXml(entityTypeVsName, sfApiVersion);
+
+        navigator.clipboard.writeText(packageXml).then(()=>{
+            this.showSnackBar("Package.xml copied succesfully");
+        }).catch((e) => {
+            this.showSnackBar("Some error occurred");
+            this.log('generatePackageXmlFromOpenFilesForOrg | ERROR ' , e);
+        });
+
     }
 
     log(...str: any) {
