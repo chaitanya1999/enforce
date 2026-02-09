@@ -13,7 +13,7 @@ import { EditorSession } from './EditorSession';
 //     loadSessionsData : () => {},
 //     getAllOrgs : () => {}
 // };
-export const sfApiVersion = '65.0';//52.0
+export const sfApiVersion = '64.0';//52.0
 const debug = Utils.debug;
 const log = Utils.debug;
 type BundlesMap = {[key: string] : NormalizedBundleDetails};
