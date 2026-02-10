@@ -36,6 +36,10 @@ export class CodeTab {
         return this.editorType == AppConstants.CODE_EDITOR;
     }
 
+    get sfEntityType() {
+        return AppConstants.enforceEntityTypeToPackageXmlType[this.entityType];
+    }
+
     constructor(tabName : string, modelId : string, tabValue : string, icon : string, orgName : string, editorType : string, entityType : string, recordId? : string, temporary? : boolean) {
         this.tabName = tabName;
         this.modelId = modelId;

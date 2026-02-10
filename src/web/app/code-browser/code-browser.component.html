@@ -52,6 +52,11 @@
                 <table class="table table-sm table-bordered table-dark table-hover align-middle mb-0" style="font-size: 0.85em; background-color: rgb(30,30,30);border: 1px solid #2B2B2B;">
                     <tbody>
                         <tr>
+                            <td class="text-light" style="background-color: rgb(30,30,30);" colspan=2>
+                                <a class="link-underline-primary" (click)="openCodeEntityInSalesforce(activeTab!)" style="display: flex; justify-content: center; cursor: pointer;">{{activeTab?.sfEntityType}}</a>
+                            </td>
+                        </tr>
+                        <tr>
                             <td class="text-light" style="background-color: rgb(30,30,30);">API Version</td>
                             <td class="text-light" style="background-color: rgb(30,30,30);">{{activeTab?.codeEntity?.ApiVersion || '-'}}</td>
                         </tr>

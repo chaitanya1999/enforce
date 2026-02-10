@@ -351,7 +351,9 @@ export class AppComponent {
             //3. Open org in browser using access token
             if(authResp?.isSuccess) {
                 console.log('app.component | openOrgInBrowser | authentication successful');
-                this.openOrg(orgCred);
+                let url = (await this._ipc.callMethod('getOrgLoginUrl', orgCred.orgName));
+                // if(urlPath) url += '/' + urlPath;
+                window.open(url);
             }
         } catch(err) {
             console.log(err);
@@ -359,17 +361,8 @@ export class AppComponent {
 
     }
 
-    async openOrg(orgCred: OrgCredential) {
-        if(!orgCred?.orgName) return;
-        try {
-            let url = (await this._ipc.callMethod('getOrgLoginUrl', orgCred.orgName));
-            window.open(url);
-        } catch(err) {
-            console.log(err);
-        }
-    }
-
-    openOrgEvent(orgName: string) {
+    openOrgEvent(event : any) {
+        let {orgName} = event;
         console.log('app.component | openOrgEvent | orgName = ' + orgName);
         let cred = this.orgCredsMap.get(orgName);
         if(cred)

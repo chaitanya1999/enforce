@@ -2443,15 +2443,12 @@ export class CodeBrowserComponent {
     }
 
     @Output() openOrgEvent = new EventEmitter<any>();
-    async openOrg(orgName? : string) {
+    async openOrg(orgName? : string, urlPath? : string) {
         if(!orgName && !this.activeTab?.orgName) return;
-        this.openOrgEvent.emit(orgName || this.activeTab?.orgName);
-        // try {
-        //     let url = (await this._ipc.callMethod('getOrgLoginUrl', orgName || this.activeTab?.orgName));
-        //     window.open(url);
-        // } catch(err) {
-        //     console.log(err);
-        // }
+        this.openOrgEvent.emit({
+            orgName : orgName || this.activeTab?.orgName,
+            urlPath
+        });
     }
 
     async createNewCode(entity : SelectOption) {
@@ -3470,9 +3467,12 @@ export class CodeBrowserComponent {
         let entityTypeVsName : any = {};
         tabs.forEach(t => {
             let sfEntityType = AppConstants.enforceEntityTypeToPackageXmlType[t.entityType];
-            entityTypeVsName[sfEntityType] = entityTypeVsName[sfEntityType] || [];
-            entityTypeVsName[sfEntityType].push(t.codeEntity?.BundleName || t.codeEntity?.Name);
+            entityTypeVsName[sfEntityType] = entityTypeVsName[sfEntityType] || new Set();
+            entityTypeVsName[sfEntityType].add(t.codeEntity?.BundleName || t.codeEntity?.Name);
         });
+        for(let key in entityTypeVsName){
+            entityTypeVsName[key] = Array.from(entityTypeVsName[key]);
+        }
 
         let packageXml = Utils.generatePackageXml(entityTypeVsName, sfApiVersion);
 
@@ -3483,6 +3483,17 @@ export class CodeBrowserComponent {
             this.log('generatePackageXmlFromOpenFilesForOrg | ERROR ' , e);
         });
 
+    }
+
+    async openCodeEntityInSalesforce(tab? : CodeTab) {
+        if(!tab || tab.editorType != this.$codeEditor) return ;
+        try {
+            let instanceUrl = await this._ipc.callMethod('getInstanceURL', {orgName : tab.orgName});
+            window.open(instanceUrl + '/' + (tab.codeEntity?.BundleId || tab.codeEntity?.Id));
+        } catch(err) {
+            console.log(err);
+            this.log('openCodeEntityInSalesforce | error - ' , err);
+        }
     }
 
     log(...str: any) {
