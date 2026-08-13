@@ -13,11 +13,11 @@ app.get('/:file', (req, res) => {
 	console.log('#$#$ Request = ' + req.params.file);
  
 	if(!req.params.file) {
-		if (req.query.key === 'U3BlY2lhbFVzZXJzT25seUlSZXBlYXRTcGVjaWFsVXNlcnNPbmx5') {
+		// if (req.query.key === 'U3BlY2lhbFVzZXJzT25seUlSZXBlYXRTcGVjaWFsVXNlcnNPbmx5') {
 			res.sendFile('/web/index.html', { root: __dirname });
-		} else {
-			console.log("do not serve");
-		}
+		// } else {
+			// console.log("do not serve");
+		// }
 	} else if(req.params.file.startsWith('proxy')) {
 		console.log('#$#$ Proxy request');
 		jsforceCorsProxy(req, res);	
@@ -26,11 +26,11 @@ app.get('/:file', (req, res) => {
 	}
 })
 app.get('/', (req, res) => {
-	if (req.query.key === 'U3BlY2lhbFVzZXJzT25seUlSZXBlYXRTcGVjaWFsVXNlcnNPbmx5') {
+	// if (req.query.key === 'U3BlY2lhbFVzZXJzT25seUlSZXBlYXRTcGVjaWFsVXNlcnNPbmx5') {
 		res.sendFile('/web/index.html', { root: __dirname });
-	} else {
-		console.log('do not serve')
-	}
+	// } else {
+		// console.log('do not serve')
+	// }
 });
 
 app.use('/assets/', express.static(__dirname + '/web/assets/', staticOptions));
